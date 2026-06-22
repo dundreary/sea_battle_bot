@@ -59,15 +59,78 @@ def shoot_grid_keyboard(game_code, opp_board):
         kb.append(row)
     return InlineKeyboardMarkup(kb)
 
+L10N = {
+    'ru': {
+        'start': "⚓ <b>Морской бой</b>\n\nКоманды:\n/solo — игра против бота\n/newgame — с другом\n/join XXX — присоединиться",
+        'app': "\n\nИли нажми кнопку ниже, чтобы открыть <b>мини-приложение</b> 🎯",
+        'app_btn': "🎮 Открыть игру",
+        'already': "Вы уже в игре. Используйте /leave чтобы выйти.",
+        'newgame': "🎮 Игра создана!\n\nКод: <b>{}</b>\n\nОтправьте сопернику: /join {}",
+        'join_usage': "Использование: /join <код>",
+        'join_notfound': "Игра с таким кодом не найдена.",
+        'join_full': "В этой игре уже два игрока.",
+        'join_ok': "✅ Вы присоединились к игре <b>{}</b>!\nНачинаем расстановку кораблей!",
+        'solo': "🤖 <b>Режим игры с ботом</b>\n\nРасставь свои корабли, и начинаем!",
+        'not_in_game': "Вы не в игре.",
+        'left': "Вы вышли из игры.",
+        'nothing': "Нечего отменять.",
+    },
+    'uk': {
+        'start': "⚓ <b>Морський бій</b>\n\nКоманди:\n/solo — гра проти бота\n/newgame — з другом\n/join XXX — приєднатися",
+        'app': "\n\nАбо натисни кнопку нижче, щоб відкрити <b>міні-застосунок</b> 🎯",
+        'app_btn': "🎮 Відкрити гру",
+        'already': "Ви вже у грі. Використайте /leave щоб вийти.",
+        'newgame': "🎮 Гру створено!\n\nКод: <b>{}</b>\n\nВідправте супернику: /join {}",
+        'join_usage': "Використання: /join <код>",
+        'join_notfound': "Гру з таким кодом не знайдено.",
+        'join_full': "У цій грі вже два гравці.",
+        'join_ok': "✅ Ви приєдналися до гри <b>{}</b>!\nПочинаємо розстановку кораблів!",
+        'solo': "🤖 <b>Режим гри з ботом</b>\n\nРозстав свої кораблі й починаємо!",
+        'not_in_game': "Ви не у грі.",
+        'left': "Ви вийшли з гри.",
+        'nothing': "Нема чого скасовувати.",
+    },
+    'en': {
+        'start': "⚓ <b>Sea Battle</b>\n\nCommands:\n/solo — play against bot\n/newgame — play with friend\n/join XXX — join a game",
+        'app': "\n\nOr tap the button below to open the <b>mini app</b> 🎯",
+        'app_btn': "🎮 Open Game",
+        'already': "You're already in a game. Use /leave to exit.",
+        'newgame': "🎮 Game created!\n\nCode: <b>{}</b>\n\nSend to your friend: /join {}",
+        'join_usage': "Usage: /join <code>",
+        'join_notfound': "No game found with this code.",
+        'join_full': "This game already has two players.",
+        'join_ok': "✅ You joined the game <b>{}</b>!\nLet's place your ships!",
+        'solo': "🤖 <b>Playing against bot</b>\n\nPlace your ships and let's start!",
+        'not_in_game': "You're not in a game.",
+        'left': "You left the game.",
+        'nothing': "Nothing to cancel.",
+    },
+}
+
+def lang_of(user):
+    try:
+        lc = user.language_code or 'ru'
+        if lc.startswith('uk'): return 'uk'
+        if lc.startswith('en'): return 'en'
+    except: pass
+    return 'ru'
+
+def _(user, key, *args):
+    l = lang_of(user)
+    s = L10N.get(l, {}).get(key, L10N['ru'].get(key, key))
+    if args: s = s.format(*args)
+    return s
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
-    text = "⚓ <b>Морской бой</b>\n\nКоманды:\n/solo — игра против бота\n/newgame — с другом\n/join XXX — присоединиться"
+    user = update.effective_user
+    text = _(user, 'start')
     kb = None
     if base and base.startswith("http"):
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🎮 Открыть игру", web_app=WebAppInfo(url=base))
+            InlineKeyboardButton(_(user, 'app_btn'), web_app=WebAppInfo(url=base))
         ]])
-        text += "\n\nИли нажми кнопку ниже, чтобы открыть <b>мини-приложение</b> 🎯"
+        text += _(user, 'app')
     await update.message.reply_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,36 +145,33 @@ async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     games[code] = game
     player_games[uid] = code
     await update.message.reply_text(
-        f"🎮 Игра создана!\n\n"
-        f"Код для приглашения соперника: <b>{code}</b>\n\n"
-        f"Отправьте сопернику: /join {code}\n"
-        f"Ожидаем соперника...",
+        _(update.effective_user, 'newgame', code, code),
         parse_mode="HTML"
     )
 
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    user = update.effective_user
     if uid in player_games:
-        await update.message.reply_text("Вы уже в игре. Используйте /leave чтобы выйти.")
+        await update.message.reply_text(_(user, 'already'))
         return
     args = context.args
     if not args:
-        await update.message.reply_text("Использование: /join <код>")
+        await update.message.reply_text(_(user, 'join_usage'))
         return
     code = args[0].upper()
     if code not in games:
-        await update.message.reply_text("Игра с таким кодом не найдена.")
+        await update.message.reply_text(_(user, 'join_notfound'))
         return
     game = games[code]
     if game.player2_id is not None:
-        await update.message.reply_text("В этой игре уже два игрока.")
+        await update.message.reply_text(_(user, 'join_full'))
         return
     game.player2_id = uid
     player_games[uid] = code
     game.phase = "placing"
     await update.message.reply_text(
-        f"✅ Вы присоединились к игре <b>{code}</b>!\n"
-        "Начинаем расстановку кораблей!",
+        _(user, 'join_ok', code),
         parse_mode="HTML"
     )
     for pid in (game.player1_id, game.player2_id):
@@ -121,8 +181,9 @@ async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def solo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    user = update.effective_user
     if uid in player_games:
-        await update.message.reply_text("Вы уже в игре. Используйте /leave чтобы выйти.")
+        await update.message.reply_text(_(user, 'already'))
         return
     code = Game.generate_code()
     while code in games:
@@ -136,16 +197,16 @@ async def solo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     game.placing[2]["ship_idx"] = len(SHIPS)
     game.ready[2] = True
     await update.message.reply_text(
-        "🤖 <b>Режим игры с ботом</b>\n\n"
-        "Расставь свои корабли, и начинаем!",
+        _(user, 'solo'),
         parse_mode="HTML"
     )
     await send_placement_prompt(context.bot, uid, game, 1, game.board1)
 
 async def leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    user = update.effective_user
     if uid not in player_games:
-        await update.message.reply_text("Вы не в игре.")
+        await update.message.reply_text(_(user, 'not_in_game'))
         return
     code = player_games.pop(uid)
     game = games.get(code)
@@ -154,17 +215,18 @@ async def leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if other_id and other_id in player_games:
             player_games.pop(other_id, None)
         games.pop(code, None)
-    await update.message.reply_text("Вы вышли из игры.")
+    await update.message.reply_text(_(user, 'left'))
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
+    user = update.effective_user
     game_code = player_games.get(uid)
     if not game_code:
-        await update.message.reply_text("Нечего отменять.")
+        await update.message.reply_text(_(user, 'nothing'))
         return
     game = games.get(game_code)
     if not game or game.phase == "playing":
-        await update.message.reply_text("Нечего отменять.")
+        await update.message.reply_text(_(user, 'nothing'))
         return
     pnum = game.player_num(uid)
     game.placing[pnum]["cells"] = []
