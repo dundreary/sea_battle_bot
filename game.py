@@ -8,6 +8,7 @@ SHIP = 1
 HIT = 2
 MISS = 3
 SUNK = 4
+DEAD = 5
 
 class Ship:
     def __init__(self, cells):
@@ -47,6 +48,15 @@ class Board:
             self.grid[r][c] = SHIP
         self.ships.append(ship)
 
+    def _mark_dead_zone(self, ship):
+        for sr, sc in ship.cells:
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    nr, nc = sr + dr, sc + dc
+                    if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                        if self.grid[nr][nc] == EMPTY:
+                            self.grid[nr][nc] = DEAD
+
     def receive_shot(self, r, c):
         if self.grid[r][c] == SHIP:
             self.grid[r][c] = HIT
@@ -56,6 +66,7 @@ class Board:
                     if ship.sunk:
                         for sr, sc in ship.cells:
                             self.grid[sr][sc] = SUNK
+                        self._mark_dead_zone(ship)
                         return "sunk"
             return "hit"
         elif self.grid[r][c] == EMPTY:
@@ -78,6 +89,8 @@ class Board:
             return "💨"
         if v == SUNK:
             return "💀"
+        if v == DEAD:
+            return "·"
         return "⬜"
 
     def render(self, hide_ships=True):
@@ -93,6 +106,20 @@ class Board:
 
     def render_own(self):
         return self.render(hide_ships=False)
+
+    @staticmethod
+    def render_side_by_side(board1, board2, label1="Мои корабли", label2="Соперник", hide2=True):
+        parts1 = board1.render(hide_ships=False).split("\n")
+        parts2 = board2.render(hide_ships=hide2).split("\n")
+        label_dist = 11
+        label_line = f"{label1:^{label_dist*2+1}}   {label2:^{label_dist*2+1}}"
+        sep = "   " + "│"
+        merged = [label_line]
+        merged.append(parts1[0] + sep + parts2[0])
+        for i in range(1, len(parts1)):
+            merged.append(parts1[i] + sep + parts2[i])
+        merged.append("")
+        return "\n".join(merged)
 
 class Game:
     def __init__(self, code, player1_id, player2_id=None, solo=False):
