@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+import os
 import logging
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 import config
 from bot import (
@@ -11,8 +14,27 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
+logger = logging.getLogger(__name__)
+
+PORT = int(os.getenv("PORT", 8080))
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, format, *args):
+        pass
+
+def run_health_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    logger.info("Health server running on port %s", PORT)
+    server.serve_forever()
 
 def main():
+    t = threading.Thread(target=run_health_server, daemon=True)
+    t.start()
+
     app = Application.builder().token(config.BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -23,7 +45,7 @@ def main():
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
-    print("Bot started!")
+    logger.info("Bot started!")
     app.run_polling()
 
 if __name__ == "__main__":
