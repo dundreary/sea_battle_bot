@@ -5,7 +5,7 @@ import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
-from telegram.ext import Application, CommandHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
 from bot import start, web_app_data
 from api import handle_api
@@ -75,7 +75,7 @@ def main():
         try:
             await app.bot.set_my_commands(cmds)
             if base:
-                btn = MenuButtonWebApp(text="🎮 Морской бой", web_app=WebAppInfo(url=base))
+                btn = MenuButtonWebApp(text="🎮 Sea Battle", web_app=WebAppInfo(url=base))
                 await app.bot.set_chat_menu_button(menu_button=btn)
             logger.info("✅ Menu + commands set")
         except Exception as e:
