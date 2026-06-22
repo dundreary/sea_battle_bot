@@ -94,9 +94,10 @@ class Board:
         return "⬜"
 
     def render(self, hide_ships=True):
-        lines = []
+        header = "   " + " ".join(chr(ord('A') + i) for i in range(SIZE))
+        lines = [header]
         for i in range(SIZE):
-            row = f"{i+1:2}" + "".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
+            row = f"{i+1:2} " + " ".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
             lines.append(row)
         return "\n".join(lines)
 
@@ -107,10 +108,13 @@ class Board:
         return ["".join(self.cell_display(i, j, hide_ships) for j in range(SIZE)) for i in range(SIZE)]
 
     @staticmethod
+    def render_mini_label(label1="МОИ", label2="БОТ"):
+        return f"{label1}|{label2}"
+
+    @staticmethod
     def render_side_by_side_mini(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
         r1 = board1.render_mini(hide_ships=False)
         r2 = board2.render_mini(hide_ships=hide2)
-        gap = ""
         merged = [f"{label1}|{label2}"]
         for i in range(SIZE):
             merged.append(f"{r1[i]}|{r2[i]}")
