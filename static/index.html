@@ -112,6 +112,14 @@ const LANG = {
     close: '🚪 Закрыть',
     withBot: '· с ботом',
     withFriend: '· с другом',
+    vsBot: '🤖 С ботом',
+    vsFriend: '👤 С другом',
+    joinTitle: '🔗 Присоединиться',
+    joinBtn: '🔗 Ввести код',
+    joinPlaceholder: 'Введи код игры',
+    joinError: '⚠️ Игра не найдена или уже полная',
+    waitOpp: '⏳ Ожидаем соперника...',
+    codeShare: '📤 Код: <b>{}</b> — отправь другу',
     error: '⚠️ Ошибка соединения',
     errorShot: '⚠️ Сюда уже стреляли',
     gameOver: '🔱 Игра закончилась.',
@@ -147,6 +155,14 @@ const LANG = {
     close: '🚪 Закрити',
     withBot: '· з ботом',
     withFriend: '· з другом',
+    vsBot: '🤖 З ботом',
+    vsFriend: '👤 З другом',
+    joinTitle: '🔗 Приєднатися',
+    joinBtn: '🔗 Ввести код',
+    joinPlaceholder: 'Введи код гри',
+    joinError: '⚠️ Гру не знайдено або вже повна',
+    waitOpp: '⏳ Чекаємо суперника...',
+    codeShare: '📤 Код: <b>{}</b> — відправ другу',
     error: '⚠️ Помилка з\'єднання',
     errorShot: '⚠️ Сюди вже стріляли',
     gameOver: '🔱 Гра закінчилась.',
@@ -182,6 +198,14 @@ const LANG = {
     close: '🚪 Close',
     withBot: '· vs bot',
     withFriend: '· vs friend',
+    vsBot: '🤖 vs Bot',
+    vsFriend: '👤 vs Friend',
+    joinTitle: '🔗 Join Game',
+    joinBtn: '🔗 Enter Code',
+    joinPlaceholder: 'Enter game code',
+    joinError: '⚠️ Game not found or full',
+    waitOpp: '⏳ Waiting for opponent...',
+    codeShare: '📤 Code: <b>{}</b> — send to your friend',
     error: '⚠️ Connection error',
     errorShot: '⚠️ Already targeted',
     gameOver: '🔱 Game over.',
@@ -228,10 +252,7 @@ function applyLang(){
   $('legHit').textContent = t('legHit');
   $('legMiss').textContent = t('legMiss');
   $('legSunk').textContent = t('legSunk');
-  if(!state && !gameCode){
-    $('status').textContent = t('welcome');
-    $('actions').innerHTML = `<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
-  }
+  if(!state && !gameCode) showMenu();
 }
 
 function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
@@ -296,14 +317,19 @@ function updateUI(){
   $('gameInfo').textContent = `${s.code} ${s.solo ? t('withBot') : t('withFriend')}`;
 
   if(gameOver){
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null}
     localStorage.removeItem('sb_game');
     if(s.all_sunk)showResult('🏆',t('win'),t('winDesc'));
     else if(s.my_all_sunk)showResult('💔',t('lose'),t('loseDesc'));
     return;
   }
 
-  if(s.phase==='placing'){
-    setStatus(t('placing'),'');
+  if(s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2'){
+    if(!s.solo){
+      setStatus(t('codeShare').replace('{}',s.code),'');
+    }else{
+      setStatus(t('placing'),'');
+    }
     $('actions').innerHTML=`
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
@@ -333,6 +359,55 @@ async function startSolo(){
   localStorage.setItem('sb_game',gameCode);
   $('actions').innerHTML='';
   await refreshState();
+}
+
+async function newMulti(){
+  const res=await api('/api/new_multi',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  gameCode=res.code;
+  localStorage.setItem('sb_game',gameCode);
+  $('actions').innerHTML='';
+  setStatus(t('codeShare').replace('{}',gameCode),'');
+  await refreshState();
+  pollGame();
+}
+
+async function joinGame(){
+  const code=prompt(t('joinPlaceholder'));
+  if(!code)return;
+  const res=await api('/api/join',{uid:getUid(),code:code.toUpperCase()});
+  if(!res||!res.ok){setStatus(t('joinError'));return}
+  gameCode=code.toUpperCase();
+  localStorage.setItem('sb_game',gameCode);
+  $('actions').innerHTML='';
+  await refreshState();
+  pollGame();
+}
+
+let pollTimer=null;
+
+function pollGame(){
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    if(!gameCode||!state||state.phase==='playing'){clearInterval(pollTimer);pollTimer=null;return}
+    await refreshState();
+  },2000);
+}
+
+function showMenu(){
+  gameCode=null;state=null;
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  localStorage.removeItem('sb_game');
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('legend').style.display='none';
+  $('gameInfo').textContent='—';
+  setStatus(t('welcome'));
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
+    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+  `;
 }
 
 async function autoPlace(){
@@ -387,23 +462,16 @@ function showResult(icon,title,desc){
 }
 
 async function leaveGame(){
-  if(lang==='uk'&&!confirm(t('quitConfirm')))return;
-  if(lang!=='uk'&&!confirm(t('quitConfirm')))return;
-  gameCode=null;state=null;
-  localStorage.removeItem('sb_game');
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('legend').style.display='none';
-  $('gameInfo').textContent='—';
-  setStatus(t('welcome'));
-  $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
+  if(!confirm(t('quitConfirm')))return;
+  showMenu();
 }
 
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
-  if(!saved)return;
+  if(!saved){showMenu();return}
   gameCode=saved;
   refreshState();
+  setTimeout(pollGame,1000);
 }
 
 lang = detectLang();

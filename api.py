@@ -102,6 +102,24 @@ def confirm_placement(uid, code):
         return True
     return False
 
+def new_multi(uid):
+    code = Game.generate_code()
+    while code in games:
+        code = Game.generate_code()
+    game = Game(code, uid)
+    games[code] = game
+    return game
+
+def join_game(uid, code):
+    game = games.get(code)
+    if not game:
+        return None, "not_found"
+    if game.player2_id is not None:
+        return None, "full"
+    game.player2_id = uid
+    game.phase = "placing"
+    return game, "ok"
+
 def handle_api(path, body):
     try:
         data = json.loads(body) if body else {}
@@ -116,6 +134,22 @@ def handle_api(path, body):
         game = new_solo(uid)
         player_games[uid] = game.code
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+
+    if path == "/api/new_multi":
+        if not uid:
+            return {"error": "no uid"}
+        game = new_multi(uid)
+        player_games[uid] = game.code
+        return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+
+    if path == "/api/join":
+        if not uid or not code:
+            return {"error": "no uid/code"}
+        game, status = join_game(uid, code)
+        if not game:
+            return {"ok": False, "error": status}
+        player_games[uid] = code
+        return {"ok": True, "state": as_dict(game, uid)}
 
     if path == "/api/state":
         if not uid or not code:
