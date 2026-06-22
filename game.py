@@ -75,6 +75,8 @@ class Board:
         return "repeat"
 
     def all_sunk(self):
+        if not self.ships:
+            return False
         return all(ship.sunk for ship in self.ships)
 
     def cell_display(self, r, c, hide_ships=False):
@@ -84,11 +86,11 @@ class Board:
         if v == SHIP:
             return "⬜" if hide_ships else "🟩"
         if v == HIT:
-            return "🟥"
+            return "❌"
         if v == MISS:
-            return "🟦"
+            return "⭕"
         if v == SUNK:
-            return "⬛"
+            return "✖"
         if v == DEAD:
             return "·"
         return "⬜"
