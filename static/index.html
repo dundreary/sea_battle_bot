@@ -50,7 +50,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 <body>
 
 <div class="header">
-  <h1>⚓ МОРСКОЙ БОЙ / SEA BATTLE</h1>
+  <h1 id="title">⚓ МОРСКОЙ БОЙ</h1>
   <div class="lang-bar">
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
     <button class="lang-btn" onclick="setLang('uk')">UA</button>
@@ -83,7 +83,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 <script>
 const LANG = {
   ru: {
-    title: 'Морской бой',
+    title: '⚓ МОРСКОЙ БОЙ',
     startBtn: '🎮 Начать игру',
     ownBoard: '🚢 ТВОИ КОРАБЛИ',
     oppBoard: '🎯 ДОСКА СОПЕРНИКА',
@@ -238,13 +238,15 @@ function t(key, ...args){
 function setLang(l){
   lang = l;
   localStorage.setItem('sb_lang', l);
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === l));
+  const langMap = {ru:'ru', ua:'uk', en:'en'};
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', (langMap[b.textContent.toLowerCase()]||b.textContent.toLowerCase()) === l));
   applyLang();
   if(state) updateUI();
 }
 
 function applyLang(){
   document.title = t('title');
+  $('title').textContent = t('title');
   $('lblOwn').textContent = t('ownBoard');
   $('lblOpp').textContent = t('oppBoard');
   $('legEmpty').textContent = t('legEmpty');
@@ -326,11 +328,12 @@ function updateUI(){
 
   if(s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2'){
     if(!s.solo){
-      setStatus(t('codeShare').replace('{}',s.code),'');
+      setStatus(`📤 <b>${s.code}</b>`,'');
     }else{
       setStatus(t('placing'),'');
     }
     $('actions').innerHTML=`
+      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${s.code}</button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
@@ -370,6 +373,22 @@ async function newMulti(){
   setStatus(t('codeShare').replace('{}',gameCode),'');
   await refreshState();
   pollGame();
+}
+
+function copyCode(){
+  if(!gameCode)return;
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(gameCode).then(()=>{
+      setStatus('✅ '+gameCode+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],'');
+    }).catch(()=>fallbackCopy());
+  }else{fallbackCopy()}
+}
+function fallbackCopy(){
+  const ta=document.createElement('textarea');
+  ta.value=gameCode;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');setStatus('✅ '+gameCode+' '+(lang==='uk'?'скопійовано':lang==='en'?'copied':'скопирован'),'')}catch(e){}
+  document.body.removeChild(ta);
 }
 
 async function joinGame(){

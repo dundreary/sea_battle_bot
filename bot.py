@@ -124,14 +124,14 @@ def _(user, key, *args):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
     user = update.effective_user
-    text = _(user, 'start')
-    kb = None
-    if base and base.startswith("http"):
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton(_(user, 'app_btn'), web_app=WebAppInfo(url=base))
-        ]])
-        text += _(user, 'app')
-    await update.message.reply_text(text, reply_markup=kb, parse_mode="HTML")
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton(_(user, 'app_btn'), web_app=WebAppInfo(url=base or "https://sea-battle-bot.onrender.com"))
+    ]])
+    await update.message.reply_text(
+        _(user, 'start'),
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
