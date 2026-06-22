@@ -86,13 +86,21 @@ def place_auto(uid, code):
     game = games.get(code)
     pnum = game.player_num(uid)
     board = game.board_for(uid)
+    board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+    board.ships = []
     auto_place_ships(board)
     game.placing[pnum]["ship_idx"] = len(SHIPS)
+    return True
+
+def confirm_placement(uid, code):
+    game = games.get(code)
+    pnum = game.player_num(uid)
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
         game.phase = "playing"
         game.turn = 1
-    return game.phase == "playing"
+        return True
+    return False
 
 def handle_api(path, body):
     try:
@@ -133,7 +141,15 @@ def handle_api(path, body):
     if path == "/api/place_auto":
         if not uid or not code:
             return {"error": "no uid/code"}
-        started = place_auto(uid, code)
+        place_auto(uid, code)
+        game = games.get(code)
+        state = as_dict(game, uid) if game else None
+        return {"ok": True, "state": state}
+
+    if path == "/api/confirm":
+        if not uid or not code:
+            return {"error": "no uid/code"}
+        started = confirm_placement(uid, code)
         game = games.get(code)
         state = as_dict(game, uid) if game else None
         return {"ok": True, "started": started, "state": state}
