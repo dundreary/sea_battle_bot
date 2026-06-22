@@ -301,11 +301,16 @@ async def handle_confirm_placement(query, uid, game_code):
         if game.ready[1] and game.ready[2]:
             game.phase = "playing"
             game.turn = 1
-            await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
-            if game.solo:
-                await notify_solo_turn(query.bot, game_code)
-            else:
-                await notify_turn(query.bot, game_code)
+            try:
+                await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
+                if game.solo:
+                    logger.info("Starting solo game, sending turn prompt to %s", uid)
+                    await notify_solo_turn(query.bot, game_code)
+                else:
+                    await notify_turn(query.bot, game_code)
+            except Exception as e:
+                logger.error("Error starting game: %s", e, exc_info=True)
+                await query.bot.send_message(uid, f"⚠️ Ошибка: {e}")
         else:
             await query.edit_message_text("✅ Ваши корабли расставлены. Ожидайте соперника...")
     else:
@@ -325,11 +330,16 @@ async def handle_auto_place(query, uid, game_code):
     if game.ready[1] and game.ready[2]:
         game.phase = "playing"
         game.turn = 1
-        await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
-        if game.solo:
-            await notify_solo_turn(query.bot, game_code)
-        else:
-            await notify_turn(query.bot, game_code)
+        try:
+            await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
+            if game.solo:
+                logger.info("Starting solo game (auto), sending turn prompt to %s", uid)
+                await notify_solo_turn(query.bot, game_code)
+            else:
+                await notify_turn(query.bot, game_code)
+        except Exception as e:
+            logger.error("Error starting game: %s", e, exc_info=True)
+            await query.bot.send_message(uid, f"⚠️ Ошибка: {e}")
     else:
         await query.edit_message_text("✅ Ваши корабли расставлены автоматически. Ожидайте соперника...")
 
