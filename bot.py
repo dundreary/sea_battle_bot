@@ -16,11 +16,11 @@ def placement_grid_keyboard(game_code, board, ship_len, selected_cells):
         for c in range(SIZE):
             v = board.grid[r][c]
             if (r, c) in selected_cells:
-                text = "🔵"
+                text = "🟥"
             elif v == 1:
-                text = "🟦"
+                text = "🟩"
             elif v == 4:
-                text = "💀"
+                text = "⬛"
             else:
                 text = "⬜"
             cb = f"plc_{r}_{c}_{game_code}"
@@ -44,11 +44,13 @@ def shoot_grid_keyboard(game_code, opp_board):
             if v == 0:
                 text = "⬜"
             elif v == 2:
-                text = "🔥"
+                text = "🟥"
             elif v == 3:
-                text = "💨"
+                text = "🟦"
             elif v == 4:
-                text = "💀"
+                text = "⬛"
+            elif v == 5:
+                text = "·"
             else:
                 text = "⬜"
             cb = f"sht_{r}_{c}_{game_code}"

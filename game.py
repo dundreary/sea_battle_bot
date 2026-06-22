@@ -84,28 +84,23 @@ class Board:
         if v == SHIP:
             return "⬜" if hide_ships else "🟩"
         if v == HIT:
-            return "🔴"
+            return "🟥"
         if v == MISS:
             return "🟦"
         if v == SUNK:
-            return "❌"
+            return "⬛"
         if v == DEAD:
             return "·"
         return "⬜"
 
     def render(self, hide_ships=True):
-        header = "   " + " ".join(chr(ord('A') + i) for i in range(SIZE))
-        lines = [header]
-        for i in range(SIZE):
-            row = f"{i+1:2} " + " ".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
-            lines.append(row)
-        return "\n".join(lines)
+        return "\n".join(
+            "".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
+            for i in range(SIZE)
+        )
 
     def render_own(self):
         return self.render(hide_ships=False)
-
-    def render_mini(self, hide_ships=True):
-        return ["".join(self.cell_display(i, j, hide_ships) for j in range(SIZE)) for i in range(SIZE)]
 
     @staticmethod
     def render_mini_label(label1="МОИ", label2="БОТ"):
