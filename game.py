@@ -77,48 +77,42 @@ class Board:
     def all_sunk(self):
         return all(ship.sunk for ship in self.ships)
 
+    SHIP_SYMS = {EMPTY: "·", SHIP: "■", HIT: "✗", MISS: "○", SUNK: "✖", DEAD: "~"}
+
     def cell_display(self, r, c, hide_ships=False):
         v = self.grid[r][c]
         if v == EMPTY:
-            return "⬜"
-        if v == SHIP:
-            return "⬜" if hide_ships else "🟦"
-        if v == HIT:
-            return "🔥"
-        if v == MISS:
-            return "💨"
-        if v == SUNK:
-            return "💀"
-        if v == DEAD:
             return "·"
-        return "⬜"
+        if v == SHIP:
+            return "·" if hide_ships else "■"
+        if v == HIT:
+            return "✗"
+        if v == MISS:
+            return "○"
+        if v == SUNK:
+            return "✖"
+        if v == DEAD:
+            return "~"
+        return "·"
 
     def render(self, hide_ships=True):
-        header = "   " + " ".join(chr(ord('A') + i) for i in range(SIZE))
-        lines = [header]
+        lines = []
         for i in range(SIZE):
-            row = f"{i+1:2} " + " ".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
+            row = f"{i+1:2}" + "".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
             lines.append(row)
         return "\n".join(lines)
-
-    def render_opponent(self):
-        return self.render(hide_ships=True)
 
     def render_own(self):
         return self.render(hide_ships=False)
 
     @staticmethod
-    def render_side_by_side(board1, board2, label1="Мои корабли", label2="Соперник", hide2=True):
-        parts1 = board1.render(hide_ships=False).split("\n")
-        parts2 = board2.render(hide_ships=hide2).split("\n")
-        label_dist = 11
-        label_line = f"{label1:^{label_dist*2+1}}   {label2:^{label_dist*2+1}}"
-        sep = "   " + "│"
-        merged = [label_line]
-        merged.append(parts1[0] + sep + parts2[0])
-        for i in range(1, len(parts1)):
-            merged.append(parts1[i] + sep + parts2[i])
-        merged.append("")
+    def render_side_by_side(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
+        r1 = board1.render(hide_ships=False).split("\n")
+        r2 = board2.render(hide_ships=hide2).split("\n")
+        gap = "  "
+        merged = [f"{label1:^12}{gap}{label2:^12}"]
+        for i in range(SIZE):
+            merged.append(f"{r1[i]}{gap}{r2[i]}")
         return "\n".join(merged)
 
 class Game:
