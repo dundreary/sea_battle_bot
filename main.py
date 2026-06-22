@@ -4,6 +4,7 @@ import json
 import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 import config
 from bot import (
@@ -71,7 +72,24 @@ def main():
     t = threading.Thread(target=run_server, daemon=True)
     t.start()
 
-    app = Application.builder().token(config.BOT_TOKEN).build()
+    async def setup(app):
+        base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
+        cmds = [
+            BotCommand("start", "🏠 Меню"),
+            BotCommand("solo", "🤖 С ботом"),
+            BotCommand("newgame", "👤 С другом"),
+            BotCommand("join", "🔗 Присоединиться"),
+        ]
+        try:
+            await app.bot.set_my_commands(cmds)
+            if base:
+                btn = MenuButtonWebApp(text="🎮 Морской бой", web_app=WebAppInfo(url=base))
+                await app.bot.set_chat_menu_button(menu_button=btn)
+            logger.info("✅ Menu + commands set")
+        except Exception as e:
+            logger.warning("Menu setup skipped: %s", e)
+
+    app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("newgame", newgame))
