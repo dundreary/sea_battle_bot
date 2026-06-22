@@ -1,3 +1,4 @@
+import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -59,20 +60,15 @@ def shoot_grid_keyboard(game_code, opp_board):
     return InlineKeyboardMarkup(kb)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    base = config.WEBAPP_URL or f"https://{update.message.chat.username or 'bot'}.render.com"
-    kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton("🎮 Открыть игру", web_app=WebAppInfo(url=f"{base}"))
-    ]])
-    await update.message.reply_text(
-        "⚓ <b>Морской бой</b>\n\n"
-        "Запускай <b>мини-приложение</b> 🎯\n"
-        "Или используй команды:\n"
-        "/solo — игра против бота\n"
-        "/newgame — с другом\n"
-        "/join XXX — присоединиться",
-        reply_markup=kb,
-        parse_mode="HTML"
-    )
+    base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
+    text = "⚓ <b>Морской бой</b>\n\nКоманды:\n/solo — игра против бота\n/newgame — с другом\n/join XXX — присоединиться"
+    kb = None
+    if base and base.startswith("http"):
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🎮 Открыть игру", web_app=WebAppInfo(url=base))
+        ]])
+        text += "\n\nИли нажми кнопку ниже, чтобы открыть <b>мини-приложение</b> 🎯"
+    await update.message.reply_text(text, reply_markup=kb, parse_mode="HTML")
 
 async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
