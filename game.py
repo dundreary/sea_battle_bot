@@ -88,7 +88,7 @@ class Board:
         if v == HIT:
             return "❌"
         if v == MISS:
-            return "⭕"
+            return "·"
         if v == SUNK:
             return "✖"
         if v == DEAD:

@@ -69,7 +69,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
     <span>⬜ <span style="color:#78909c">пусто</span></span>
     <span>🟩 <span style="color:#78909c">корабль</span></span>
     <span>❌ <span style="color:#78909c">попал</span></span>
-    <span>⭕ <span style="color:#78909c">мимо</span></span>
+    <span>· <span style="color:#78909c">мимо</span></span>
     <span>✖ <span style="color:#78909c">потоплен</span></span>
     <span>· <span style="color:#78909c">забойная</span></span>
   </div>
@@ -105,7 +105,7 @@ function renderBoard(boardEl,grid,isOpponent,gameOver){
     cell.className='cell';
     if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP)cell.classList.add('ship')}
     else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
-    else if(v===MISS){cell.classList.add('miss');cell.textContent='⭕'}
+    else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
     else cell.classList.add('empty');

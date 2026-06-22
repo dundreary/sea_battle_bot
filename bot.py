@@ -47,7 +47,7 @@ def shoot_grid_keyboard(game_code, opp_board):
             elif v == 2:
                 text = "❌"
             elif v == 3:
-                text = "⭕"
+                text = "·"
             elif v == 4:
                 text = "✖"
             elif v == 5:
