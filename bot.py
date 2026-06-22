@@ -2,7 +2,7 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import config
-from game import Game, SHIPS, SIZE, validate_ship_placement, auto_place_ships
+from game import Game, SHIPS, SIZE, validate_ship_placement, auto_place_ships, BotAI
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "⚓ <b>Морской бой</b>\n\n"
         "Команды:\n"
-        "/newgame — создать новую игру\n"
+        "/newgame — создать новую игру с другом\n"
+        "/solo — играть против бота\n"
         "/join XXX — присоединиться по коду\n"
         "/leave — выйти из текущей игры\n"
         "/cancel — отменить текущее действие",
@@ -115,6 +116,29 @@ async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pnum = game.player_num(pid)
         board = game.board_for(pid)
         await send_placement_prompt(update.get_bot(), pid, game, pnum, board)
+
+async def solo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if uid in player_games:
+        await update.message.reply_text("Вы уже в игре. Используйте /leave чтобы выйти.")
+        return
+    code = Game.generate_code()
+    while code in games:
+        code = Game.generate_code()
+    game = Game(code, uid, solo=True)
+    game.player2_id = 0
+    games[code] = game
+    player_games[uid] = code
+    game.phase = "placing"
+    auto_place_ships(game.board2)
+    game.placing[2]["ship_idx"] = len(SHIPS)
+    game.ready[2] = True
+    await update.message.reply_text(
+        "🤖 <b>Режим игры с ботом</b>\n\n"
+        "Расставь свои корабли, и начинаем!",
+        parse_mode="HTML"
+    )
+    await send_placement_prompt(context.bot, uid, game, 1, game.board1)
 
 async def leave(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
@@ -278,7 +302,10 @@ async def handle_confirm_placement(query, uid, game_code):
             game.phase = "playing"
             game.turn = 1
             await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
-            await notify_turn(query.bot, game_code)
+            if game.solo:
+                await notify_solo_turn(query.bot, game_code)
+            else:
+                await notify_turn(query.bot, game_code)
         else:
             await query.edit_message_text("✅ Ваши корабли расставлены. Ожидайте соперника...")
     else:
@@ -299,7 +326,10 @@ async def handle_auto_place(query, uid, game_code):
         game.phase = "playing"
         game.turn = 1
         await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
-        await notify_turn(query.bot, game_code)
+        if game.solo:
+            await notify_solo_turn(query.bot, game_code)
+        else:
+            await notify_turn(query.bot, game_code)
     else:
         await query.edit_message_text("✅ Ваши корабли расставлены автоматически. Ожидайте соперника...")
 
@@ -362,12 +392,13 @@ async def handle_shot(query, uid, game_code, r, c):
             parse_mode="HTML"
         )
         other_uid = game.opponent_id(uid)
-        await query.bot.send_message(
-            other_uid,
-            f"💔 Соперник потопил все ваши корабли. Вы проиграли.\n\n"
-            f"<b>Ваша доска:</b>\n{opp_board.render_own()}",
-            parse_mode="HTML"
-        )
+        if not game.solo:
+            await query.bot.send_message(
+                other_uid,
+                f"💔 Соперник потопил все ваши корабли. Вы проиграли.\n\n"
+                f"<b>Ваша доска:</b>\n{opp_board.render_own()}",
+                parse_mode="HTML"
+            )
         for pid in (game.player1_id, game.player2_id):
             player_games.pop(pid, None)
         games.pop(game_code, None)
@@ -381,7 +412,10 @@ async def handle_shot(query, uid, game_code, r, c):
             + "\n".join(msg_parts),
             parse_mode="HTML"
         )
-        await notify_turn(query.bot, game_code)
+        if game.solo:
+            await handle_bot_turn(query.bot, game_code)
+        else:
+            await notify_turn(query.bot, game_code)
     else:
         kb = shoot_grid_keyboard(game_code, opp_board)
         await query.edit_message_text(
@@ -391,6 +425,77 @@ async def handle_shot(query, uid, game_code, r, c):
             reply_markup=kb,
             parse_mode="HTML"
         )
+
+async def handle_bot_turn(bot, game_code):
+    game = games.get(game_code)
+    if not game or not game.both_placed:
+        return
+    player_uid = game.player1_id
+    player_board = game.board_for(player_uid)
+    bot_board = game.opponent_board(player_uid)
+
+    r, c = game.bot_ai.choose_shot(player_board)
+    if r is None:
+        return
+
+    result = player_board.receive_shot(r, c)
+    game.bot_ai.register_shot(r, c, result, player_board)
+
+    cell_name = f"{chr(ord('A') + c)}{r + 1}"
+    if result == "hit":
+        msg = f"🤖 Бот стреляет в {cell_name}: 🔥 Попадание!"
+    elif result == "sunk":
+        msg = f"🤖 Бот стреляет в {cell_name}: 💀 Корабль потоплен!"
+    else:
+        msg = f"🤖 Бот стреляет в {cell_name}: 💨 Мимо!"
+
+    if player_board.all_sunk():
+        await bot.send_message(
+            player_uid,
+            f"{msg}\n\n💔 <b>ВЫ ПРОИГРАЛИ!</b> Бот потопил все ваши корабли.\n\n"
+            f"<b>Ваша доска:</b>\n{player_board.render_own()}",
+            parse_mode="HTML"
+        )
+        player_games.pop(player_uid, None)
+        games.pop(game_code, None)
+        return
+
+    if result == "miss":
+        game.switch_turn()
+        await bot.send_message(
+            player_uid,
+            f"{msg}\n\n<b>Ваша доска:</b>\n{player_board.render_own()}\n\n"
+            f"<b>Доска бота:</b>\n{bot_board.render_opponent()}\n\n"
+            f"⚓ <b>Ваш ход!</b>",
+            reply_markup=shoot_grid_keyboard(game_code, bot_board),
+            parse_mode="HTML"
+        )
+    else:
+        game.bot_ai.shots.add((r, c))
+        await bot.send_message(
+            player_uid,
+            f"{msg}\n\n🤖 Бот стреляет ещё...",
+            parse_mode="HTML"
+        )
+        await handle_bot_turn(bot, game_code)
+
+async def notify_solo_turn(bot, game_code):
+    game = games.get(game_code)
+    if not game or not game.both_placed:
+        return
+    player_uid = game.player1_id
+    player_board = game.board_for(player_uid)
+    bot_board = game.opponent_board(player_uid)
+    kb = shoot_grid_keyboard(game_code, bot_board)
+    await bot.send_message(
+        player_uid,
+        f"⚓ <b>Твой ход!</b>\n\n"
+        f"<b>Твоя доска:</b>\n{player_board.render_own()}\n\n"
+        f"<b>Доска бота:</b>\n{bot_board.render_opponent()}\n\n"
+        f"Выбери клетку для выстрела:",
+        reply_markup=kb,
+        parse_mode="HTML"
+    )
 
 async def notify_turn(bot, game_code):
     game = games.get(game_code)

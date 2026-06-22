@@ -95,12 +95,14 @@ class Board:
         return self.render(hide_ships=False)
 
 class Game:
-    def __init__(self, code, player1_id, player2_id=None):
+    def __init__(self, code, player1_id, player2_id=None, solo=False):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
+        self.solo = solo
         self.board1 = Board()
         self.board2 = Board()
+        self.bot_ai = BotAI() if solo else None
         self.turn = 1
         self.phase = "placing1"
         self.placing = {
@@ -183,3 +185,52 @@ def auto_place_ships(board):
             board.ships = []
             auto_place_ships(board)
             return
+
+class BotAI:
+    def __init__(self):
+        self.shots = set()
+        self.hunt_queue = []
+        self.ship_mode = False
+
+    def reset_for_board(self, board):
+        self.shots = set()
+        self.hunt_queue = []
+        self.ship_mode = False
+
+    def choose_shot(self, enemy_board):
+        try_hunt = list(self.hunt_queue)
+        self.hunt_queue = []
+        for r, c in try_hunt:
+            if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
+                self.hunt_queue.append((r, c))
+                self.ship_mode = True
+            else:
+                for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < SIZE and 0 <= nc < SIZE and (nr, nc) not in self.shots:
+                        if enemy_board.grid[nr][nc] not in (HIT, MISS):
+                            if (nr, nc) not in self.hunt_queue:
+                                self.hunt_queue.append((nr, nc))
+
+        while self.hunt_queue:
+            r, c = self.hunt_queue.pop(0)
+            if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS):
+                return r, c
+
+        available = [(r, c) for r in range(SIZE) for c in range(SIZE)
+                     if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS)]
+        if not available:
+            return None
+        return random.choice(available)
+
+    def register_shot(self, r, c, result, enemy_board):
+        self.shots.add((r, c))
+        if result in ("hit", "sunk"):
+            for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                    if (nr, nc) not in self.shots and enemy_board.grid[nr][nc] not in (HIT, MISS):
+                        if (nr, nc) not in self.hunt_queue:
+                            self.hunt_queue.append((nr, nc))
+            if result == "sunk":
+                self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] != SUNK]

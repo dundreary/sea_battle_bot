@@ -3,7 +3,7 @@ import logging
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 import config
 from bot import (
-    start, newgame, join, leave, cancel,
+    start, newgame, solo, join, leave, cancel,
     handle_callback
 )
 
@@ -17,6 +17,7 @@ def main():
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("newgame", newgame))
+    app.add_handler(CommandHandler("solo", solo))
     app.add_handler(CommandHandler("join", join))
     app.add_handler(CommandHandler("leave", leave))
     app.add_handler(CommandHandler("cancel", cancel))
