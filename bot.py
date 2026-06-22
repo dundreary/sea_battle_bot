@@ -209,11 +209,11 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if data.startswith("cfm_"):
         game_code = data.split("_", 1)[1]
-        await handle_confirm_placement(query, uid, game_code)
+        await handle_confirm_placement(query, uid, game_code, context.bot)
         return
     if data.startswith("auto_"):
         game_code = data.split("_", 1)[1]
-        await handle_auto_place(query, uid, game_code)
+        await handle_auto_place(query, uid, game_code, context.bot)
         return
     if data.startswith("undo_"):
         game_code = data.split("_", 1)[1]
@@ -222,7 +222,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data.startswith("sht_"):
         parts = data.split("_")
         r, c, game_code = int(parts[1]), int(parts[2]), parts[3]
-        await handle_shot(query, uid, game_code, r, c)
+        await handle_shot(query, uid, game_code, r, c, context.bot)
         return
 
 async def handle_placement_click(query, uid, game_code, r, c):
@@ -270,7 +270,7 @@ async def handle_placement_click(query, uid, game_code, r, c):
     )
     await query.edit_message_text(text, reply_markup=kb, parse_mode="HTML")
 
-async def handle_confirm_placement(query, uid, game_code):
+async def handle_confirm_placement(query, uid, game_code, bot):
     game = games.get(game_code)
     if not game:
         await query.edit_message_text("Игра не найдена.")
@@ -305,18 +305,18 @@ async def handle_confirm_placement(query, uid, game_code):
                 await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
                 if game.solo:
                     logger.info("Starting solo game, sending turn prompt to %s", uid)
-                    await notify_solo_turn(query.bot, game_code)
+                    await notify_solo_turn(bot, game_code)
                 else:
-                    await notify_turn(query.bot, game_code)
+                    await notify_turn(bot, game_code)
             except Exception as e:
                 logger.error("Error starting game: %s", e, exc_info=True)
-                await query.bot.send_message(uid, f"⚠️ Ошибка: {e}")
+                await bot.send_message(uid, f"⚠️ Ошибка: {e}")
         else:
             await query.edit_message_text("✅ Ваши корабли расставлены. Ожидайте соперника...")
     else:
-        await send_placement_prompt(query.bot, uid, game, pnum, board)
+        await send_placement_prompt(bot, uid, game, pnum, board)
 
-async def handle_auto_place(query, uid, game_code):
+async def handle_auto_place(query, uid, game_code, bot):
     game = games.get(game_code)
     if not game:
         await query.edit_message_text("Игра не найдена.")
@@ -334,12 +334,12 @@ async def handle_auto_place(query, uid, game_code):
             await query.edit_message_text("✅ Все корабли расставлены! Игра начинается!")
             if game.solo:
                 logger.info("Starting solo game (auto), sending turn prompt to %s", uid)
-                await notify_solo_turn(query.bot, game_code)
+                await notify_solo_turn(bot, game_code)
             else:
-                await notify_turn(query.bot, game_code)
+                await notify_turn(bot, game_code)
         except Exception as e:
             logger.error("Error starting game: %s", e, exc_info=True)
-            await query.bot.send_message(uid, f"⚠️ Ошибка: {e}")
+            await bot.send_message(uid, f"⚠️ Ошибка: {e}")
     else:
         await query.edit_message_text("✅ Ваши корабли расставлены автоматически. Ожидайте соперника...")
 
@@ -368,7 +368,7 @@ async def handle_undo(query, uid, game_code):
     else:
         await query.answer("Нечего отменять.", show_alert=True)
 
-async def handle_shot(query, uid, game_code, r, c):
+async def handle_shot(query, uid, game_code, r, c, bot):
     game = games.get(game_code)
     if not game:
         await query.edit_message_text("Игра не найдена.")
@@ -403,7 +403,7 @@ async def handle_shot(query, uid, game_code, r, c):
         )
         other_uid = game.opponent_id(uid)
         if not game.solo:
-            await query.bot.send_message(
+            await bot.send_message(
                 other_uid,
                 f"💔 Соперник потопил все ваши корабли. Вы проиграли.\n\n"
                 f"<b>Ваша доска:</b>\n{opp_board.render_own()}",
@@ -423,9 +423,9 @@ async def handle_shot(query, uid, game_code, r, c):
             parse_mode="HTML"
         )
         if game.solo:
-            await handle_bot_turn(query.bot, game_code)
+            await handle_bot_turn(bot, game_code)
         else:
-            await notify_turn(query.bot, game_code)
+            await notify_turn(bot, game_code)
     else:
         kb = shoot_grid_keyboard(game_code, opp_board)
         await query.edit_message_text(
