@@ -394,9 +394,9 @@ async def handle_shot(query, uid, game_code, r, c, bot):
         msg_parts.append("💨 Мимо!")
 
     action = " ".join(msg_parts)
-    board_view = Board.render_side_by_side(
+    board_view = Board.render_side_by_side_mini(
         own_board, opp_board,
-        "🚢 МОИ КОРАБЛИ", "🎯 СОПЕРНИК"
+        "🚢МОИ", "🎯СОП"
     )
 
     if opp_board.all_sunk():
@@ -404,9 +404,9 @@ async def handle_shot(query, uid, game_code, r, c, bot):
         await query.edit_message_text(final, parse_mode="HTML")
         other_uid = game.opponent_id(uid)
         if not game.solo:
-            lose_view = Board.render_side_by_side(
+            lose_view = Board.render_side_by_side_mini(
                 opp_board, own_board,
-                "🚢 МОИ КОРАБЛИ", "🔥 СОПЕРНИК ПОБЕДИЛ",
+                "🎯СОП", "🚢ТВОИ",
                 hide2=False
             )
             await bot.send_message(
@@ -460,14 +460,14 @@ async def handle_bot_turn(bot, game_code):
     else:
         action = f"💨 Мимо — {cell_name}"
 
-    board_view = Board.render_side_by_side(own, opp, "🚢 МОИ КОРАБЛИ", "🎯 БОТ")
+    board_view = Board.render_side_by_side_mini(own, opp, "🚢МОИ", "🎯БОТ")
 
     if own.all_sunk():
         await bot.send_message(
             uid,
             f"<pre>{board_view}</pre>\n"
-            f"💔 <b>ВЫ ПРОИГРАЛИ!</b> Бот потопил все ваши корабли.\n\n"
-            f"<b>Твоя доска:</b>\n<pre>{own.render_own()}</pre>",
+            f"💔 <b>ВЫ ПРОИГРАЛИ!</b> Бот потопил все ваши корабли.\n"
+            f"<b>Твоя доска (вся):</b>\n<pre>{own.render_own()}</pre>",
             parse_mode="HTML"
         )
         player_games.pop(uid, None)
@@ -501,11 +501,10 @@ async def notify_solo_turn(bot, game_code):
     own = game.board_for(uid)
     opp = game.opponent_board(uid)
     kb = shoot_grid_keyboard(game_code, opp)
-    board_view = Board.render_side_by_side(own, opp, "🚢 МОИ КОРАБЛИ", "🎯 БОТ")
+    board_view = Board.render_side_by_side_mini(own, opp, "🚢МОИ", "🎯БОТ")
     await bot.send_message(
         uid,
-        f"<pre>{board_view}</pre>\n"
-        f"⚓ <b>Твой ход!</b> Стреляй по доске снизу ⬇️",
+        f"<pre>{board_view}</pre>\n⚓ <b>Твой ход!</b>",
         reply_markup=kb,
         parse_mode="HTML"
     )
@@ -518,7 +517,7 @@ async def notify_turn(bot, game_code):
     other_uid = game.opponent_id(current_uid)
     own_board = game.board_for(current_uid)
     opp_board = game.opponent_board(current_uid)
-    board_view = Board.render_side_by_side(own_board, opp_board, "🚢 МОИ КОРАБЛИ", "🎯 СОПЕРНИК")
+    board_view = Board.render_side_by_side_mini(own_board, opp_board, "🚢МОИ", "🎯СОП")
     kb = shoot_grid_keyboard(game_code, opp_board)
     await bot.send_message(
         other_uid,

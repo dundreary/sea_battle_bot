@@ -77,23 +77,21 @@ class Board:
     def all_sunk(self):
         return all(ship.sunk for ship in self.ships)
 
-    SHIP_SYMS = {EMPTY: "·", SHIP: "■", HIT: "✗", MISS: "○", SUNK: "✖", DEAD: "~"}
-
     def cell_display(self, r, c, hide_ships=False):
         v = self.grid[r][c]
         if v == EMPTY:
-            return "·"
+            return "⬜"
         if v == SHIP:
-            return "·" if hide_ships else "■"
+            return "⬜" if hide_ships else "🟩"
         if v == HIT:
-            return "✗"
+            return "🔴"
         if v == MISS:
-            return "○"
+            return "🟦"
         if v == SUNK:
-            return "✖"
+            return "❌"
         if v == DEAD:
-            return "~"
-        return "·"
+            return "·"
+        return "⬜"
 
     def render(self, hide_ships=True):
         lines = []
@@ -104,6 +102,19 @@ class Board:
 
     def render_own(self):
         return self.render(hide_ships=False)
+
+    def render_mini(self, hide_ships=True):
+        return ["".join(self.cell_display(i, j, hide_ships) for j in range(SIZE)) for i in range(SIZE)]
+
+    @staticmethod
+    def render_side_by_side_mini(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
+        r1 = board1.render_mini(hide_ships=False)
+        r2 = board2.render_mini(hide_ships=hide2)
+        gap = ""
+        merged = [f"{label1}|{label2}"]
+        for i in range(SIZE):
+            merged.append(f"{r1[i]}|{r2[i]}")
+        return "\n".join(merged)
 
     @staticmethod
     def render_side_by_side(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
