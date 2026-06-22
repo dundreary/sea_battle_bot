@@ -175,16 +175,17 @@ class Game:
 def validate_ship_placement(cells):
     if len(cells) < 2:
         return True, ""
+    sorted_cells = sorted(cells)
     rows = sorted([r for r, c in cells])
     cols = sorted([c for r, c in cells])
     if rows[0] == rows[-1]:
         expected = sorted([(rows[0], c) for c in range(cols[0], cols[-1] + 1)])
-        if cells != expected:
+        if sorted_cells != expected:
             return False, "Корабль должен быть прямой линией (все клетки подряд по горизонтали)."
         return True, ""
     if cols[0] == cols[-1]:
         expected = sorted([(r, cols[0]) for r in range(rows[0], rows[-1] + 1)])
-        if cells != expected:
+        if sorted_cells != expected:
             return False, "Корабль должен быть прямой линией (все клетки подряд по вертикали)."
         return True, ""
     return False, "Корабль должен быть прямой линией (горизонтально или вертикально)."
