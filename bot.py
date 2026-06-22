@@ -1,5 +1,5 @@
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import config
 from game import Game, SHIPS, SIZE, validate_ship_placement, auto_place_ships
@@ -59,14 +59,18 @@ def shoot_grid_keyboard(game_code, opp_board):
     return InlineKeyboardMarkup(kb)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    base = config.WEBAPP_URL or f"https://{update.message.chat.username or 'bot'}.render.com"
+    kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("🎮 Открыть игру", web_app=WebAppInfo(url=f"{base}"))
+    ]])
     await update.message.reply_text(
         "⚓ <b>Морской бой</b>\n\n"
-        "Команды:\n"
-        "/newgame — создать новую игру с другом\n"
-        "/solo — играть против бота\n"
-        "/join XXX — присоединиться по коду\n"
-        "/leave — выйти из текущей игры\n"
-        "/cancel — отменить текущее действие",
+        "Запускай <b>мини-приложение</b> 🎯\n"
+        "Или используй команды:\n"
+        "/solo — игра против бота\n"
+        "/newgame — с другом\n"
+        "/join XXX — присоединиться",
+        reply_markup=kb,
         parse_mode="HTML"
     )
 

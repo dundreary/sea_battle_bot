@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Морской бой</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a1628;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+.header{padding:12px 16px;text-align:center;width:100%;background:linear-gradient(135deg,#0d1f3c,#162d50)}
+.header h1{font-size:20px;letter-spacing:2px;color:#4fc3f7}
+.header span{font-size:13px;color:#80deea}
+.main{flex:1;width:100%;max-width:480px;padding:8px 12px 80px;display:flex;flex-direction:column;align-items:center}
+.status{text-align:center;padding:6px 0;font-size:14px;color:#b0bec5;min-height:28px}
+.status .emoji{font-size:18px}
+.status.battle{color:#ffd54f;font-weight:600}
+.board-wrap{width:100%;max-width:340px;margin:4px 0}
+.board-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#78909c;padding:2px 0 4px;text-align:center}
+.board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;aspect-ratio:1;background:#0d1f3c;padding:3px;border-radius:8px;border:1px solid #1a3a5c}
+.cell{border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,4vw,22px);cursor:pointer;transition:.12s;background:#162d50;user-select:none}
+.cell:active{transform:scale(.92)}
+.cell.empty{background:#162d50}
+.cell.ship{background:#2e7d32}
+.cell.hit{background:#c62828;animation:pop .3s}
+.cell.miss{background:#1565c0;animation:splash .3s}
+.cell.sunk{background:#1a1a1a;border:1px solid #424242}
+.cell.dead{background:#0d2137;opacity:.4}
+.cell.shootable{background:#1a3a5c;border:1px solid #2962ff}
+.cell.shootable:hover{background:#1e4d7a;border-color:#4fc3f7}
+.cell.placed{background:#2e7d32;border:1px solid #4caf50}
+.cell.selected{background:#e65100;border:1px solid #ff9800;animation:pulse .6s infinite}
+@keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
+@keyframes splash{0%{transform:scale(1)}50%{transform:scale(.85)}100%{transform:scale(1)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.btn-row{display:flex;gap:8px;width:100%;max-width:340px;margin-top:8px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn:active{transform:scale(.96)}
+.btn.primary{background:linear-gradient(135deg,#1565c0,#1976d2);color:#fff}
+.btn.primary:hover{background:#1976d2}
+.btn.success{background:linear-gradient(135deg,#2e7d32,#388e3c);color:#fff}
+.btn.success:hover{background:#388e3c}
+.btn.outline{background:transparent;border:1px solid #2962ff;color:#4fc3f7}
+.btn.outline:hover{background:rgba(41,98,255,.15)}
+.btn.danger{background:linear-gradient(135deg,#b71c1c,#c62828);color:#fff}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:#0d1f3c;border-radius:16px;padding:24px;max-width:360px;width:100%;text-align:center;border:1px solid #1a3a5c}
+.modal h2{font-size:22px;margin-bottom:8px}
+.modal p{font-size:14px;color:#b0bec5;margin-bottom:16px}
+.result-icon{font-size:48px;margin-bottom:8px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;padding:6px 0;font-size:12px;color:#90a4ae}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#0a1628;text-align:center;font-size:11px;color:#546e7a;border-top:1px solid #1a3a5c}
+</style>
+</head>
+<body>
+<div class="header"><h1>⚓ МОРСКОЙ БОЙ</h1><span id="gameInfo">нажми «Начать игру»</span></div>
+<div class="main" id="app">
+  <div class="status" id="status">🔱 Добро пожаловать в Морской бой!</div>
+  <div class="board-wrap" id="ownBoardWrap" style="display:none">
+    <div class="board-label">🚢 ТВОИ КОРАБЛИ</div>
+    <div class="board" id="ownBoard"></div>
+  </div>
+  <div class="board-wrap" id="oppBoardWrap" style="display:none">
+    <div class="board-label">🎯 ДОСКА СОПЕРНИКА</div>
+    <div class="board" id="oppBoard"></div>
+  </div>
+  <div class="legend" id="legend">
+    <span>⬜ <span style="color:#78909c">пусто</span></span>
+    <span>🟩 <span style="color:#78909c">корабль</span></span>
+    <span>🟥 <span style="color:#78909c">попал</span></span>
+    <span>🟦 <span style="color:#78909c">мимо</span></span>
+    <span>⬛ <span style="color:#78909c">потоплен</span></span>
+    <span>· <span style="color:#78909c">забойная</span></span>
+  </div>
+  <div class="btn-row" id="actions">
+    <button class="btn primary" onclick="startSolo()">🎮 Начать игру</button>
+  </div>
+</div>
+<footer>AdmiralBattleBot · мини-приложение</footer>
+
+<script>
+const API = window.location.origin;
+let state = null;
+let uid = null;
+let gameCode = null;
+
+function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
+function getUid(){if(uid)return uid;try{uid=window.Telegram.WebApp.initDataUnsafe?.user?.id||Date.now()}catch(e){uid=Date.now()}return uid}
+function $(id){return document.getElementById(id)}
+
+function setStatus(text,cls=''){const s=$('status');s.innerHTML=text;s.className='status'+(cls?' '+cls:'')}
+
+async function api(method,data){
+  try{const r=await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});return await r.json()}
+  catch(e){setStatus('⚠️ Ошибка соединения');return null}
+}
+
+function renderBoard(boardEl,grid,isOpponent,gameOver){
+  boardEl.innerHTML='';
+  const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5;
+  for(let r=0;r<10;r++)for(let c=0;c<10;c++){
+    const cell=document.createElement('div');
+    const v=grid[r*10+c];
+    cell.className='cell';
+    if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP)cell.classList.add('ship')}
+    else if(v===HIT){cell.classList.add('hit');cell.textContent='🟥'}
+    else if(v===MISS){cell.classList.add('miss');cell.textContent='🟦'}
+    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='⬛'}
+    else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
+    else cell.classList.add('empty');
+    if(isOpponent&&!gameOver&&v===EMPTY)cell.classList.add('shootable');
+    if(isOpponent&&!gameOver)cell.onclick=()=>handleShot(r,c);
+    boardEl.appendChild(cell);
+  }
+}
+
+async function refreshState(){
+  if(!gameCode)return;
+  const res=await api('/api/state',{uid:getUid(),code:gameCode});
+  if(!res||!res.ok){setStatus('⚠️ Игра не найдена');return}
+  state=res.state;
+  updateUI();
+}
+
+function updateUI(){
+  if(!state)return;
+  const s=state;
+  const gameOver=s.all_sunk||s.my_all_sunk;
+
+  $('ownBoardWrap').style.display='block';
+  $('oppBoardWrap').style.display='block';
+
+  renderBoard($('ownBoard'),s.own,false,gameOver);
+  renderBoard($('oppBoard'),s.opp,true,gameOver);
+  $('gameInfo').textContent='🎮 '+s.code+(s.solo?' · с ботом':' · с другом');
+
+  if(gameOver){
+    if(s.all_sunk)showResult('🏆','ПОБЕДА!','Ты потопил все корабли соперника!');
+    else if(s.my_all_sunk)showResult('💔','ПОРАЖЕНИЕ','Все твои корабли потоплены...');
+    return;
+  }
+
+  if(s.phase==='placing'){
+    setStatus('🚢 Расстановка кораблей...','');
+    $('actions').innerHTML=`
+      <button class="btn success" onclick="autoPlace()">🔀 Расставить</button>
+      <button class="btn outline" onclick="leaveGame()">🚪 Выйти</button>
+    `;
+    $('oppBoardWrap').style.display='none';
+    $('legend').style.display='none';
+    return;
+  }
+
+  $('legend').style.display='flex';
+  $('oppBoardWrap').style.display='block';
+
+  if(s.my_turn){
+    setStatus('⚓ ТВОЙ ХОД! 🔫','battle');
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">🚪 Сдаться</button>`;
+  }else{
+    setStatus('⏳ ХОД СОПЕРНИКА...','');
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">🚪 Выйти</button>`;
+  }
+}
+
+async function startSolo(){
+  const res=await api('/api/new_solo',{uid:getUid()});
+  if(!res||!res.ok){setStatus('⚠️ Ошибка создания игры');return}
+  gameCode=res.code;
+  $('actions').innerHTML='';
+  await refreshState();
+}
+
+async function autoPlace(){
+  const res=await api('/api/place_auto',{uid:getUid(),code:gameCode});
+  if(!res||!res.ok)return;
+  if(res.started)setStatus('⚓ Игра началась!','battle');
+  await refreshState();
+}
+
+async function handleShot(r,c){
+  if(!state||!state.my_turn)return;
+  const res=await api('/api/shoot',{uid:getUid(),code:gameCode,r,c});
+  if(!res||!res.ok){setStatus('⚠️ Сюда уже стреляли');return}
+
+  const bt=res.result.bot_shot;
+  let msg='';
+  if(res.result.result==='hit')msg='🔥 Попадание!';
+  else if(res.result.result==='sunk')msg='💀 Корабль потоплен!';
+  else msg='💨 Мимо!';
+
+  if(bt){
+    const bnames='ABCDEFGHIJ';
+    if(bt.result==='hit')msg+='\n🤖 Бот попал в '+bnames[bt.c]+(bt.r+1);
+    else if(bt.result==='sunk')msg+='\n🤖 Бот потопил твой корабль на '+bnames[bt.c]+(bt.r+1);
+    else msg+='\n🤖 Бот промахнулся';
+  }
+
+  await refreshState();
+  if(msg)setStatus(msg.replace('\n',' · '),'battle');
+}
+
+function showResult(icon,title,desc){
+  const overlay=document.createElement('div');
+  overlay.className='overlay';
+  overlay.innerHTML=`
+    <div class="modal">
+      <div class="result-icon">${icon}</div>
+      <h2>${title}</h2>
+      <p>${desc}</p>
+      <button class="btn primary" onclick="this.closest('.overlay').remove();startSolo()">🔄 Играть ещё</button>
+      <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove()">🚪 Закрыть</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function leaveGame(){
+  if(!confirm('Выйти из игры?'))return;
+  gameCode=null;state=null;
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('legend').style.display='none';
+  $('gameInfo').textContent='нажми «Начать игру»';
+  setStatus('🔱 Добро пожаловать в Морской бой!');
+  $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">🎮 Начать игру</button>`;
+}
+
+initTG();
+</script>
+</body>
+</html>
