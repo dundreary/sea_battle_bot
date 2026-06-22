@@ -5,12 +5,9 @@ import logging
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler
 import config
-from bot import (
-    start, newgame, solo, join, leave, cancel,
-    handle_callback
-)
+from bot import start
 from api import handle_api
 
 logging.basicConfig(
@@ -74,12 +71,7 @@ def main():
 
     async def setup(app):
         base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
-        cmds = [
-            BotCommand("start", "🏠 Меню"),
-            BotCommand("solo", "🤖 С ботом"),
-            BotCommand("newgame", "👤 С другом"),
-            BotCommand("join", "🔗 Присоединиться"),
-        ]
+        cmds = [BotCommand("start", "🏠 Открыть меню")]
         try:
             await app.bot.set_my_commands(cmds)
             if base:
@@ -92,12 +84,6 @@ def main():
     app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("newgame", newgame))
-    app.add_handler(CommandHandler("solo", solo))
-    app.add_handler(CommandHandler("join", join))
-    app.add_handler(CommandHandler("leave", leave))
-    app.add_handler(CommandHandler("cancel", cancel))
-    app.add_handler(CallbackQueryHandler(handle_callback))
 
     logger.info("Bot + Web App started!")
     app.run_polling()
