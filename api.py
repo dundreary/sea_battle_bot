@@ -4,10 +4,14 @@ from game import Game, SIZE, SHIPS, auto_place_ships
 games = {}
 player_games = {}
 
+EMPTY = 0
+SHIP = 1
+
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
     own = game.board_for(uid)
     opp = game.opponent_board(uid)
+    opp_hidden = [EMPTY if v == SHIP else v for v in [opp.grid[r][c] for r in range(SIZE) for c in range(SIZE)]]
     return {
         "code": game.code,
         "solo": game.solo,
@@ -18,7 +22,7 @@ def as_dict(game, uid):
         "ready": game.ready,
         "you": uid,
         "own": [own.grid[r][c] for r in range(SIZE) for c in range(SIZE)],
-        "opp": [opp.grid[r][c] for r in range(SIZE) for c in range(SIZE)],
+        "opp": opp_hidden,
         "all_sunk": opp.all_sunk(),
         "my_all_sunk": own.all_sunk(),
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
@@ -46,6 +50,23 @@ def get_state(uid, code):
         return None
     return as_dict(game, uid)
 
+def _bot_shoots(game, uid):
+    own = game.board_for(uid)
+    shots = []
+    while True:
+        br, bc = game.bot_ai.choose_shot(own)
+        if br is None:
+            break
+        bresult = own.receive_shot(br, bc)
+        game.bot_ai.register_shot(br, bc, bresult, own)
+        shots.append({"r": br, "c": bc, "result": bresult})
+        if bresult == "miss":
+            game.switch_turn()
+            break
+        if own.all_sunk():
+            break
+    return shots
+
 def shoot(uid, code, r, c):
     game = games.get(code)
     if not game or game.current_player() != uid or game.phase != "playing":
@@ -54,19 +75,12 @@ def shoot(uid, code, r, c):
     result = opp.receive_shot(r, c)
     if result == "repeat":
         return None
-    bot_shot = None
+    bot_shots = None
     if result == "miss":
         game.switch_turn()
     if game.solo and result == "miss":
-        own = game.board_for(uid)
-        br, bc = game.bot_ai.choose_shot(own)
-        if br is not None:
-            bresult = own.receive_shot(br, bc)
-            game.bot_ai.register_shot(br, bc, bresult, own)
-            bot_shot = {"r": br, "c": bc, "result": bresult}
-            if bresult == "miss":
-                game.switch_turn()
-    return {"result": result, "bot_shot": bot_shot}
+        bot_shots = _bot_shoots(game, uid)
+    return {"result": result, "bot_shots": bot_shots}
 
 def place_auto(uid, code):
     game = games.get(code)

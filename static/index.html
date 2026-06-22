@@ -184,17 +184,20 @@ async function handleShot(r,c){
   const res=await api('/api/shoot',{uid:getUid(),code:gameCode,r,c});
   if(!res||!res.ok){setStatus('⚠️ Сюда уже стреляли');return}
 
-  const bt=res.result.bot_shot;
   let msg='';
   if(res.result.result==='hit')msg='🔥 Попадание!';
   else if(res.result.result==='sunk')msg='💀 Корабль потоплен!';
   else msg='💨 Мимо!';
 
-  if(bt){
+  const bshots=res.result.bot_shots;
+  if(bshots&&bshots.length){
     const bnames='ABCDEFGHIJ';
-    if(bt.result==='hit')msg+='\n🤖 Бот попал в '+bnames[bt.c]+(bt.r+1);
-    else if(bt.result==='sunk')msg+='\n🤖 Бот потопил твой корабль на '+bnames[bt.c]+(bt.r+1);
-    else msg+='\n🤖 Бот промахнулся';
+    msg+=' 🤖';
+    for(const s of bshots){
+      if(s.result==='hit')msg+=' попадание в '+bnames[s.c]+(s.r+1);
+      else if(s.result==='sunk')msg+=' потопил на '+bnames[s.c]+(s.r+1);
+      else msg+=' мимо';
+    }
   }
 
   await refreshState();
