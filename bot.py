@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import config
 
 logger = logging.getLogger(__name__)
@@ -29,3 +29,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=base or "https://sea-battle-bot.onrender.com"))
     ]])
     await update.message.reply_text(_(user, 'text'), reply_markup=kb, parse_mode="HTML")
+
+async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = update.message.web_app_data.data.strip().upper()
+    user = update.effective_user
+    lc = (user.language_code or 'ru')[:2]
+    if lc.startswith('uk'): share = f"🎮 Морський бій\n\nКод гри: <b>{data}</b>\n\nВідкрийте гру та натисніть «🔗 Ввести код»"
+    elif lc.startswith('en'): share = f"🎮 Sea Battle\n\nGame code: <b>{data}</b>\n\nOpen the game and tap «🔗 Enter Code»"
+    else: share = f"🎮 Морской бой\n\nКод игры: <b>{data}</b>\n\nОткройте игру и нажмите «🔗 Ввести код»"
+    await update.message.reply_text(share, parse_mode="HTML")

@@ -120,6 +120,7 @@ const LANG = {
     joinError: '⚠️ Игра не найдена или уже полная',
     waitOpp: '⏳ Ожидаем соперника...',
     codeShare: '📤 Код: <b>{}</b> — отправь другу',
+    sendBtn: '📤 Отправить',
     error: '⚠️ Ошибка соединения',
     errorShot: '⚠️ Сюда уже стреляли',
     gameOver: '🔱 Игра закончилась.',
@@ -163,6 +164,7 @@ const LANG = {
     joinError: '⚠️ Гру не знайдено або вже повна',
     waitOpp: '⏳ Чекаємо суперника...',
     codeShare: '📤 Код: <b>{}</b> — відправ другу',
+    sendBtn: '📤 Відправити',
     error: '⚠️ Помилка з\'єднання',
     errorShot: '⚠️ Сюди вже стріляли',
     gameOver: '🔱 Гра закінчилась.',
@@ -206,6 +208,7 @@ const LANG = {
     joinError: '⚠️ Game not found or full',
     waitOpp: '⏳ Waiting for opponent...',
     codeShare: '📤 Code: <b>{}</b> — send to your friend',
+    sendBtn: '📤 Send',
     error: '⚠️ Connection error',
     errorShot: '⚠️ Already targeted',
     gameOver: '🔱 Game over.',
@@ -333,7 +336,7 @@ function updateUI(){
       setStatus(t('placing'),'');
     }
     $('actions').innerHTML=`
-      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${s.code}</button>` : ''}
+      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${s.code}</button><button class="btn primary" onclick="shareCode()">${t('sendBtn')}</button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
@@ -373,6 +376,11 @@ async function newMulti(){
   setStatus(t('codeShare').replace('{}',gameCode),'');
   await refreshState();
   pollGame();
+}
+
+function shareCode(){
+  if(!gameCode)return;
+  try{window.Telegram.WebApp.sendData(gameCode);setStatus('✅','')}catch(e){}
 }
 
 function copyCode(){

@@ -7,7 +7,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler
 import config
-from bot import start
+from bot import start, web_app_data
 from api import handle_api
 
 logging.basicConfig(
@@ -84,6 +84,7 @@ def main():
     app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
 
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
 
     logger.info("Bot + Web App started!")
     app.run_polling()
