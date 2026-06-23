@@ -69,6 +69,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 .ana-info .timer{color:#ffd54f;font-weight:700}
 .ana-info .score{color:#4fc3f7;font-weight:700}
 .ana-hint{flex:0!important;min-width:unset!important;padding:10px 16px!important}
+.ana-tile.used{background:#1a3a5c;opacity:.25;cursor:default;pointer-events:none}
 </style>
 </head>
 <body>
@@ -490,7 +491,7 @@ function pollGame(){
 }
 
 function showMenu(){
-  gameCode=null;state=null;anaSid=null;anaLetterPool=[];anaCurrentWord=[];anaLettersBackup=[];
+  gameCode=null;state=null;anaSid=null;anaLetters=[];anaUsed=new Set();anaCurrentWord=[];
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(anaTimer){clearInterval(anaTimer);anaTimer=null}
   localStorage.removeItem('sb_game');
@@ -582,8 +583,7 @@ function showSeaBattle(){
   `;
 }
 
-let anaSid=null, anaTimer=null, anaLetterPool=[], anaCurrentWord=[];
-let anaLettersBackup=[]; // original letter pool for reset
+let anaSid=null, anaTimer=null, anaLetters=[], anaUsed=new Set(), anaCurrentWord=[];
 
 function showAnagram(){
   $('ownBoardWrap').style.display='none';
@@ -634,8 +634,8 @@ function anaShowGame(st){
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
-  anaLetterPool = st.letters.toUpperCase().split('');
-  anaLettersBackup = [...anaLetterPool];
+  anaLetters = st.letters.toUpperCase().split('');
+  anaUsed = new Set();
   anaCurrentWord = [];
   anaRender(st);
   if(anaTimer)clearInterval(anaTimer);
@@ -658,47 +658,46 @@ function anaTick(){
 }
 
 function anaTileClick(idx){
-  if(idx<0||idx>=anaLetterPool.length)return;
-  const letter = anaLetterPool[idx];
-  anaLetterPool.splice(idx,1);
-  anaCurrentWord.push(letter);
+  if(idx<0||idx>=anaLetters.length||anaUsed.has(idx))return;
+  anaUsed.add(idx);
+  anaCurrentWord.push({letter:anaLetters[idx], idx});
   anaRenderWord();
 }
 
 function anaWordClick(idx){
   if(idx<0||idx>=anaCurrentWord.length)return;
-  const letter = anaCurrentWord[idx];
+  const {idx:origIdx} = anaCurrentWord[idx];
+  anaUsed.delete(origIdx);
   anaCurrentWord.splice(idx,1);
-  anaLetterPool.push(letter);
   anaRenderWord();
 }
 
 function anaClearWord(){
-  anaLetterPool = [...anaLettersBackup];
+  anaUsed = new Set();
   anaCurrentWord = [];
   anaRenderWord();
 }
 
 function anaBackspace(){
   if(!anaCurrentWord.length)return;
-  const letter = anaCurrentWord.pop();
-  anaLetterPool.push(letter);
+  const {idx:origIdx} = anaCurrentWord.pop();
+  anaUsed.delete(origIdx);
   anaRenderWord();
 }
 
 function anaRenderWord(){
-  $('anaLetters').innerHTML=anaLetterPool.map((l,i)=>`<div class="ana-tile" onclick="anaTileClick(${i})">${l}</div>`).join('');
+  $('anaLetters').innerHTML=anaLetters.map((l,i)=>`<div class="ana-tile${anaUsed.has(i)?' used':''}" onclick="anaTileClick(${i})">${l}</div>`).join('');
   $('anaWordDisplay').innerHTML=anaCurrentWord.length
-    ? anaCurrentWord.map((l,i)=>`<div class="ana-tile" onclick="anaWordClick(${i})">${l}</div>`).join('')
+    ? anaCurrentWord.map((o,i)=>`<div class="ana-tile" onclick="anaWordClick(${i})">${o.letter}</div>`).join('')
     : '<span style="color:#546e7a;font-size:13px">'+t('anaPlaceholder')+'</span>';
 }
 
 function anaRender(st){
   $('anaTimer').textContent=st.remaining;
   $('anaScore').textContent=st.score;
-  if(!st.finished && st.letters.toUpperCase().split('').join('') !== anaLettersBackup.join('')){
-    anaLetterPool = st.letters.toUpperCase().split('');
-    anaLettersBackup = [...anaLetterPool];
+  if(!st.finished && st.letters.toUpperCase().split('').join('') !== anaLetters.join('')){
+    anaLetters = st.letters.toUpperCase().split('');
+    anaUsed = new Set();
     anaCurrentWord = [];
   }
   anaRenderWord();
@@ -720,8 +719,8 @@ function anaRender(st){
 }
 
 async function anaSubmitWord(){
-  const word = anaCurrentWord.join('').toLowerCase();
-  anaLetterPool = [...anaLettersBackup];
+  const word = anaCurrentWord.map(o=>o.letter).join('').toLowerCase();
+  anaUsed = new Set();
   anaCurrentWord = [];
   anaRenderWord();
   if(word.length<3){setStatus('⚠️ min 3 letters','');return}
