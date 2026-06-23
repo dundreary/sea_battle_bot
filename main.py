@@ -77,7 +77,7 @@ def main():
         try:
             await app.bot.set_my_commands(cmds)
             if base:
-                btn = MenuButtonWebApp(text="🎮 Sea Battle", web_app=WebAppInfo(url=base))
+                btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
                 await app.bot.set_chat_menu_button(menu_button=btn)
             logger.info("✅ Menu + commands set")
         except Exception as e:

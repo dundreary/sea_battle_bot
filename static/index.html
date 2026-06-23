@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Морской бой</title>
+<title>Games</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -116,7 +116,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
     <div class="ana-found" id="anaFound"></div>
   </div>
 </div>
-<footer>AdmiralBattleBot</footer>
+<footer>🎮 Games</footer>
 
 <script>
 const LANG = {
@@ -322,8 +322,6 @@ function setLang(l){
 }
 
 function applyLang(){
-  document.title = t('title');
-  $('title').textContent = t('title');
   $('lblOwn').textContent = t('ownBoard');
   $('lblOpp').textContent = t('oppBoard');
   $('legEmpty').textContent = t('legEmpty');
@@ -331,7 +329,9 @@ function applyLang(){
   $('legHit').textContent = t('legHit');
   $('legMiss').textContent = t('legMiss');
   $('legSunk').textContent = t('legSunk');
-  if(!state && !gameCode) showMenu();
+  if(!state && !gameCode && !anaSid) showMenu();
+  else if(anaSid){$('title').textContent=t('anaTitle');document.title='Anagram'}
+  else{$('title').textContent=t('title');document.title=t('title')}
 }
 
 function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
@@ -499,6 +499,8 @@ function showMenu(){
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
   $('anaArea').style.display='none';
+  $('title').textContent = '🎮 ' + t('selectGame');
+  document.title = 'Games';
   $('gameInfo').textContent='—';
   setStatus(t('selectGame'));
   $('actions').innerHTML=`
@@ -574,6 +576,8 @@ async function leaveGame(){
 }
 
 function showSeaBattle(){
+  $('title').textContent = t('title');
+  document.title = t('title');
   setStatus(t('welcome'));
   $('gameInfo').textContent='—';
   $('actions').innerHTML=`
@@ -589,6 +593,8 @@ function showAnagram(){
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
+  $('title').textContent = t('anaTitle');
+  document.title = 'Anagram';
   $('actions').innerHTML=`
     <button class="btn success" onclick="anaStartSolo()">${t('anaSolo')}</button>
     <button class="btn primary" onclick="anaNewMulti()">${t('anaFriend')}</button>
