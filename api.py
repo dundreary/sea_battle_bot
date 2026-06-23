@@ -1,5 +1,6 @@
 import json
 from game import Game, SIZE, SHIPS, auto_place_ships
+from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 
 games = {}
 player_games = {}
@@ -187,5 +188,44 @@ def handle_api(path, body):
         game = games.get(code)
         state = as_dict(game, uid) if game else None
         return {"ok": True, "started": started, "state": state}
+
+    if path == "/api/ana_new_solo":
+        sid, g = ana_new()
+        return {"ok": True, "sid": sid, "state": ana_state(sid)}
+
+    if path == "/api/ana_new_multi":
+        sid, code, g = ana_new_multi()
+        return {"ok": True, "sid": sid, "code": code, "state": ana_state(sid)}
+
+    if path == "/api/ana_join":
+        c = data.get("code", "")
+        if not c:
+            return {"error": "no code"}
+        result = ana_join(c)
+        if not result[0]:
+            return {"ok": False, "error": result[1]}
+        return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
+
+    if path == "/api/ana_guess":
+        sid = data.get("sid", "")
+        word = data.get("word", "")
+        result = ana_guess(sid, word)
+        if result[0] != "ok":
+            return {"ok": False, "error": result[0] if result[0] else result[1]}
+        return {"ok": True, "result": result[1], "state": ana_state(sid)}
+
+    if path == "/api/ana_hint":
+        sid = data.get("sid", "")
+        result = ana_hint(sid)
+        if not result:
+            return {"ok": False, "error": "no_hint"}
+        return {"ok": True, "result": result, "state": ana_state(sid)}
+
+    if path == "/api/ana_state":
+        sid = data.get("sid", "")
+        st = ana_state(sid)
+        if not st:
+            return {"error": "not_found"}
+        return {"ok": True, "state": st}
 
     return {"error": "unknown path"}

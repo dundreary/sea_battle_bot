@@ -45,6 +45,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .legend{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;padding:6px 0;font-size:12px;color:#90a4ae}
 .legend span{display:inline-flex;align-items:center;gap:4px}
 footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#0a1628;text-align:center;font-size:11px;color:#546e7a;border-top:1px solid #1a3a5c}
+
+.game-select{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:20px}
+.game-card{background:linear-gradient(135deg,#0d1f3c,#162d50);border:1px solid #1a3a5c;border-radius:16px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
+.game-card:hover{transform:translateY(-2px);border-color:#4fc3f7}
+.game-card .icon{font-size:48px;margin-bottom:8px}
+.game-card .name{font-size:18px;font-weight:600}
+.game-card .desc{font-size:12px;color:#78909c;margin-top:4px}
+.ana-letters{display:flex;gap:6px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.ana-tile{width:48px;height:48px;background:linear-gradient(135deg,#1565c0,#1976d2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;text-transform:uppercase}
+.ana-input-row{display:flex;gap:6px;width:100%;max-width:340px;margin:8px 0}
+.ana-input-row input{flex:1;padding:10px 14px;border-radius:8px;border:1px solid #1a3a5c;background:#0d1f3c;color:#fff;font-size:18px;text-align:center;text-transform:uppercase;outline:none}
+.ana-input-row input:focus{border-color:#4fc3f7}
+.ana-input-row .btn{flex:0 0 auto;min-width:unset;padding:10px 20px;font-size:16px}
+.ana-found{width:100%;max-width:340px;margin:8px 0}
+.ana-word{display:inline-block;background:#0d1f3c;border:1px solid #1a3a5c;border-radius:6px;padding:4px 10px;margin:3px;font-size:14px}
+.ana-word span{color:#4fc3f7;font-weight:700;margin-left:6px}
+.ana-info{display:flex;justify-content:space-between;width:100%;max-width:340px;font-size:14px;padding:4px 0}
+.ana-info .timer{color:#ffd54f;font-weight:700}
+.ana-info .score{color:#4fc3f7;font-weight:700}
+.ana-hint{flex:0!important;min-width:unset!important;padding:10px 16px!important}
 </style>
 </head>
 <body>
@@ -77,6 +97,18 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
     <span>✖ <span id="legSunk"></span></span>
   </div>
   <div class="btn-row" id="actions"></div>
+  <div id="anaArea" style="display:none">
+    <div class="ana-info">
+      <span class="timer" id="anaTimer">60</span>
+      <span class="score" id="anaScore">0</span>
+    </div>
+    <div class="ana-letters" id="anaLetters"></div>
+    <div class="ana-input-row">
+      <input id="anaInput" type="text" maxlength="6" autocomplete="off" oninput="this.value=this.value.replace(/[^а-яіїєґА-ЯІЇЄҐ]/g,'')" onkeydown="if(event.key==='Enter')anaSubmit()">
+      <button class="btn primary" onclick="anaSubmit()">OK</button>
+    </div>
+    <div class="ana-found" id="anaFound"></div>
+  </div>
 </div>
 <footer>AdmiralBattleBot</footer>
 
@@ -124,6 +156,19 @@ const LANG = {
     errorShot: '⚠️ Сюда уже стреляли',
     gameOver: '🔱 Игра закончилась.',
     gameInfo: '{code} {mode}',
+    anaTitle: '🔤 Анаграмма',
+    anaSolo: '🕹️ Соло',
+    anaFriend: '👤 С другом',
+    anaPlaceholder: 'Введи слово...',
+    anaFound: 'Найдено: {}',
+    anaHint: '💡 Подсказка (-200)',
+    anaWaiting: '⏳ Ожидаем соперника...',
+    anaOver: 'Игра окончена! Счёт: {}',
+    anaPlayAgain: '🔄 Играть ещё',
+    seaBattle: '⚓ Морской бой',
+    selectGame: 'Выбери игру',
+    anaLettersCode: 'Буквы: {}',
+    anaAllWords: 'Все возможные слова: {}',
   },
   uk: {
     title: 'Морський бій',
@@ -167,6 +212,19 @@ const LANG = {
     errorShot: '⚠️ Сюди вже стріляли',
     gameOver: '🔱 Гра закінчилась.',
     gameInfo: '{code} {mode}',
+    anaTitle: '🔤 Анаграма',
+    anaSolo: '🕹️ Соло',
+    anaFriend: '👤 З другом',
+    anaPlaceholder: 'Введи слово...',
+    anaFound: 'Знайдено: {}',
+    anaHint: '💡 Підказка (-200)',
+    anaWaiting: '⏳ Чекаємо суперника...',
+    anaOver: 'Гру закінчено! Рахунок: {}',
+    anaPlayAgain: '🔄 Грати ще',
+    seaBattle: '⚓ Морський бій',
+    selectGame: 'Обери гру',
+    anaLettersCode: 'Букви: {}',
+    anaAllWords: 'Всі можливі слова: {}',
   },
   en: {
     title: 'Sea Battle',
@@ -210,6 +268,19 @@ const LANG = {
     errorShot: '⚠️ Already targeted',
     gameOver: '🔱 Game over.',
     gameInfo: '{code} {mode}',
+    anaTitle: '🔤 Anagram',
+    anaSolo: '🕹️ Solo',
+    anaFriend: '👤 With Friend',
+    anaPlaceholder: 'Type a word...',
+    anaFound: 'Found: {}',
+    anaHint: '💡 Hint (-200)',
+    anaWaiting: '⏳ Waiting for opponent...',
+    anaOver: 'Game over! Score: {}',
+    anaPlayAgain: '🔄 Play again',
+    seaBattle: '⚓ Sea Battle',
+    selectGame: 'Choose game',
+    anaLettersCode: 'Letters: {}',
+    anaAllWords: 'All possible words: {}',
   }
 };
 
@@ -414,18 +485,29 @@ function pollGame(){
 }
 
 function showMenu(){
-  gameCode=null;state=null;
+  gameCode=null;state=null;anaSid=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  if(anaTimer){clearInterval(anaTimer);anaTimer=null}
   localStorage.removeItem('sb_game');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
+  $('anaArea').style.display='none';
   $('gameInfo').textContent='—';
-  setStatus(t('welcome'));
+  setStatus(t('selectGame'));
   $('actions').innerHTML=`
-    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
-    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
-    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+    <div class="game-select">
+      <div class="game-card" onclick="showSeaBattle()">
+        <div class="icon">⚓</div>
+        <div class="name">${t('seaBattle')}</div>
+        <div class="desc">${t('vsBot')} / ${t('withFriend')}</div>
+      </div>
+      <div class="game-card" onclick="showAnagram()">
+        <div class="icon">🔤</div>
+        <div class="name">${t('anaTitle')}</div>
+        <div class="desc">${t('anaSolo')} / ${t('anaFriend')}</div>
+      </div>
+    </div>
   `;
 }
 
@@ -483,6 +565,136 @@ function showResult(icon,title,desc){
 async function leaveGame(){
   if(!confirm(t('quitConfirm')))return;
   showMenu();
+}
+
+function showSeaBattle(){
+  setStatus(t('welcome'));
+  $('gameInfo').textContent='—';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
+    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+  `;
+}
+
+let anaSid=null, anaTimer=null;
+
+function showAnagram(){
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('legend').style.display='none';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="anaStartSolo()">${t('anaSolo')}</button>
+    <button class="btn primary" onclick="anaNewMulti()">${t('anaFriend')}</button>
+    <button class="btn outline" onclick="anaJoinGame()">${t('joinBtn')}</button>
+    <button class="btn outline" onclick="showMenu()">${t('close')}</button>
+  `;
+  setStatus('');
+  $('gameInfo').textContent=t('anaTitle');
+}
+
+function anaJoinGame(){
+  const code=prompt(t('joinPlaceholder'));
+  if(code)anaJoin(code);
+}
+
+async function anaStartSolo(){
+  const res=await api('/api/ana_new_solo',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  anaSid=res.sid;
+  $('actions').innerHTML='';
+  anaShowGame(res.state);
+}
+
+async function anaNewMulti(){
+  const res=await api('/api/ana_new_multi',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  anaSid=res.sid;
+  $('actions').innerHTML='';
+  setStatus(t('codeShare').replace('{}',res.code),'');
+  anaShowGame(res.state);
+}
+
+async function anaJoin(code){
+  const res=await api('/api/ana_join',{uid:getUid(),code:code.toUpperCase()});
+  if(!res||!res.ok){setStatus(t('joinError'));return}
+  anaSid=res.sid;
+  $('actions').innerHTML='';
+  anaShowGame(res.state);
+}
+
+function anaShowGame(st){
+  $('anaArea').style.display='block';
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('legend').style.display='none';
+  anaRender(st);
+  if(anaTimer)clearInterval(anaTimer);
+  anaTimer=setInterval(()=>anaTick(),1000);
+}
+
+function anaTick(){
+  if(!anaSid)return;
+  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
+    if(!res||!res.ok){clearInterval(anaTimer);anaTimer=null;return}
+    anaRender(res.state);
+    if(res.state.finished){
+      clearInterval(anaTimer);anaTimer=null;
+      $('actions').innerHTML=`
+        <button class="btn success" onclick="anaStartSolo()">${t('anaPlayAgain')}</button>
+        <button class="btn outline" onclick="showMenu()">${t('close')}</button>
+      `;
+    }
+  });
+}
+
+function anaRender(st){
+  $('anaTimer').textContent=st.remaining;
+  $('anaScore').textContent=st.score;
+  const letters=st.letters.toUpperCase().split('');
+  $('anaLetters').innerHTML=letters.map(l=>`<div class="ana-tile">${l}</div>`).join('');
+  const found=st.found||[];
+  $('anaFound').innerHTML=found.length
+    ? '<div style="color:#78909c;font-size:12px;margin-bottom:4px">'+t('anaFound').replace('{}',found.length)+'</div>'+found.map(w=>`<div class="ana-word">${w}<span>+${100*Math.max(0,(w.length-2))**2}</span></div>`).join('')
+    : '';
+  if(!st.finished){
+    $('actions').innerHTML=`
+      <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
+      <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
+    `;
+  }else{
+    setStatus(t('anaOver').replace('{}',st.score),'battle');
+    if(st.total_words){
+      const missed=st.total_words-st.found_count;
+      $('anaFound').innerHTML+='<div style="color:#78909c;font-size:12px;margin:8px 0">'+t('anaAllWords').replace('{}',st.total_words)+'</div>';
+    }
+  }
+}
+
+async function anaSubmit(){
+  const input=$('anaInput');
+  const word=input.value.trim().toLowerCase();
+  input.value='';
+  if(!word||word.length<3){setStatus('⚠️ min 3 letters','');return}
+  const res=await api('/api/ana_guess',{uid:getUid(),sid:anaSid,word});
+  if(!res)return;
+  if(!res.ok){
+    const err=res.error;
+    if(err==='duplicate')setStatus('⚠️ Already found','');
+    else if(err==='not_a_word')setStatus('⚠️ Not a word','');
+    else if(err==='length')setStatus('⚠️ 3-6 letters','');
+    else setStatus('⚠️ Error','');
+    return;
+  }
+  setStatus('✅ +'+res.result.score,'');
+  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
+}
+
+async function anaGetHint(){
+  const res=await api('/api/ana_hint',{uid:getUid(),sid:anaSid});
+  if(!res||!res.ok){setStatus('⚠️ No more hints','');return}
+  setStatus('💡 '+res.result.word+' (-200)','');
+  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
 }
 
 function tryReconnect(){
