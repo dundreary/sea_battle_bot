@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import threading
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
@@ -61,35 +62,41 @@ class MainHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         logger.info("HTTP %s", args[-1] if args else "")
 
-def run_server():
-    server = HTTPServer(("0.0.0.0", PORT), MainHandler)
-    logger.info("HTTP server on port %s", PORT)
-    server.serve_forever()
+def run_bot():
+    try:
+        async def setup(app):
+            base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
+            cmds = [BotCommand("start", "🏠 Открыть меню")]
+            try:
+                await app.bot.set_my_commands(cmds)
+                if base:
+                    btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
+                    await app.bot.set_chat_menu_button(menu_button=btn)
+                logger.info("✅ Menu + commands set")
+            except Exception as e:
+                logger.warning("Menu setup skipped: %s", e)
+
+        app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+
+        logger.info("Bot started!")
+        app.run_polling()
+    except Exception as e:
+        logger.error("Bot polling crashed: %s", e)
 
 def main():
     load_state()
-    t = threading.Thread(target=run_server, daemon=True)
+
+    # HTTP server on main thread — always alive
+    server = HTTPServer(("0.0.0.0", PORT), MainHandler)
+    logger.info("HTTP server on port %s", PORT)
+
+    # Bot in background thread
+    t = threading.Thread(target=run_bot, daemon=True)
     t.start()
 
-    async def setup(app):
-        base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
-        cmds = [BotCommand("start", "🏠 Открыть меню")]
-        try:
-            await app.bot.set_my_commands(cmds)
-            if base:
-                btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
-                await app.bot.set_chat_menu_button(menu_button=btn)
-            logger.info("✅ Menu + commands set")
-        except Exception as e:
-            logger.warning("Menu setup skipped: %s", e)
-
-    app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-
-    logger.info("Bot + Web App started!")
-    app.run_polling()
+    server.serve_forever()
 
 if __name__ == "__main__":
     main()
