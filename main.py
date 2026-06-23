@@ -22,12 +22,12 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 class MainHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
+        if self.path == "/health":
+            self._json({"status": "ok"})
+        elif self.path == "/" or self.path == "/index.html":
             self._serve_file("index.html", "text/html; charset=utf-8")
         elif self.path.startswith("/static/"):
             self._serve_file(self.path[1:], "text/html; charset=utf-8")
-        elif self.path == "/health" or self.path == "/":
-            self._json({"status": "ok"})
         else:
             self._json({"error": "not found"}, 404)
 
