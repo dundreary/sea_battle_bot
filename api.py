@@ -1,6 +1,7 @@
 import json
 from game import Game, SIZE, SHIPS, auto_place_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
+from persist import save
 
 games = {}
 player_games = {}
@@ -134,6 +135,7 @@ def handle_api(path, body):
             return {"error": "no uid"}
         game = new_solo(uid)
         player_games[uid] = game.code
+        save()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
     if path == "/api/new_multi":
@@ -141,6 +143,7 @@ def handle_api(path, body):
             return {"error": "no uid"}
         game = new_multi(uid)
         player_games[uid] = game.code
+        save()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
     if path == "/api/join":
@@ -150,6 +153,7 @@ def handle_api(path, body):
         if not game:
             return {"ok": False, "error": status}
         player_games[uid] = code
+        save()
         return {"ok": True, "state": as_dict(game, uid)}
 
     if path == "/api/state":
@@ -171,6 +175,7 @@ def handle_api(path, body):
             return {"error": "invalid shot"}
         game = games.get(code)
         state = as_dict(game, uid) if game else None
+        save()
         return {"ok": True, "result": result, "state": state}
 
     if path == "/api/place_auto":
@@ -179,6 +184,7 @@ def handle_api(path, body):
         place_auto(uid, code)
         game = games.get(code)
         state = as_dict(game, uid) if game else None
+        save()
         return {"ok": True, "state": state}
 
     if path == "/api/confirm":
@@ -187,14 +193,17 @@ def handle_api(path, body):
         started = confirm_placement(uid, code)
         game = games.get(code)
         state = as_dict(game, uid) if game else None
+        save()
         return {"ok": True, "started": started, "state": state}
 
     if path == "/api/ana_new_solo":
         sid, g = ana_new()
+        save()
         return {"ok": True, "sid": sid, "state": ana_state(sid)}
 
     if path == "/api/ana_new_multi":
         sid, code, g = ana_new_multi()
+        save()
         return {"ok": True, "sid": sid, "code": code, "state": ana_state(sid)}
 
     if path == "/api/ana_join":
@@ -204,6 +213,7 @@ def handle_api(path, body):
         result = ana_join(c)
         if not result[0]:
             return {"ok": False, "error": result[1]}
+        save()
         return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
 
     if path == "/api/ana_guess":
@@ -212,6 +222,7 @@ def handle_api(path, body):
         result = ana_guess(sid, word)
         if result[0] != "ok":
             return {"ok": False, "error": result[0] if result[0] else result[1]}
+        save()
         return {"ok": True, "result": result[1], "state": ana_state(sid)}
 
     if path == "/api/ana_hint":
@@ -219,6 +230,7 @@ def handle_api(path, body):
         result = ana_hint(sid)
         if not result:
             return {"ok": False, "error": "no_hint"}
+        save()
         return {"ok": True, "result": result, "state": ana_state(sid)}
 
     if path == "/api/ana_state":
@@ -226,6 +238,7 @@ def handle_api(path, body):
         st = ana_state(sid)
         if not st:
             return {"error": "not_found"}
+        save()
         return {"ok": True, "state": st}
 
     return {"error": "unknown path"}

@@ -9,6 +9,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
 from bot import start, web_app_data
 from api import handle_api
+from persist import load as load_state
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -66,6 +67,7 @@ def run_server():
     server.serve_forever()
 
 def main():
+    load_state()
     t = threading.Thread(target=run_server, daemon=True)
     t.start()
 

@@ -1,4 +1,5 @@
 import random
+import time
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
@@ -21,6 +22,18 @@ class Ship:
 
     def is_at(self, r, c):
         return (r, c) in self.cells
+
+    def to_dict(self):
+        return {
+            'cells': [list(c) for c in self.cells],
+            'hits': [list(h) for h in self.hits],
+        }
+
+    @staticmethod
+    def from_dict(data):
+        ship = Ship([tuple(c) for c in data['cells']])
+        ship.hits = set(tuple(h) for h in data['hits'])
+        return ship
 
 class Board:
     def __init__(self):
@@ -127,6 +140,21 @@ class Board:
             merged.append(f"{r1[i]}{gap}{r2[i]}")
         return "\n".join(merged)
 
+    def to_dict(self):
+        return {
+            'grid': self.grid,
+            'ships': [s.to_dict() for s in self.ships],
+            'placement_mode': self.placement_mode,
+        }
+
+    @staticmethod
+    def from_dict(data):
+        board = Board()
+        board.grid = data['grid']
+        board.ships = [Ship.from_dict(s) for s in data['ships']]
+        board.placement_mode = data.get('placement_mode', True)
+        return board
+
 class Game:
     def __init__(self, code, player1_id, player2_id=None, solo=False):
         self.code = code
@@ -143,6 +171,7 @@ class Game:
             2: {"ship_idx": 0, "cells": []},
         }
         self.ready = {1: False, 2: False}
+        self.created_at = time.time()
 
     @property
     def both_placed(self):
@@ -177,6 +206,51 @@ class Game:
     def generate_code():
         import string
         return "".join(random.choices(string.ascii_uppercase, k=6))
+
+    def to_dict(self):
+        return {
+            'code': self.code,
+            'player1_id': self.player1_id,
+            'player2_id': self.player2_id,
+            'solo': self.solo,
+            'created_at': self.created_at,
+            'board1': self.board1.to_dict(),
+            'board2': self.board2.to_dict(),
+            'turn': self.turn,
+            'phase': self.phase,
+            'placing': {
+                str(k): {
+                    'ship_idx': v['ship_idx'],
+                    'cells': [list(c) for c in v['cells']],
+                }
+                for k, v in self.placing.items()
+            },
+            'ready': {str(k): v for k, v in self.ready.items()},
+            'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
+        }
+
+    @staticmethod
+    def from_dict(data):
+        game = Game.__new__(Game)
+        game.code = data['code']
+        game.player1_id = data['player1_id']
+        game.player2_id = data.get('player2_id')
+        game.solo = data.get('solo', False)
+        game.created_at = data.get('created_at', 0)
+        game.board1 = Board.from_dict(data['board1'])
+        game.board2 = Board.from_dict(data['board2'])
+        game.turn = data['turn']
+        game.phase = data['phase']
+        game.placing = {
+            int(k): {
+                'ship_idx': v['ship_idx'],
+                'cells': [tuple(c) for c in v.get('cells', [])],
+            }
+            for k, v in data.get('placing', {}).items()
+        }
+        game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
+        game.bot_ai = BotAI.from_dict(data['bot_ai']) if data.get('bot_ai') else None
+        return game
 
 def validate_ship_placement(cells):
     if len(cells) < 2:
@@ -268,3 +342,18 @@ class BotAI:
                             self.hunt_queue.append((nr, nc))
             if result == "sunk":
                 self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] != SUNK]
+
+    def to_dict(self):
+        return {
+            'shots': [list(s) for s in self.shots],
+            'hunt_queue': [list(q) for q in self.hunt_queue],
+            'ship_mode': self.ship_mode,
+        }
+
+    @staticmethod
+    def from_dict(data):
+        ai = BotAI()
+        ai.shots = set(tuple(s) for s in data['shots'])
+        ai.hunt_queue = [tuple(q) for q in data['hunt_queue']]
+        ai.ship_mode = data['ship_mode']
+        return ai

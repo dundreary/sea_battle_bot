@@ -1,0 +1,104 @@
+import os
+import json
+import time
+import threading
+
+PERSIST_PATH = os.path.join(os.path.dirname(__file__), 'data', 'persist.json')
+_lock = threading.Lock()
+
+
+def _write(data):
+    os.makedirs(os.path.dirname(PERSIST_PATH), exist_ok=True)
+    tmp = PERSIST_PATH + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, default=str)
+    os.replace(tmp, PERSIST_PATH)
+
+
+def _read():
+    try:
+        with open(PERSIST_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def save():
+    import api
+    import anagram
+
+    with _lock:
+        # Serialize player_games keys as strings (JSON-compatible)
+        pg_serialized = {}
+        for k, v in api.player_games.items():
+            pg_serialized[str(k)] = v
+
+        data = {
+            'version': 1,
+            'saved_at': time.time(),
+            'api_games': {},
+            'api_player_games': pg_serialized,
+            'anagram_games': anagram.games,
+            'anagram_rooms': anagram.rooms,
+        }
+        for code, game in api.games.items():
+            try:
+                data['api_games'][code] = game.to_dict()
+            except Exception:
+                pass  # skip un-serializable games
+        _write(data)
+
+
+def load():
+    import api
+    import anagram
+    from game import Game
+
+    data = _read()
+    if not data:
+        return
+
+    now = time.time()
+    MAX_AGE = 86400  # 24 hours
+
+    with _lock:
+        # --- Sea Battle games ---
+        api.games.clear()
+        for code, gdata in data.get('api_games', {}).items():
+            try:
+                game = Game.from_dict(gdata)
+                created = getattr(game, 'created_at', 0)
+                if now - created < MAX_AGE:
+                    api.games[code] = game
+            except Exception:
+                pass
+
+        api.player_games.clear()
+        api.player_games.update(data.get('api_player_games', {}))
+
+        # Remove player_games entries that point to expired/missing games
+        valid = set(api.games.keys())
+        for uid, code in list(api.player_games.items()):
+            if code not in valid:
+                del api.player_games[uid]
+
+        # --- Anagram games ---
+        anagram.games.clear()
+        for sid, gdata in data.get('anagram_games', {}).items():
+            try:
+                started = gdata.get('started_at', 0)
+                if now - started < MAX_AGE:
+                    anagram.games[sid] = gdata
+            except Exception:
+                pass
+
+        anagram.rooms.clear()
+        for code, rdata in data.get('anagram_rooms', {}).items():
+            try:
+                p1 = rdata.get('p1_sid')
+                p2 = rdata.get('p2_sid')
+                # Keep room if at least one player's session still exists
+                if (p1 and p1 in anagram.games) or (p2 and p2 in anagram.games):
+                    anagram.rooms[code] = rdata
+            except Exception:
+                pass
