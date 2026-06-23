@@ -62,41 +62,45 @@ class MainHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         logger.info("HTTP %s", args[-1] if args else "")
 
+def run_http():
+    server = HTTPServer(("0.0.0.0", PORT), MainHandler)
+    logger.info("HTTP server on port %s", PORT)
+    server.serve_forever()
+
 def run_bot():
-    try:
-        async def setup(app):
-            base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
-            cmds = [BotCommand("start", "🏠 Открыть меню")]
-            try:
-                await app.bot.set_my_commands(cmds)
-                if base:
-                    btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
-                    await app.bot.set_chat_menu_button(menu_button=btn)
-                logger.info("✅ Menu + commands set")
-            except Exception as e:
-                logger.warning("Menu setup skipped: %s", e)
+    async def setup(app):
+        base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
+        cmds = [BotCommand("start", "🏠 Открыть меню")]
+        try:
+            await app.bot.set_my_commands(cmds)
+            if base:
+                btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
+                await app.bot.set_chat_menu_button(menu_button=btn)
+            logger.info("✅ Menu + commands set")
+        except Exception as e:
+            logger.warning("Menu setup skipped: %s", e)
 
-        app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-
-        logger.info("Bot started!")
-        app.run_polling()
-    except Exception as e:
-        logger.error("Bot polling crashed: %s", e)
+    app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+    logger.info("Bot started!")
+    app.run_polling()
 
 def main():
     load_state()
 
-    # HTTP server on main thread — always alive
-    server = HTTPServer(("0.0.0.0", PORT), MainHandler)
-    logger.info("HTTP server on port %s", PORT)
-
-    # Bot in background thread
-    t = threading.Thread(target=run_bot, daemon=True)
+    # HTTP server in background (can run any thread)
+    t = threading.Thread(target=run_http, daemon=True)
     t.start()
 
-    server.serve_forever()
+    # Bot MUST be on main thread (asyncio limitation)
+    try:
+        run_bot()
+    except Exception as e:
+        logger.error("Bot crashed: %s", e)
+        # Keep HTTP alive even if bot dies
+        while True:
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()
