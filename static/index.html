@@ -70,6 +70,10 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 .ana-info .score{color:#4fc3f7;font-weight:700}
 .ana-hint{flex:0!important;min-width:unset!important;padding:10px 16px!important}
 .ana-tile.used{background:#1a3a5c;opacity:.25;cursor:default;pointer-events:none}
+.ana-base-word{text-align:center;font-size:12px;color:#78909c;margin:4px 0 8px;cursor:pointer;user-select:none}
+.ana-base-word .revealed{color:#4fc3f7;font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:2px;display:none}
+.ana-base-word.show .revealed{display:inline}
+.ana-base-word:not(.show)::after{content:' (нажми, чтобы открыть)';font-size:11px;color:#546e7a}
 </style>
 </head>
 <body>
@@ -106,6 +110,9 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
     <div class="ana-info">
       <span class="timer" id="anaTimer">60</span>
       <span class="score" id="anaScore">0</span>
+    </div>
+    <div class="ana-base-word" id="anaBaseWord" onclick="this.classList.toggle('show')">
+      Основное слово: <span class="revealed" id="anaBaseWordVal"></span>
     </div>
     <div class="ana-letters" id="anaLetters"></div>
     <div class="ana-word-display" id="anaWordDisplay"></div>
@@ -175,6 +182,7 @@ const LANG = {
     selectGame: 'Выбери игру',
     anaLettersCode: 'Буквы: {}',
     anaAllWords: 'Все возможные слова: {}',
+    anaBaseWord: 'Основное слово: {}',
   },
   uk: {
     title: 'Морський бій',
@@ -225,12 +233,13 @@ const LANG = {
     anaFound: 'Знайдено: {}',
     anaHint: '💡 Підказка (-200)',
     anaWaiting: '⏳ Чекаємо суперника...',
-    anaOver: 'Гру закінчено! Рахунок: {}',
+    anaOver: 'Гра закінчена! Рахунок: {}',
     anaPlayAgain: '🔄 Грати ще',
     seaBattle: '⚓ Морський бій',
     selectGame: 'Обери гру',
     anaLettersCode: 'Букви: {}',
     anaAllWords: 'Всі можливі слова: {}',
+    anaBaseWord: 'Основне слово: {}',
   },
   en: {
     title: 'Sea Battle',
@@ -287,6 +296,7 @@ const LANG = {
     selectGame: 'Choose game',
     anaLettersCode: 'Letters: {}',
     anaAllWords: 'All possible words: {}',
+    anaBaseWord: 'Base word: {}',
   }
 };
 
@@ -701,6 +711,7 @@ function anaRenderWord(){
 function anaRender(st){
   $('anaTimer').textContent=st.remaining;
   $('anaScore').textContent=st.score;
+  if(st.base_word)$('anaBaseWordVal').textContent=st.base_word;
   if(!st.finished && st.letters.toUpperCase().split('').join('') !== anaLetters.join('')){
     anaLetters = st.letters.toUpperCase().split('');
     anaUsed = new Set();

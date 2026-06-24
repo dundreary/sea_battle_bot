@@ -6,6 +6,23 @@ from collections import Counter
 
 WORD_LIST = None
 BASE_WORDS = None
+_SIG_CACHE = {}
+_SIGS = {}
+
+UKR_LETTERS = 'абвгдеєжзиіїйклмнопрстуфхцчшщьюя'
+UKR_INDEX = {ch: i for i, ch in enumerate(UKR_LETTERS)}
+
+def _word_signature(word):
+    if word in _SIG_CACHE:
+        return _SIG_CACHE[word]
+    counts = [0] * 33
+    for ch in word:
+        idx = UKR_INDEX.get(ch)
+        if idx is not None:
+            counts[idx] += 1
+    sig = tuple(counts)
+    _SIG_CACHE[word] = sig
+    return sig
 
 def _load_words():
     global WORD_LIST, BASE_WORDS
@@ -20,22 +37,32 @@ def _scoring(n):
 
 def _can_form(word, letters):
     wc = Counter(word)
-    lc = Counter(letters)
-    for ch, cnt in wc.items():
-        if lc.get(ch, 0) < cnt:
-            return False
-    return True
-
 def _find_all_words(letters):
+    base_sig = _word_signature(letters)
     result = []
     for w in WORD_LIST:
-        if len(w) < 3 or len(w) > 6:
-            continue
-        if _can_form(w, letters):
-            result.append(w)
+        if 3 <= len(w) <= 6:
+            sig = _word_signature(w)
+            if all(sig[i] <= base_sig[i] for i in range(33)):
+                result.append(w)
     return sorted(result)
 
 _load_words()
+
+# Common Ukrainian letter frequencies (approx) - more common = more subwords
+COMMON_LETTERS = set('аоеинтсрвлкмдпуяыьйгзбчйхжшющцфъё')
+
+def _score_base_word(letters):
+    """Heuristic: count common letters in the word. More common = more subwords."""
+    return sum(1 for ch in set(letters) if ch in COMMON_LETTERS)
+
+def _pick_base_word():
+    """Pick a word with good word with many common letters (more subwords likely)."""
+    # Score all candidates, pick from top 30%
+    scored = [(w, sum(1 for ch in set(w) if ch in COMMON_LETTERS)) for w in BASE_WORDS]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top = max(10, len(scored) // 3)
+    return random.choice([w for w, _ in scored[:top]])
 
 rooms = {}
 games = {}
@@ -45,6 +72,7 @@ def _code():
 
 def _new_state(letters, all_words, solo):
     return {
+        'base_word': letters,  # the original 6-letter word
         'letters': letters,
         'all_words': all_words,
         'found': [],
@@ -57,7 +85,7 @@ def _new_state(letters, all_words, solo):
     }
 
 def new_solo():
-    letters = random.choice(BASE_WORDS)
+    letters = _pick_base_word()
     all_words = _find_all_words(letters)
     sid = str(uuid.uuid4())
     games[sid] = _new_state(letters, all_words, True)
@@ -128,6 +156,7 @@ def get_state(sid):
         g['finished'] = True
     all_words_count = len(g['all_words'])
     return {
+        'base_word': g['base_word'],
         'letters': g['letters'],
         'found': sorted(g['found']),
         'score': g['score'],
