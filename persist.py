@@ -26,6 +26,7 @@ def _read():
 def save():
     import api
     import anagram
+    import bot
 
     with _lock:
         # Serialize player_games keys as strings (JSON-compatible)
@@ -46,6 +47,7 @@ def save():
             'api_ana_player_sessions': aps_serialized,
             'anagram_games': anagram.games,
             'anagram_rooms': anagram.rooms,
+            'bot_user_chat_map': {str(k): v for k, v in bot.user_chat_map.items()},
         }
         for code, game in api.games.items():
             try:
@@ -58,6 +60,7 @@ def save():
 def load():
     import api
     import anagram
+    import bot
     from game import Game
 
     data = _read()
@@ -118,3 +121,8 @@ def load():
                     api.ana_player_sessions[k] = v
             except Exception:
                 pass
+
+        # Restore bot user_chat_map
+        bot.user_chat_map.clear()
+        for k, v in data.get('bot_user_chat_map', {}).items():
+            bot.user_chat_map[k] = v

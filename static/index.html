@@ -192,6 +192,10 @@ const LANG = {
     anaLettersCode: 'Буквы: {}',
     anaAllWords: 'Все возможные слова: {}',
     anaBaseWord: 'Основное слово: {}',
+    inviteFriend: 'Пригласить друга',
+    shareCopied: 'Код скопирован, отправь другу',
+    username: 'username',
+    send: 'Отправить',
   },
   uk: {
     title: 'Морський бій',
@@ -249,6 +253,10 @@ const LANG = {
     anaLettersCode: 'Букви: {}',
     anaAllWords: 'Всі можливі слова: {}',
     anaBaseWord: 'Основне слово: {}',
+    inviteFriend: 'Запросити друга',
+    shareCopied: 'Код скопійовано, надішли другу',
+    username: 'username',
+    send: 'Надіслати',
   },
   en: {
     title: 'Sea Battle',
@@ -306,11 +314,17 @@ const LANG = {
     anaLettersCode: 'Letters: {}',
     anaAllWords: 'All possible words: {}',
     anaBaseWord: 'Base word: {}',
+    inviteFriend: 'Invite friend',
+    shareCopied: 'Code copied, send to friend',
+    username: 'username',
+    send: 'Send',
   }
 };
 
 const API = window.location.origin;
 let state = null, uid = null, gameCode = null, lang = 'ru';
+let botUsername = '';
+let anaLobbyCode = '';
 
 function $(id){return document.getElementById(id)}
 
@@ -370,6 +384,15 @@ async function api(method,data){
     const r=await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     return await r.json()
   }catch(e){setStatus(t('error'));return null}
+}
+
+async function fetchBotInfo(){
+  try {
+    const res = await api('/api/bot_info', {});
+    if(res && res.ok){
+      botUsername = res.bot_username || '';
+    }
+  } catch(e){}
 }
 
 function renderBoard(boardEl,grid,isOpponent,gameOver){
@@ -465,7 +488,15 @@ async function newMulti(){
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML='<button class="btn outline" onclick="copyCode()">📋 '+t('joinPlaceholder')+': <b>'+gameCode+'</b></button>';
+  $('actions').innerHTML=`
+    <button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${gameCode}</b></button>
+    <button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>
+    <div style="margin-top:12px;display:flex;gap:6px;align-items:center;">
+      <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
+      <button class="btn outline" onclick="sendInvite('sea_battle')" style="white-space:nowrap;">✉️ ${t('send')}</button>
+    </div>
+    <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
+  `;
   setStatus('', '');
   await refreshState();
   pollGame();
@@ -485,6 +516,49 @@ function fallbackCopy(){
   document.body.appendChild(ta);ta.select();
   try{document.execCommand('copy');setStatus('✅ '+gameCode+' '+(lang==='uk'?'скопійовано':lang==='en'?'copied':'скопирован'),'')}catch(e){}
   document.body.removeChild(ta);
+}
+
+function shareGame(){
+  if(!gameCode) return;
+  if(botUsername && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.shareUrl){
+    const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
+    window.Telegram.WebApp.shareUrl(url);
+  } else {
+    copyCode();
+    setStatus('📋 ' + t('shareCopied'), '');
+  }
+}
+
+function shareAnaGame(){
+  const code = localStorage.getItem('ana_code') || anaLobbyCode;
+  if(!code) return;
+  if(botUsername && window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.shareUrl){
+    const url = `https://t.me/${botUsername}/app?startapp=${code}`;
+    window.Telegram.WebApp.shareUrl(url);
+  } else {
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(code);
+    }
+    setStatus('📋 ' + t('shareCopied'), '');
+  }
+}
+
+async function sendInvite(gameType){
+  const code = gameType === 'sea_battle' ? gameCode : (localStorage.getItem('ana_code') || anaLobbyCode);
+  const username = document.getElementById('inviteUsername').value.trim();
+  if(!username || !code){ return; }
+  const statusEl = document.getElementById('inviteStatus');
+  if(statusEl) statusEl.textContent = '⏳ Sending...';
+  const res = await api('/api/invite', {
+    uid: getUid(),
+    code: code,
+    friend_username: username,
+    game_type: gameType
+  });
+  if(statusEl){
+    statusEl.textContent = res && res.ok ? '✅ Invitation sent!' : '❌ User not found or error';
+    setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 3000);
+  }
 }
 
 async function joinGame(){
@@ -649,9 +723,18 @@ async function anaNewMulti(){
   const res=await api('/api/ana_new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   anaSid=res.sid;
+  anaLobbyCode=res.code;
   localStorage.setItem('ana_sid', anaSid);
   localStorage.setItem('ana_code', res.code);
-  $('actions').innerHTML='<button class="btn outline" onclick="copyCode()">📋 '+t('joinPlaceholder')+': <b>'+res.code+'</b></button>';
+  $('actions').innerHTML=`
+    <button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${res.code}</b></button>
+    <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
+    <div style="margin-top:12px;display:flex;gap:6px;align-items:center;">
+      <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
+      <button class="btn outline" onclick="sendInvite('anagram')" style="white-space:nowrap;">✉️ ${t('send')}</button>
+    </div>
+    <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
+  `;
   setStatus('', '');
   anaShowGame(res.state);
 }
@@ -660,6 +743,7 @@ async function anaJoin(code){
   const res=await api('/api/ana_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
   anaSid=res.sid;
+  anaLobbyCode=code.toUpperCase();
   localStorage.setItem('ana_sid', anaSid);
   localStorage.setItem('ana_code', code.toUpperCase());
   $('actions').innerHTML='';
@@ -831,6 +915,7 @@ function resumeAna(code){
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
   const savedAna=localStorage.getItem('ana_sid');
+  fetchBotInfo();
   if(saved){
     gameCode=saved;
     refreshState();
@@ -851,8 +936,37 @@ function tryReconnect(){
     return;
   }
   showMenu();
-  // Fetch active games in background
   fetchActiveGames();
+  checkStartParam();
+}
+
+async function checkStartParam(){
+  try {
+    const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+    if(sp){
+      const code = sp.trim().toUpperCase();
+      // Try join as Anagram first
+      const anaRes = await api('/api/ana_join', {uid: getUid(), code});
+      if(anaRes && anaRes.ok){
+        anaSid = anaRes.sid;
+        localStorage.setItem('ana_sid', anaSid);
+        localStorage.setItem('ana_code', code);
+        $('actions').innerHTML = '';
+        anaShowGame(anaRes.state);
+        return;
+      }
+      // Try Sea Battle
+      const sbRes = await api('/api/join', {uid: getUid(), code});
+      if(sbRes && sbRes.ok){
+        gameCode = code;
+        localStorage.setItem('sb_game', code);
+        $('actions').innerHTML = '';
+        await refreshState();
+        pollGame();
+        return;
+      }
+    }
+  } catch(e){}
 }
 
 lang = detectLang();
