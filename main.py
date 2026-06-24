@@ -8,7 +8,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
-from bot import start, web_app_data, invite
+from bot import start, web_app_data, inline_query
 from api import handle_api
 from persist import load as load_state
 
@@ -79,7 +79,6 @@ def run_bot():
             logger.warning("Could not get bot info: %s", e)
         cmds = [
             BotCommand("start", "🏠 Открыть меню"),
-            BotCommand("invite", "📤 Пригласить друга (@username GAMECODE)"),
         ]
         try:
             await app.bot.set_my_commands(cmds)
@@ -92,8 +91,8 @@ def run_bot():
 
     app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("invite", invite))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
+    app.add_handler(InlineQueryHandler(inline_query))
     logger.info("Bot started!")
     app.run_polling()
 
