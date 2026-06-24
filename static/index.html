@@ -453,6 +453,14 @@ function updateUI(){
     }
     $('actions').innerHTML=`
       ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${s.code}</b></button>` : ''}
+      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
+      ${!s.solo ? `
+      <div style="margin-top:12px;display:flex;gap:6px;align-items:center;width:100%;">
+        <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
+        <button class="btn outline" onclick="sendInvite('sea_battle')" style="white-space:nowrap;">✉️ ${t('send')}</button>
+      </div>
+      <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
+      ` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
@@ -488,33 +496,27 @@ async function newMulti(){
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML=`
-    <button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${gameCode}</b></button>
-    <button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>
-    <div style="margin-top:12px;display:flex;gap:6px;align-items:center;">
-      <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
-      <button class="btn outline" onclick="sendInvite('sea_battle')" style="white-space:nowrap;">✉️ ${t('send')}</button>
-    </div>
-    <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
-  `;
   setStatus('', '');
   await refreshState();
   pollGame();
 }
 
-function copyCode(){
-  if(!gameCode)return;
+function copyCode(altCode){
+  const code = altCode || gameCode;
+  if(!code)return;
   if(navigator.clipboard){
-    navigator.clipboard.writeText(gameCode).then(()=>{
-      setStatus('✅ '+gameCode+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],'');
-    }).catch(()=>fallbackCopy());
-  }else{fallbackCopy()}
+    navigator.clipboard.writeText(code).then(()=>{
+      setStatus('✅ '+code+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],'');
+    }).catch(()=>fallbackCopy(code));
+  }else{fallbackCopy(code)}
 }
-function fallbackCopy(){
+function fallbackCopy(code){
+  if(!code) code = gameCode;
+  if(!code)return;
   const ta=document.createElement('textarea');
-  ta.value=gameCode;ta.style.position='fixed';ta.style.opacity='0';
+  ta.value=code;ta.style.position='fixed';ta.style.opacity='0';
   document.body.appendChild(ta);ta.select();
-  try{document.execCommand('copy');setStatus('✅ '+gameCode+' '+(lang==='uk'?'скопійовано':lang==='en'?'copied':'скопирован'),'')}catch(e){}
+  try{document.execCommand('copy');setStatus('✅ '+code+' '+(lang==='uk'?'скопійовано':lang==='en'?'copied':'скопирован'),'')}catch(e){}
   document.body.removeChild(ta);
 }
 
@@ -726,15 +728,6 @@ async function anaNewMulti(){
   anaLobbyCode=res.code;
   localStorage.setItem('ana_sid', anaSid);
   localStorage.setItem('ana_code', res.code);
-  $('actions').innerHTML=`
-    <button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${res.code}</b></button>
-    <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
-    <div style="margin-top:12px;display:flex;gap:6px;align-items:center;">
-      <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
-      <button class="btn outline" onclick="sendInvite('anagram')" style="white-space:nowrap;">✉️ ${t('send')}</button>
-    </div>
-    <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
-  `;
   setStatus('', '');
   anaShowGame(res.state);
 }
@@ -828,10 +821,25 @@ function anaRender(st){
     ? '<div style="color:#78909c;font-size:12px;margin-bottom:4px">'+t('anaFound').replace('{}',found.length)+'</div>'+found.map(w=>`<div class="ana-word">${w}<span>+${100*Math.max(0,(w.length-2))**2}</span></div>`).join('')
     : '';
   if(!st.finished){
-    $('actions').innerHTML=`
+    let ah = `
       <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
       <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
     `;
+    if(!st.solo){
+      const acode = localStorage.getItem('ana_code') || anaLobbyCode || '';
+      ah = `
+        <button class="btn outline" onclick="copyCode('${acode}')">📋 ${t('joinPlaceholder')}: <b>${acode}</b></button>
+        <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
+        <div style="margin-top:12px;display:flex;gap:6px;align-items:center;width:100%;">
+          <input type="text" id="inviteUsername" placeholder="@${t('username')}" style="flex:1;padding:8px;border-radius:8px;border:1px solid #455a64;background:#263238;color:#fff;font-size:14px;">
+          <button class="btn outline" onclick="sendInvite('anagram')" style="white-space:nowrap;">✉️ ${t('send')}</button>
+        </div>
+        <div id="inviteStatus" style="font-size:12px;margin-top:4px;color:#78909c;"></div>
+        <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
+        <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
+      `;
+    }
+    $('actions').innerHTML = ah;
   }else{
     setStatus(t('anaOver').replace('{}',st.score),'battle');
     if(st.total_words){
