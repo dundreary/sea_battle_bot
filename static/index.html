@@ -21,7 +21,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .board-wrap{width:100%;max-width:340px;margin:4px 0}
 .board-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#78909c;padding:2px 0 4px;text-align:center}
 .board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;aspect-ratio:1;background:#0d1f3c;padding:3px;border-radius:8px;border:1px solid #1a3a5c;transition:.3s}
-.board.my-turn{border:2px solid #4fc3f7;box-shadow:0 0 12px rgba(79,195,247,0.6)}
+.board.my-turn{animation:pulse-glow 1.5s ease-in-out infinite}
+@keyframes pulse-glow{0%{border-color:#4fc3f7;box-shadow:0 0 8px rgba(79,195,247,0.4)}50%{border-color:#29b6f6;box-shadow:0 0 20px rgba(79,195,247,0.8)}100%{border-color:#4fc3f7;box-shadow:0 0 8px rgba(79,195,247,0.4)}}
+.sett-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;cursor:pointer;border-bottom:1px solid #1a3a5c;font-size:15px}
+.sett-row:last-child{border-bottom:none}
+.sett-val{font-size:20px}
+.btn-link{background:none;border:none;color:#78909c;font-size:20px;cursor:pointer;padding:4px 8px;transition:.15s}
+.btn-link:hover{color:#4fc3f7}
 .cell{border-radius:3px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,4vw,22px);cursor:pointer;transition:.12s;background:#162d50;user-select:none}
 .cell:active{transform:scale(.92)}
 .cell.empty{background:#162d50}
@@ -196,6 +202,9 @@ const LANG = {
     anaBaseWord: 'Основное слово: {}',
     inviteFriend: 'Пригласить друга',
     shareCopied: 'Код скопирован, отправь другу',
+    settings: 'Настройки',
+    sound: 'Звук',
+    vibration: 'Вибрация',
   },
   uk: {
     title: 'Морський бій',
@@ -255,6 +264,9 @@ const LANG = {
     anaBaseWord: 'Основне слово: {}',
     inviteFriend: 'Запросити друга',
     shareCopied: 'Код скопійовано, надішли другу',
+    settings: 'Налаштування',
+    sound: 'Звук',
+    vibration: 'Вібрація',
   },
   en: {
     title: 'Sea Battle',
@@ -314,6 +326,9 @@ const LANG = {
     anaBaseWord: 'Base word: {}',
     inviteFriend: 'Invite friend',
     shareCopied: 'Code copied, send to friend',
+    settings: 'Settings',
+    sound: 'Sound',
+    vibration: 'Vibration',
   }
 };
 
@@ -324,11 +339,12 @@ let anaLobbyCode = '';
 
 function $(id){return document.getElementById(id)}
 
+let _snd=localStorage.getItem('sb_snd')!=='0',_vibe=localStorage.getItem('sb_vibe')!=='0';
 let _actx=null;
 function actx(){if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)();return _actx}
-function tone(f,d,t='sine',v=0.15){try{const c=actx(),o=c.createOscillator(),g=c.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+d)}catch(e){}}
-function haptic(s){try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.impactOccurred(s)}catch(e){}}
-function hapticN(t){try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.notificationOccurred(t)}catch(e){}}
+function tone(f,d,t='sine',v=0.15){if(!_snd)return;try{const c=actx(),o=c.createOscillator(),g=c.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+d)}catch(e){}}
+function haptic(s){if(!_vibe)return;try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.impactOccurred(s)}catch(e){}}
+function hapticN(t){if(!_vibe)return;try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.notificationOccurred(t)}catch(e){}}
 function sfxHit(){tone(800,0.08,'square',0.12);haptic('medium')}
 function sfxMiss(){tone(200,0.12,'sine',0.08);haptic('light')}
 function sfxSunk(){tone(500,0.15,'square',0.1);setTimeout(()=>tone(300,0.15,'square',0.1),100);setTimeout(()=>tone(150,0.2,'square',0.1),200);haptic('heavy')}
@@ -338,6 +354,24 @@ function sfxLose(){tone(400,0.2,'sine',0.08);setTimeout(()=>tone(300,0.2,'sine',
 function sfxChime(){tone(1000,0.25,'sine',0.12);haptic('medium')}
 function sfxClick(){tone(600,0.02,'sine',0.04);haptic('light')}
 function sfxTick(){tone(1200,0.04,'sine',0.06)}
+
+function toggleSnd(){_snd=!_snd;localStorage.setItem('sb_snd',_snd?'1':'0')}
+function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0')}
+
+function showSettings(){
+  const existing=$('settingsOverlay');
+  if(existing){existing.remove()}
+  const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
+  const s=_snd?'✅':'❌',v=_vibe?'✅':'❌';
+  o.innerHTML=`
+    <div class="modal">
+      <h2>⚙️ ${t('settings')}</h2>
+      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val">${s}</span></div>
+      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val">${v}</span></div>
+      <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
 
 function detectLang(){
   try{
@@ -451,12 +485,12 @@ function updateUI(){
   $('header').classList.add('in-game');
   
   const ownEl=$('ownBoard'), oppEl=$('oppBoard');
+  ownEl.classList.remove('my-turn');
+  oppEl.classList.remove('my-turn');
   if(s.my_turn){
-    ownEl.classList.add('my-turn');
     oppEl.classList.add('my-turn');
   }else{
-    ownEl.classList.remove('my-turn');
-    oppEl.classList.remove('my-turn');
+    ownEl.classList.add('my-turn');
   }
 
   if(gameOver){
@@ -629,6 +663,7 @@ function showMenu(){
   var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
+    <div style="text-align:right;padding:0 0 4px"><button class="btn-link" onclick="showSettings()">⚙️</button></div>
     <div class="game-select">
       <div class="game-card" onclick="showSeaBattle()">
         <div class="icon">⚓</div>
