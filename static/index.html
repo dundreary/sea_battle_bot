@@ -56,55 +56,7 @@
   --color-header-grad-2: #1e3f5a;
 }
 
-:root.palette-amber {
-  --bg-dark: #2d2416;
-  --bg-board: #44362a;
-  --bg-board-alt: #5a4a3a;
-  --border-color: #7c5c42;
-  --accent-primary: #d4860d;
-  --accent-primary-light: #ed8936;
-  --accent-primary-alt: #c05621;
-  --text-muted: #a0824d;
-  --text-secondary: #d4a574;
-  --text-tertiary: #c9956a;
-  --text-hint: #895a38;
-  --color-ship: #5a7a4f;
-  --color-hit: #c53030;
-  --color-sunk-dark: #1a1a1a;
-  --color-btn-primary-1: #c05621;
-  --color-btn-primary-2: #ed8936;
-  --color-btn-success-1: #5a7a4f;
-  --color-btn-success-2: #6d9d5e;
-  --color-btn-outline-border: #d4860d;
-  --color-warning: #f6ad55;
-  --color-header-grad-1: #44362a;
-  --color-header-grad-2: #5a4a3a;
-}
 
-:root.palette-rose {
-  --bg-dark: #1f0f1e;
-  --bg-board: #3a1f35;
-  --bg-board-alt: #4f2847;
-  --border-color: #733550;
-  --accent-primary: #ec4899;
-  --accent-primary-light: #f472b6;
-  --accent-primary-alt: #db2777;
-  --text-muted: #a78bbb;
-  --text-secondary: #e9d5ff;
-  --text-tertiary: #ddd6fe;
-  --text-hint: #9d7fab;
-  --color-ship: #4c5c3f;
-  --color-hit: #dc2626;
-  --color-sunk-dark: #0f0f0f;
-  --color-btn-primary-1: #db2777;
-  --color-btn-primary-2: #ec4899;
-  --color-btn-success-1: #4c5c3f;
-  --color-btn-success-2: #5f7549;
-  --color-btn-outline-border: #ec4899;
-  --color-warning: #fbbf24;
-  --color-header-grad-1: #3a1f35;
-  --color-header-grad-2: #4f2847;
-}
 
 :root.palette-slate {
   --bg-dark: #0f172a;
@@ -131,30 +83,32 @@
   --color-header-grad-2: #334155;
 }
 
-:root.palette-emerald {
-  --bg-dark: #0f2e1f;
-  --bg-board: #164e3c;
-  --bg-board-alt: #1d5d45;
-  --border-color: #2d6a4f;
-  --accent-primary: #10b981;
-  --accent-primary-light: #6ee7b7;
-  --accent-primary-alt: #059669;
-  --text-muted: #6b9a8a;
-  --text-secondary: #a7f3d0;
-  --text-tertiary: #78d8a8;
-  --text-hint: #4b8f76;
-  --color-ship: #3b82f6;
-  --color-hit: #f87171;
-  --color-sunk-dark: #0d1e14;
-  --color-btn-primary-1: #059669;
-  --color-btn-primary-2: #10b981;
-  --color-btn-success-1: #10b981;
-  --color-btn-success-2: #34d399;
-  --color-btn-outline-border: #10b981;
-  --color-warning: #fcd34d;
-  --color-header-grad-1: #164e3c;
-  --color-header-grad-2: #1d5d45;
+:root.palette-cyber {
+  --bg-dark: #0a0e27;
+  --bg-board: #101a40;
+  --bg-board-alt: #1a2d5c;
+  --border-color: #2d4a99;
+  --accent-primary: #00ff88;
+  --accent-primary-light: #33ffaa;
+  --accent-primary-alt: #00dd77;
+  --text-muted: #00cc66;
+  --text-secondary: #00ff88;
+  --text-tertiary: #00dd77;
+  --text-hint: #00aa55;
+  --color-ship: #ff00ff;
+  --color-hit: #ff0099;
+  --color-sunk-dark: #0a0a0f;
+  --color-btn-primary-1: #0099ff;
+  --color-btn-primary-2: #00ccff;
+  --color-btn-success-1: #00ff88;
+  --color-btn-success-2: #00ffaa;
+  --color-btn-outline-border: #00ff88;
+  --color-warning: #ffff00;
+  --color-header-grad-1: #101a40;
+  --color-header-grad-2: #1a2d5c;
 }
+
+
 
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
@@ -280,10 +234,8 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
   </div>
   <div class="theme-selector" id="themeSelector" style="display:none">
     <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn" data-theme="amber" onclick="setTheme('amber')">🟤 Amber</button>
-    <button class="theme-btn" data-theme="rose" onclick="setTheme('rose')">🌹 Rose</button>
     <button class="theme-btn" data-theme="slate" onclick="setTheme('slate')">⛳ Slate</button>
-    <button class="theme-btn" data-theme="emerald" onclick="setTheme('emerald')">💚 Emerald</button>
+    <button class="theme-btn" data-theme="cyber" onclick="setTheme('cyber')">⚡ Cyber</button>
   </div>
   <div class="btn-row" id="actions"></div>
   <div id="anaArea" style="display:none">
@@ -522,7 +474,7 @@ function toggleSnd(){_snd=!_snd;localStorage.setItem('sb_snd',_snd?'1':'0')}
 function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0')}
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'amber', 'rose', 'slate', 'emerald'];
+  const validThemes = ['ocean', 'slate', 'cyber'];
   if(!validThemes.includes(themeName)) return;
   
   document.documentElement.className = 'palette-' + themeName;
@@ -701,7 +653,7 @@ function updateUI(){
     `;
     $('oppBoardWrap').style.display='none';
     $('legend').style.display='none';
-    $('themeSelector').style.display='flex';
+    $('themeSelector').style.display='none';
     return;
   }
 
@@ -997,7 +949,7 @@ function anaShowGame(st){
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
-  $('themeSelector').style.display='flex';
+  $('themeSelector').style.display='none';
   anaLetters = st.letters.toUpperCase().split('');
   anaUsed = new Set();
   anaCurrentWord = [];
