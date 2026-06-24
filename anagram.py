@@ -56,6 +56,12 @@ def _scoring(n):
 
 def _can_form(word, letters):
     wc = Counter(word)
+    lc = Counter(letters)
+    for ch, cnt in wc.items():
+        if lc.get(ch, 0) < cnt:
+            return False
+    return True
+
 def _find_all_words(letters):
     base_sig = _word_signature(letters)
     result = []

@@ -3,3 +3,4 @@ __pycache__/
 .env
 data/persist.json
 data/persist.json.tmp
+.DS_Store
