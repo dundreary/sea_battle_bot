@@ -51,7 +51,16 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 .game-card:hover{transform:translateY(-2px);border-color:#4fc3f7}
 .game-card .icon{font-size:48px;margin-bottom:8px}
 .game-card .name{font-size:18px;font-weight:600}
-.game-card .desc{font-size:12px;color:#78909c;margin-top:4px}
+.game-card .card-desc{font-size:12px;color:#78909c;margin-top:4px}
+.active-games{width:100%;max-width:340px;margin-bottom:12px}
+.active-games h3{font-size:14px;color:#4fc3f7;text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:8px}
+.active-game-row{background:#0d1f3c;border:1px solid #1a3a5c;border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;transition:.15s}
+.active-game-row:hover{border-color:#4fc3f7}
+.active-game-row .info{font-size:13px}
+.active-game-row .info .label{color:#78909c}
+.active-game-row .info .code{color:#4fc3f7;font-weight:700;letter-spacing:1px}
+.active-game-row .badge{font-size:11px;padding:2px 8px;border-radius:4px;background:#1a3a5c;color:#b0bec5}
+.active-game-row .badge.playing{background:#2e7d32;color:#fff}
 .ana-letters{display:flex;gap:6px;justify-content:center;margin:8px 0;flex-wrap:wrap}
 .ana-tile{width:48px;height:48px;background:linear-gradient(135deg,#1565c0,#1976d2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;text-transform:uppercase;cursor:pointer;transition:.12s;user-select:none}
 .ana-tile:active{transform:scale(.88);opacity:.7}
@@ -80,7 +89,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:#
 
 <div class="header">
   <h1 id="title">⚓ МОРСКОЙ БОЙ</h1>
-  <div class="lang-bar">
+  <div class="lang-bar" id="langBar">
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
     <button class="lang-btn" onclick="setLang('uk')">UA</button>
     <button class="lang-btn" onclick="setLang('en')">EN</button>
@@ -415,12 +424,12 @@ function updateUI(){
 
   if(s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2'){
     if(!s.solo){
-      setStatus(`📤 <b>${s.code}</b>`,'');
+      setStatus(`📋 <b>${s.code}</b> — ${t('waitOpp')}`,'');
     }else{
       setStatus(t('placing'),'');
     }
     $('actions').innerHTML=`
-      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${s.code}</button>` : ''}
+      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${s.code}</b></button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
@@ -456,8 +465,8 @@ async function newMulti(){
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML='';
-  setStatus(t('codeShare').replace('{}',gameCode),'');
+  $('actions').innerHTML='<button class="btn outline" onclick="copyCode()">📋 '+t('joinPlaceholder')+': <b>'+gameCode+'</b></button>';
+  setStatus('', '');
   await refreshState();
   pollGame();
 }
@@ -495,7 +504,7 @@ let pollTimer=null;
 function pollGame(){
   if(pollTimer)clearInterval(pollTimer);
   pollTimer=setInterval(async()=>{
-    if(!gameCode||!state||state.phase==='playing'){clearInterval(pollTimer);pollTimer=null;return}
+    if(!gameCode){clearInterval(pollTimer);pollTimer=null;return}
     await refreshState();
   },2000);
 }
@@ -505,6 +514,7 @@ function showMenu(){
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(anaTimer){clearInterval(anaTimer);anaTimer=null}
   localStorage.removeItem('sb_game');
+  localStorage.removeItem('ana_sid');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
@@ -513,20 +523,24 @@ function showMenu(){
   document.title = 'Games';
   $('gameInfo').textContent='—';
   setStatus(t('selectGame'));
+  // Show lang selector on menu
+  var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').innerHTML=`
+    <div id="activeGamesContainer"></div>
     <div class="game-select">
       <div class="game-card" onclick="showSeaBattle()">
         <div class="icon">⚓</div>
         <div class="name">${t('seaBattle')}</div>
-        <div class="desc">${t('vsBot')} / ${t('withFriend')}</div>
+        <div class="card-desc">${t('vsBot')} / ${t('withFriend')}</div>
       </div>
       <div class="game-card" onclick="showAnagram()">
         <div class="icon">🔤</div>
         <div class="name">${t('anaTitle')}</div>
-        <div class="desc">${t('anaSolo')} / ${t('anaFriend')}</div>
+        <div class="card-desc">${t('anaSolo')} / ${t('anaFriend')}</div>
       </div>
     </div>
   `;
+  fetchActiveGames();
 }
 
 async function autoPlace(){
@@ -586,6 +600,7 @@ async function leaveGame(){
 }
 
 function showSeaBattle(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
   $('title').textContent = t('title');
   document.title = t('title');
   setStatus(t('welcome'));
@@ -600,6 +615,7 @@ function showSeaBattle(){
 let anaSid=null, anaTimer=null, anaLetters=[], anaUsed=new Set(), anaCurrentWord=[];
 
 function showAnagram(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
@@ -624,6 +640,7 @@ async function anaStartSolo(){
   const res=await api('/api/ana_new_solo',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   anaSid=res.sid;
+  localStorage.setItem('ana_sid', anaSid);
   $('actions').innerHTML='';
   anaShowGame(res.state);
 }
@@ -632,8 +649,10 @@ async function anaNewMulti(){
   const res=await api('/api/ana_new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   anaSid=res.sid;
-  $('actions').innerHTML='';
-  setStatus(t('codeShare').replace('{}',res.code),'');
+  localStorage.setItem('ana_sid', anaSid);
+  localStorage.setItem('ana_code', res.code);
+  $('actions').innerHTML='<button class="btn outline" onclick="copyCode()">📋 '+t('joinPlaceholder')+': <b>'+res.code+'</b></button>';
+  setStatus('', '');
   anaShowGame(res.state);
 }
 
@@ -641,6 +660,8 @@ async function anaJoin(code){
   const res=await api('/api/ana_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
   anaSid=res.sid;
+  localStorage.setItem('ana_sid', anaSid);
+  localStorage.setItem('ana_code', code.toUpperCase());
   $('actions').innerHTML='';
   anaShowGame(res.state);
 }
@@ -762,12 +783,76 @@ async function anaGetHint(){
   api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
 }
 
+async function fetchActiveGames(){
+  const cont=$('activeGamesContainer');
+  if(!cont)return;
+  const res=await api('/api/active_games',{uid:getUid()});
+  if(!res||!res.ok||!res.games||!res.games.length){
+    cont.innerHTML='';
+    return;
+  }
+  var html='<div class="active-games"><h3>▶ '+t('selectGame')+'</h3>';
+  for(const g of res.games){
+    if(g.type==='sea_battle'){
+      var label=g.solo?t('vsBot'):t('withFriend');
+      var badge=g.phase==='playing'?'<span class="badge playing">🎯 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+t('placing')+'</span>';
+      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
+    }else if(g.type==='anagram'){
+      var fin=g.finished?'<span class="badge">✅ '+t('anaOver').replace('{}',g.score)+'</span>':'<span class="badge playing">🔤 '+t('yourTurn')+'</span>';
+      html+='<div class="active-game-row" onclick="resumeAna(\''+g.code+'\')"><div class="info"><span class="label">🔤 </span><span class="code">'+g.code+'</span></div>'+fin+'</div>';
+    }
+  }
+  html+='</div>';
+  cont.innerHTML=html;
+}
+
+function resumeSB(code){
+  gameCode=code;
+  localStorage.setItem('sb_game',code);
+  $('actions').innerHTML='';
+  refreshState();
+  setTimeout(pollGame,500);
+}
+
+function resumeAna(code){
+  // Try to find existing ana_sid for this code from local storage, or rejoin
+  var sid=localStorage.getItem('ana_sid');
+  if(sid){
+    anaSid=sid;
+    $('actions').innerHTML='';
+    api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
+      if(res&&res.ok){anaShowGame(res.state)}else{anaJoin(code)}
+    });
+  }else{
+    anaJoin(code);
+  }
+}
+
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
-  if(!saved){showMenu();return}
-  gameCode=saved;
-  refreshState();
-  setTimeout(pollGame,1000);
+  const savedAna=localStorage.getItem('ana_sid');
+  if(saved){
+    gameCode=saved;
+    refreshState();
+    setTimeout(pollGame,1000);
+    return;
+  }
+  if(savedAna){
+    anaSid=savedAna;
+    api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
+      if(res&&res.ok){
+        anaShowGame(res.state);
+      }else{
+        localStorage.removeItem('ana_sid');
+        localStorage.removeItem('ana_code');
+        showMenu();
+      }
+    });
+    return;
+  }
+  showMenu();
+  // Fetch active games in background
+  fetchActiveGames();
 }
 
 lang = detectLang();

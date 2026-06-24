@@ -131,11 +131,11 @@ def join(code):
     room = rooms.get(code.upper())
     if not room:
         return None, 'not_found'
-    if room['p2_sid'] is not None:
-        return None, 'full'
-    sid = str(uuid.uuid4())
-    games[sid] = _new_state(room['letters'], room['all_words'], False)
-    room['p2_sid'] = sid
+    # Return shared state using p1's sid.
+    # Both players share the same game state so moves sync.
+    sid = room['p1_sid']
+    if room['p2_sid'] is None:
+        room['p2_sid'] = sid  # Mark as joined
     return sid, 'ok', games[sid]
 
 def guess(sid, word):

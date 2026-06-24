@@ -6,6 +6,9 @@ from persist import save
 games = {}
 player_games = {}
 
+# Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
+ana_player_sessions = {}
+
 EMPTY = 0
 SHIP = 1
 
@@ -203,6 +206,8 @@ def handle_api(path, body):
 
     if path == "/api/ana_new_multi":
         sid, code, g = ana_new_multi()
+        if uid:
+            ana_player_sessions[uid] = {'code': code, 'sid': sid}
         save()
         return {"ok": True, "sid": sid, "code": code, "state": ana_state(sid)}
 
@@ -213,6 +218,10 @@ def handle_api(path, body):
         result = ana_join(c)
         if not result[0]:
             return {"ok": False, "error": result[1]}
+        if uid and result[0]:
+            ana_player_sessions[uid] = {'code': c.upper(), 'sid': result[0]}
+            # Also update player_games for Sea Battle reconnection
+            # (this endpoint returns sid for both SB and Ana, map by convention)
         save()
         return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
 
@@ -240,5 +249,40 @@ def handle_api(path, body):
             return {"error": "not_found"}
         save()
         return {"ok": True, "state": st}
+
+    if path == "/api/active_games":
+        if not uid:
+            return {"error": "no uid"}
+        games_list = []
+        # Sea Battle games
+        sb_code = player_games.get(str(uid))
+        if sb_code is None:
+            sb_code = player_games.get(uid)
+        if sb_code and sb_code in games:
+            g = games[sb_code]
+            games_list.append({
+                'type': 'sea_battle',
+                'code': sb_code,
+                'solo': g.solo,
+                'phase': g.phase,
+                'my_turn': g.current_player() == uid,
+            })
+        # Anagram games
+        ana_data = ana_player_sessions.get(str(uid))
+        if ana_data is None:
+            ana_data = ana_player_sessions.get(uid)
+        if ana_data:
+            sid = ana_data['sid']
+            code = ana_data['code']
+            st = ana_state(sid)
+            if st:
+                games_list.append({
+                    'type': 'anagram',
+                    'code': code,
+                    'finished': st.get('finished', False),
+                    'score': st.get('score', 0),
+                    'remaining': st.get('remaining', 0),
+                })
+        return {"ok": True, "games": games_list}
 
     return {"error": "unknown path"}

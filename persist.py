@@ -33,11 +33,17 @@ def save():
         for k, v in api.player_games.items():
             pg_serialized[str(k)] = v
 
+        # Serialize ana_player_sessions
+        aps_serialized = {}
+        for k, v in api.ana_player_sessions.items():
+            aps_serialized[str(k)] = v
+
         data = {
             'version': 1,
             'saved_at': time.time(),
             'api_games': {},
             'api_player_games': pg_serialized,
+            'api_ana_player_sessions': aps_serialized,
             'anagram_games': anagram.games,
             'anagram_rooms': anagram.rooms,
         }
@@ -100,5 +106,15 @@ def load():
                 # Keep room if at least one player's session still exists
                 if (p1 and p1 in anagram.games) or (p2 and p2 in anagram.games):
                     anagram.rooms[code] = rdata
+            except Exception:
+                pass
+
+        # Restore ana_player_sessions (after anagram games loaded)
+        api.ana_player_sessions.clear()
+        for k, v in data.get('api_ana_player_sessions', {}).items():
+            try:
+                sid = v.get('sid')
+                if sid and sid in anagram.games:
+                    api.ana_player_sessions[k] = v
             except Exception:
                 pass
