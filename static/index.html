@@ -324,6 +324,21 @@ let anaLobbyCode = '';
 
 function $(id){return document.getElementById(id)}
 
+let _actx=null;
+function actx(){if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)();return _actx}
+function tone(f,d,t='sine',v=0.15){try{const c=actx(),o=c.createOscillator(),g=c.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);o.connect(g).connect(c.destination);o.start();o.stop(c.currentTime+d)}catch(e){}}
+function haptic(s){try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.impactOccurred(s)}catch(e){}}
+function hapticN(t){try{const h=window.Telegram?.WebApp?.HapticFeedback;if(h)h.notificationOccurred(t)}catch(e){}}
+function sfxHit(){tone(800,0.08,'square',0.12);haptic('medium')}
+function sfxMiss(){tone(200,0.12,'sine',0.08);haptic('light')}
+function sfxSunk(){tone(500,0.15,'square',0.1);setTimeout(()=>tone(300,0.15,'square',0.1),100);setTimeout(()=>tone(150,0.2,'square',0.1),200);haptic('heavy')}
+function sfxPlace(){tone(400,0.04,'sine',0.06);haptic('light')}
+function sfxWin(){tone(523,0.15,'sine',0.1);setTimeout(()=>tone(659,0.15,'sine',0.1),150);setTimeout(()=>tone(784,0.3,'sine',0.1),300);hapticN('success')}
+function sfxLose(){tone(400,0.2,'sine',0.08);setTimeout(()=>tone(300,0.2,'sine',0.08),200);setTimeout(()=>tone(200,0.4,'sine',0.08),400);hapticN('error')}
+function sfxChime(){tone(1000,0.25,'sine',0.12);haptic('medium')}
+function sfxClick(){tone(600,0.02,'sine',0.04);haptic('light')}
+function sfxTick(){tone(1200,0.04,'sine',0.06)}
+
 function detectLang(){
   try{
     const tg = window.Telegram.WebApp.initDataUnsafe?.user?.language_code || 'ru';
@@ -633,6 +648,7 @@ function showMenu(){
 async function autoPlace(){
   const res=await api('/api/place_auto',{uid:getUid(),code:gameCode});
   if(!res||!res.ok)return;
+  sfxPlace();
   await refreshState();
   setStatus(t('again'),'');
 }
@@ -640,6 +656,7 @@ async function autoPlace(){
 async function confirmPlace(){
   const res=await api('/api/confirm',{uid:getUid(),code:gameCode});
   if(!res||!res.ok)return;
+  sfxClick();
   await refreshState();
 }
 
@@ -649,9 +666,9 @@ async function handleShot(r,c){
   if(!res||!res.ok){setStatus(t('errorShot'));return}
 
   let msg='';
-  if(res.result.result==='hit')msg=t('hit');
-  else if(res.result.result==='sunk')msg=t('sunk');
-  else msg=t('miss');
+  if(res.result.result==='hit'){msg=t('hit');sfxHit()}
+  else if(res.result.result==='sunk'){msg=t('sunk');sfxSunk()}
+  else {msg=t('miss');sfxMiss()}
 
   const bs=res.result.bot_shots;
   if(bs&&bs.length){
@@ -669,6 +686,7 @@ async function handleShot(r,c){
 
 function showResult(icon,title,desc){
   const o=document.createElement('div');
+  if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
   o.innerHTML=`
     <div class="modal">
@@ -771,9 +789,11 @@ function anaTick(){
   if(!anaSid)return;
   api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
     if(!res||!res.ok){clearInterval(anaTimer);anaTimer=null;return}
+    if(res.state.remaining<=10&&res.state.remaining>0)sfxTick();
     anaRender(res.state);
     if(res.state.finished){
       clearInterval(anaTimer);anaTimer=null;
+      sfxWin();
       $('actions').innerHTML=`
         <button class="btn success" onclick="anaStartSolo()">${t('anaPlayAgain')}</button>
         <button class="btn outline" onclick="showMenu()">${t('close')}</button>
@@ -871,6 +891,7 @@ async function anaSubmitWord(){
     return;
   }
   setStatus('✅ '+word+' +'+res.result.score,'');
+  sfxChime();
   api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
 }
 
