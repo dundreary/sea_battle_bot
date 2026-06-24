@@ -31,7 +31,7 @@
   --color-header-grad-2: #162d50;
 }
 
-body.palette-ocean :root {
+:root.palette-ocean {
   --bg-dark: #0a1628;
   --bg-board: #0d1f3c;
   --bg-board-alt: #162d50;
@@ -56,7 +56,7 @@ body.palette-ocean :root {
   --color-header-grad-2: #162d50;
 }
 
-body.palette-forest :root {
+:root.palette-forest {
   --bg-dark: #0d1117;
   --bg-board: #1a1a2e;
   --bg-board-alt: #16213e;
@@ -81,7 +81,7 @@ body.palette-forest :root {
   --color-header-grad-2: #16213e;
 }
 
-body.palette-midnight :root {
+:root.palette-midnight {
   --bg-dark: #0f0e17;
   --bg-board: #1a1629;
   --bg-board-alt: #2d1b4e;
@@ -473,7 +473,7 @@ function setTheme(themeName){
   const validThemes = ['ocean', 'forest', 'midnight'];
   if(!validThemes.includes(themeName)) return;
   
-  document.body.className = 'palette-' + themeName;
+  document.documentElement.className = 'palette-' + themeName;
   localStorage.setItem('sb_theme', themeName);
   
   const btns = document.querySelectorAll('.theme-btn');
@@ -649,11 +649,13 @@ function updateUI(){
     `;
     $('oppBoardWrap').style.display='none';
     $('legend').style.display='none';
+    $('themeSelector').style.display='flex';
     return;
   }
 
   $('legend').style.display='flex';
   $('oppBoardWrap').style.display='block';
+  $('themeSelector').style.display='flex';
 
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
@@ -782,7 +784,7 @@ function showMenu(){
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
-  $('themeSelector').style.display='flex';
+  $('themeSelector').style.display='none';
   $('anaArea').style.display='none';
   $('title').textContent = '🎮 ' + t('selectGame');
   document.title = 'Games';
@@ -943,6 +945,7 @@ function anaShowGame(st){
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
+  $('themeSelector').style.display='flex';
   anaLetters = st.letters.toUpperCase().split('');
   anaUsed = new Set();
   anaCurrentWord = [];
