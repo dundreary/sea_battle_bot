@@ -484,7 +484,6 @@ async function newMulti(){
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
-  if(!botUsername) await fetchBotInfo();
   await refreshState();
   pollGame();
 }
@@ -510,19 +509,47 @@ function fallbackCopy(code){
 
 function shareGame(){
   if(!gameCode) return;
-  if(!botUsername){ copyCode(); setStatus('📋 ' + t('shareCopied'), ''); return; }
-  const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
-  try { if(window.Telegram?.WebApp?.shareUrl) window.Telegram.WebApp.shareUrl(url); } catch(e){}
-  copyToClipboard(url, {ru:'Ссылка скопирована!',uk:'Посилання скопійовано!',en:'Link copied!'}[lang]);
+  try {
+    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
+      api('/api/prepare_invite', {uid: getUid(), code: gameCode, friend_uid: getUid()}).then(res => {
+        if(res && res.ok && res.msg_id){
+          window.Telegram.WebApp.shareMessage(res.msg_id, function(sent){ if(!sent) fallbackShare(gameCode); });
+        } else {
+          fallbackShare(gameCode);
+        }
+      });
+      return;
+    }
+  } catch(e){}
+  fallbackShare(gameCode);
 }
 
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
-  if(!botUsername){ copyCode(code); setStatus('📋 ' + t('shareCopied'), ''); return; }
-  const url = `https://t.me/${botUsername}/app?startapp=${code}`;
-  try { if(window.Telegram?.WebApp?.shareUrl) window.Telegram.WebApp.shareUrl(url); } catch(e){}
-  copyToClipboard(url, {ru:'Ссылка скопирована!',uk:'Посилання скопійовано!',en:'Link copied!'}[lang]);
+  try {
+    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
+      api('/api/prepare_invite', {uid: getUid(), code, friend_uid: getUid()}).then(res => {
+        if(res && res.ok && res.msg_id){
+          window.Telegram.WebApp.shareMessage(res.msg_id, function(sent){ if(!sent) fallbackShare(code); });
+        } else {
+          fallbackShare(code);
+        }
+      });
+      return;
+    }
+  } catch(e){}
+  fallbackShare(code);
+}
+
+function fallbackShare(code){
+  if(botUsername){
+    const url = `https://t.me/${botUsername}/app?startapp=${code}`;
+    copyToClipboard(url, {ru:'Ссылка скопирована! Отправь её другу в Telegram',uk:'Посилання скопійовано! Надішли другу в Telegram',en:'Link copied! Send to a friend in Telegram'}[lang]);
+  } else {
+    copyCode(typeof code === 'string' ? code : undefined);
+    setStatus('📋 ' + t('shareCopied'), '');
+  }
 }
 
 function copyToClipboard(text, msg){
@@ -699,7 +726,6 @@ async function anaNewMulti(){
   localStorage.setItem('ana_sid', anaSid);
   localStorage.setItem('ana_code', res.code);
   setStatus('', '');
-  if(!botUsername) await fetchBotInfo();
   anaShowGame(res.state);
 }
 
