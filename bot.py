@@ -1,7 +1,7 @@
 import os
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, InlineQueryResultArticle, InputTextMessageContent
-from telegram.ext import Application, CommandHandler, MessageHandler, InlineQueryHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import config
 
 logger = logging.getLogger(__name__)
@@ -38,28 +38,3 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif lc.startswith('en'): share = f"🎮 Sea Battle\n\nGame code: <b>{data}</b>\n\nOpen the game and tap «🔗 Enter Code»"
     else: share = f"🎮 Морской бой\n\nКод игры: <b>{data}</b>\n\nОткройте игру и нажмите «🔗 Ввести код»"
     await update.message.reply_text(share, parse_mode="HTML")
-
-async def inline_query(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.inline_query.query.strip()
-    code = query.replace("PLAY_", "").strip().upper()
-    if not code or not code.isalnum():
-        await update.inline_query.answer([], cache_time=0)
-        return
-    base_url = config.WEBAPP_URL or "https://sea-battle-bot-o55j.onrender.com"
-    webapp_url = f"https://t.me/{config.BOT_USERNAME}/app?startapp={code}" if config.BOT_USERNAME else base_url
-    player_name = update.effective_user.first_name or "Player"
-    results = [
-        InlineQueryResultArticle(
-            id="1",
-            title=f"🎮 {player_name} приглашает сыграть!",
-            description=f"Код: {code}. Нажми, чтобы присоединиться",
-            input_message_content=InputTextMessageContent(
-                f"🎮 {player_name} приглашает тебя сыграть!\n\nКод: <b>{code}</b>",
-                parse_mode="HTML"
-            ),
-            reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("🎮 Play", web_app=WebAppInfo(url=webapp_url))
-            ]])
-        )
-    ]
-    await update.inline_query.answer(results, cache_time=0)

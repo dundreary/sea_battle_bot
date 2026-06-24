@@ -8,7 +8,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
-from bot import start, web_app_data, inline_query
+from bot import start, web_app_data
 from api import handle_api
 from persist import load as load_state
 
@@ -92,7 +92,6 @@ def run_bot():
     app = Application.builder().token(config.BOT_TOKEN).post_init(setup).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.StatusUpdate.WEB_APP_DATA, web_app_data))
-    app.add_handler(InlineQueryHandler(inline_query))
     logger.info("Bot started!")
     app.run_polling()
 

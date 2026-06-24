@@ -193,8 +193,6 @@ const LANG = {
     anaAllWords: 'Все возможные слова: {}',
     anaBaseWord: 'Основное слово: {}',
     inviteFriend: 'Пригласить друга',
-    chooseChat: 'Выбрать чат',
-    shareCopied: 'Код скопирован, отправь другу',
   },
   uk: {
     title: 'Морський бій',
@@ -253,8 +251,6 @@ const LANG = {
     anaAllWords: 'Всі можливі слова: {}',
     anaBaseWord: 'Основне слово: {}',
     inviteFriend: 'Запросити друга',
-    chooseChat: 'Обрати чат',
-    shareCopied: 'Код скопійовано, надішли другу',
   },
   en: {
     title: 'Sea Battle',
@@ -313,8 +309,6 @@ const LANG = {
     anaAllWords: 'All possible words: {}',
     anaBaseWord: 'Base word: {}',
     inviteFriend: 'Invite friend',
-    chooseChat: 'Choose chat',
-    shareCopied: 'Code copied, send to friend',
   }
 };
 
@@ -451,7 +445,6 @@ function updateUI(){
     $('actions').innerHTML=`
       ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${s.code}</b></button>` : ''}
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-      ${!s.solo ? `<button class="btn success" onclick="inviteByQuery()">👥 ${t('chooseChat')}</button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
@@ -513,33 +506,36 @@ function fallbackCopy(code){
 
 function shareGame(){
   if(!gameCode) return;
-  const url = botUsername ? `https://t.me/${botUsername}/app?startapp=${gameCode}` : `https://t.me/SeaBattleBot/app?startapp=${gameCode}`;
-  copyCode();
-  setStatus('📋 ' + t('shareCopied'), '');
-  if(window.Telegram?.WebApp?.shareUrl){
-    window.Telegram.WebApp.shareUrl(url);
-  }
+  const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
+  copyUrl(url);
 }
 
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
-  const url = botUsername ? `https://t.me/${botUsername}/app?startapp=${code}` : `https://t.me/SeaBattleBot/app?startapp=${code}`;
-  copyCode(code);
-  setStatus('📋 ' + t('shareCopied'), '');
-  if(window.Telegram?.WebApp?.shareUrl){
-    window.Telegram.WebApp.shareUrl(url);
-  }
+  const url = `https://t.me/${botUsername}/app?startapp=${code}`;
+  copyUrl(url);
 }
 
-function inviteByQuery(){
-  const code = gameCode || localStorage.getItem('ana_code') || anaLobbyCode;
-  if(!code) return;
-  if(window.Telegram?.WebApp?.switchInlineQuery){
-    window.Telegram.WebApp.switchInlineQuery(`PLAY_${code}`);
-    setStatus('✅ ' + {ru:'Выбери чат для приглашения',uk:'Обери чат для запрошення',en:'Choose a chat to invite'}[lang], '');
-  } else {
-    shareGame();
+function copyUrl(url){
+  if(!url) return;
+  const fallbackMsg = {ru:'Ссылка скопирована! Отправь её другу в Telegram',uk:'Посилання скопійовано! Надішли другу в Telegram',en:'Link copied! Send it to a friend in Telegram'}[lang];
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(url).then(()=>{
+      setStatus('✅ ' + fallbackMsg, '');
+    }).catch(()=>{
+      const ta=document.createElement('textarea');
+      ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
+      document.body.appendChild(ta);ta.select();
+      try{document.execCommand('copy');setStatus('✅ ' + fallbackMsg,'')}catch(e){}
+      document.body.removeChild(ta);
+    });
+  }else{
+    const ta=document.createElement('textarea');
+    ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');setStatus('✅ ' + fallbackMsg,'')}catch(e){}
+    document.body.removeChild(ta);
   }
 }
 
@@ -810,7 +806,6 @@ function anaRender(st){
       ah = `
         <button class="btn outline" onclick="copyCode('${acode}')">📋 ${t('joinPlaceholder')}: <b>${acode}</b></button>
         <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
-        <button class="btn success" onclick="inviteByQuery()">👥 ${t('chooseChat')}</button>
         <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
         <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
       `;
