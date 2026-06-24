@@ -31,29 +31,54 @@
   --color-header-grad-2: #162d50;
 }
 
-:root.palette-ocean {
-  --bg-dark: #0a1628;
-  --bg-board: #0d1f3c;
-  --bg-board-alt: #162d50;
-  --border-color: #1a3a5c;
-  --accent-primary: #4fc3f7;
-  --accent-primary-light: #80deea;
-  --accent-primary-alt: #29b6f6;
-  --text-muted: #78909c;
-  --text-secondary: #b0bec5;
-  --text-tertiary: #90a4ae;
-  --text-hint: #546e7a;
-  --color-ship: #2e7d32;
-  --color-hit: #c62828;
-  --color-sunk-dark: #1a1a1a;
-  --color-btn-primary-1: #1565c0;
-  --color-btn-primary-2: #1976d2;
-  --color-btn-success-1: #2e7d32;
-  --color-btn-success-2: #388e3c;
-  --color-btn-outline-border: #2962ff;
-  --color-warning: #ffd54f;
-  --color-header-grad-1: #0d1f3c;
-  --color-header-grad-2: #162d50;
+:root.palette-sky {
+  --bg-dark: #0a1d3d;
+  --bg-board: #0f2d52;
+  --bg-board-alt: #143d6b;
+  --border-color: #1a4d8a;
+  --accent-primary: #00d4ff;
+  --accent-primary-light: #33e0ff;
+  --accent-primary-alt: #00b8e6;
+  --text-muted: #7aa8c4;
+  --text-secondary: #a8d8f0;
+  --text-tertiary: #8bc4e0;
+  --text-hint: #5a7f99;
+  --color-ship: #1e8b4f;
+  --color-hit: #ff3333;
+  --color-sunk-dark: #0a0a0a;
+  --color-btn-primary-1: #0084d4;
+  --color-btn-primary-2: #00a3ff;
+  --color-btn-success-1: #1e8b4f;
+  --color-btn-success-2: #2db876;
+  --color-btn-outline-border: #00b8e6;
+  --color-warning: #ffb800;
+  --color-header-grad-1: #0f2d52;
+  --color-header-grad-2: #143d6b;
+}
+
+:root.palette-sunset {
+  --bg-dark: #1a0f0a;
+  --bg-board: #2d1810;
+  --bg-board-alt: #3d2415;
+  --border-color: #5c3b2f;
+  --accent-primary: #ff7043;
+  --accent-primary-light: #ffb497;
+  --accent-primary-alt: #ff8a65;
+  --text-muted: #d4956d;
+  --text-secondary: #f5c5a3;
+  --text-tertiary: #e0b089;
+  --text-hint: #a8755a;
+  --color-ship: #d4651a;
+  --color-hit: #ff4444;
+  --color-sunk-dark: #0f0a08;
+  --color-btn-primary-1: #d97b3f;
+  --color-btn-primary-2: #ff8a65;
+  --color-btn-success-1: #d4651a;
+  --color-btn-success-2: #e6750f;
+  --color-btn-outline-border: #ff7043;
+  --color-warning: #ffb800;
+  --color-header-grad-1: #2d1810;
+  --color-header-grad-2: #3d2415;
 }
 
 :root.palette-forest {
@@ -72,7 +97,7 @@
   --color-hit: #ff4757;
   --color-sunk-dark: #0d1117;
   --color-btn-primary-1: #00a152;
-  --color-btn-primary-2: #00c878;
+  --color-btn-primary-2: #00d084;
   --color-btn-success-1: #00a152;
   --color-btn-success-2: #00d084;
   --color-btn-outline-border: #00b873;
@@ -104,6 +129,31 @@
   --color-warning: #ffd60a;
   --color-header-grad-1: #2d1b4e;
   --color-header-grad-2: #3d2e5f;
+}
+
+:root.palette-cyber {
+  --bg-dark: #0a0e27;
+  --bg-board: #101a40;
+  --bg-board-alt: #1a2d5c;
+  --border-color: #2d4a99;
+  --accent-primary: #00ff88;
+  --accent-primary-light: #33ffaa;
+  --accent-primary-alt: #00dd77;
+  --text-muted: #00cc66;
+  --text-secondary: #00ff88;
+  --text-tertiary: #00dd77;
+  --text-hint: #00aa55;
+  --color-ship: #ff00ff;
+  --color-hit: #ff0099;
+  --color-sunk-dark: #0a0a0f;
+  --color-btn-primary-1: #0099ff;
+  --color-btn-primary-2: #00ccff;
+  --color-btn-success-1: #00ff88;
+  --color-btn-success-2: #00ffaa;
+  --color-btn-outline-border: #00ff88;
+  --color-warning: #ffff00;
+  --color-header-grad-1: #101a40;
+  --color-header-grad-2: #1a2d5c;
 }
 
 *{margin:0;padding:0;box-sizing:border-box}
@@ -229,9 +279,11 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
     <span>✖ <span id="legSunk"></span></span>
   </div>
   <div class="theme-selector" id="themeSelector" style="display:none">
-    <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
+    <button class="theme-btn active" data-theme="sky" onclick="setTheme('sky')">☁️ Sky</button>
+    <button class="theme-btn" data-theme="sunset" onclick="setTheme('sunset')">🌅 Sunset</button>
     <button class="theme-btn" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
     <button class="theme-btn" data-theme="midnight" onclick="setTheme('midnight')">🌙 Midnight</button>
+    <button class="theme-btn" data-theme="cyber" onclick="setTheme('cyber')">⚡ Cyber</button>
   </div>
   <div class="btn-row" id="actions"></div>
   <div id="anaArea" style="display:none">
@@ -470,7 +522,7 @@ function toggleSnd(){_snd=!_snd;localStorage.setItem('sb_snd',_snd?'1':'0')}
 function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0')}
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'forest', 'midnight'];
+  const validThemes = ['sky', 'sunset', 'forest', 'midnight', 'cyber'];
   if(!validThemes.includes(themeName)) return;
   
   document.documentElement.className = 'palette-' + themeName;
@@ -484,7 +536,7 @@ function setTheme(themeName){
 }
 
 function initTheme(){
-  const saved = localStorage.getItem('sb_theme') || 'ocean';
+  const saved = localStorage.getItem('sb_theme') || 'sky';
   setTheme(saved);
 }
 
