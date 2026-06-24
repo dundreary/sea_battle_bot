@@ -509,54 +509,50 @@ function fallbackCopy(code){
 
 function shareGame(){
   if(!gameCode) return;
-  try {
-    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
-      api('/api/prepare_invite', {uid: getUid(), code: gameCode, friend_uid: getUid()}).then(res => {
-        if(res && res.ok && res.msg_id){
-          window.Telegram.WebApp.shareMessage(res.msg_id, function(sent){ if(!sent) fallbackShare(gameCode); });
-        } else {
-          fallbackShare(gameCode);
-        }
-      });
-      return;
-    }
-  } catch(e){}
-  fallbackShare(gameCode);
+  clipboardShare(gameCode);
+  tryShareMessage(gameCode);
 }
 
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
-  try {
-    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
-      api('/api/prepare_invite', {uid: getUid(), code, friend_uid: getUid()}).then(res => {
-        if(res && res.ok && res.msg_id){
-          window.Telegram.WebApp.shareMessage(res.msg_id, function(sent){ if(!sent) fallbackShare(code); });
-        } else {
-          fallbackShare(code);
-        }
-      });
-      return;
-    }
-  } catch(e){}
-  fallbackShare(code);
+  clipboardShare(code);
+  tryShareMessage(code);
 }
 
-function fallbackShare(code){
+function clipboardShare(code){
   if(botUsername){
     const url = `https://t.me/${botUsername}/app?startapp=${code}`;
-    copyToClipboard(url, {ru:'Ссылка скопирована! Отправь её другу в Telegram',uk:'Посилання скопійовано! Надішли другу в Telegram',en:'Link copied! Send to a friend in Telegram'}[lang]);
+    copyToClipboard(url, {ru:'Ссылка скопирована! Отправь её другу',uk:'Посилання скопійовано! Надішли другу',en:'Link copied! Send to a friend'}[lang]);
   } else {
-    copyCode(typeof code === 'string' ? code : undefined);
-    setStatus('📋 ' + t('shareCopied'), '');
+    const txt = typeof code === 'string' ? code : gameCode;
+    if(txt) copyToClipboard(txt, t('shareCopied'));
   }
+}
+
+function tryShareMessage(code){
+  try {
+    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
+      fetch(API + '/api/prepare_invite', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({uid: getUid(), code, friend_uid: getUid()})
+      }).then(r => r.json()).then(res => {
+        if(res && res.ok && res.msg_id){
+          window.Telegram.WebApp.shareMessage(res.msg_id);
+        }
+      }).catch(() => {});
+    }
+  } catch(e){}
 }
 
 function copyToClipboard(text, msg){
   if(navigator.clipboard){
     navigator.clipboard.writeText(text).then(()=>{
       if(msg) setStatus('✅ ' + msg, '');
-    }).catch(()=>{});
+    }).catch(()=>{ if(msg) setStatus('✅ ' + msg, ''); });
+  } else if(msg) {
+    setStatus('✅ ' + msg, '');
   }
 }
 
