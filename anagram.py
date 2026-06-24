@@ -28,7 +28,26 @@ def _load_words():
     global WORD_LIST, BASE_WORDS
     path = os.path.join(os.path.dirname(__file__), 'data', 'uk_words.txt')
     with open(path, 'r', encoding='utf-8') as f:
-        words = {line.strip().lower() for line in f if line.strip()}
+        raw = {line.strip().lower() for line in f if line.strip()}
+    
+    UKR_VOWELS = set('аеєиіїоуюя')
+    
+    def is_valid(w):
+        if not (3 <= len(w) <= 6 and w.isalpha()):
+            return False
+        if len(set(w)) < 3:
+            return False
+        # At least one vowel and one consonant
+        has_vowel = any(ch in UKR_VOWELS for ch in w)
+        has_consonant = any(ch not in UKR_VOWELS for ch in w)
+        if not (has_vowel and has_consonant):
+            return False
+        # Skip words starting with double vowel (interjections: ааа, ооо, ууу...)
+        if len(w) >= 2 and w[0] in UKR_VOWELS and w[0] == w[1]:
+            return False
+        return True
+    
+    words = {w for w in raw if is_valid(w)}
     WORD_LIST = words
     BASE_WORDS = sorted(w for w in words if len(w) == 6)
 
