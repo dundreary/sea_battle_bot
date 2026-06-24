@@ -193,6 +193,7 @@ const LANG = {
     anaAllWords: 'Все возможные слова: {}',
     anaBaseWord: 'Основное слово: {}',
     inviteFriend: 'Пригласить друга',
+    shareCopied: 'Код скопирован, отправь другу',
   },
   uk: {
     title: 'Морський бій',
@@ -251,6 +252,7 @@ const LANG = {
     anaAllWords: 'Всі можливі слова: {}',
     anaBaseWord: 'Основне слово: {}',
     inviteFriend: 'Запросити друга',
+    shareCopied: 'Код скопійовано, надішли другу',
   },
   en: {
     title: 'Sea Battle',
@@ -309,6 +311,7 @@ const LANG = {
     anaAllWords: 'All possible words: {}',
     anaBaseWord: 'Base word: {}',
     inviteFriend: 'Invite friend',
+    shareCopied: 'Code copied, send to friend',
   }
 };
 
@@ -481,6 +484,7 @@ async function newMulti(){
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
+  if(!botUsername) await fetchBotInfo();
   await refreshState();
   pollGame();
 }
@@ -506,36 +510,26 @@ function fallbackCopy(code){
 
 function shareGame(){
   if(!gameCode) return;
+  if(!botUsername){ copyCode(); setStatus('📋 ' + t('shareCopied'), ''); return; }
   const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
-  copyUrl(url);
+  try { if(window.Telegram?.WebApp?.shareUrl) window.Telegram.WebApp.shareUrl(url); } catch(e){}
+  copyToClipboard(url, {ru:'Ссылка скопирована!',uk:'Посилання скопійовано!',en:'Link copied!'}[lang]);
 }
 
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
+  if(!botUsername){ copyCode(code); setStatus('📋 ' + t('shareCopied'), ''); return; }
   const url = `https://t.me/${botUsername}/app?startapp=${code}`;
-  copyUrl(url);
+  try { if(window.Telegram?.WebApp?.shareUrl) window.Telegram.WebApp.shareUrl(url); } catch(e){}
+  copyToClipboard(url, {ru:'Ссылка скопирована!',uk:'Посилання скопійовано!',en:'Link copied!'}[lang]);
 }
 
-function copyUrl(url){
-  if(!url) return;
-  const fallbackMsg = {ru:'Ссылка скопирована! Отправь её другу в Telegram',uk:'Посилання скопійовано! Надішли другу в Telegram',en:'Link copied! Send it to a friend in Telegram'}[lang];
+function copyToClipboard(text, msg){
   if(navigator.clipboard){
-    navigator.clipboard.writeText(url).then(()=>{
-      setStatus('✅ ' + fallbackMsg, '');
-    }).catch(()=>{
-      const ta=document.createElement('textarea');
-      ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
-      document.body.appendChild(ta);ta.select();
-      try{document.execCommand('copy');setStatus('✅ ' + fallbackMsg,'')}catch(e){}
-      document.body.removeChild(ta);
-    });
-  }else{
-    const ta=document.createElement('textarea');
-    ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
-    document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');setStatus('✅ ' + fallbackMsg,'')}catch(e){}
-    document.body.removeChild(ta);
+    navigator.clipboard.writeText(text).then(()=>{
+      if(msg) setStatus('✅ ' + msg, '');
+    }).catch(()=>{});
   }
 }
 
@@ -705,6 +699,7 @@ async function anaNewMulti(){
   localStorage.setItem('ana_sid', anaSid);
   localStorage.setItem('ana_code', res.code);
   setStatus('', '');
+  if(!botUsername) await fetchBotInfo();
   anaShowGame(res.state);
 }
 
