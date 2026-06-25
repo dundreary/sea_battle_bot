@@ -249,7 +249,12 @@ class Game:
             for k, v in data.get('placing', {}).items()
         }
         game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
-        game.bot_ai = BotAI.from_dict(data['bot_ai']) if data.get('bot_ai') else None
+        if data.get('bot_ai'):
+            game.bot_ai = BotAI.from_dict(data['bot_ai'])
+        elif game.solo:
+            game.bot_ai = BotAI()
+        else:
+            game.bot_ai = None
         return game
 
 def validate_ship_placement(cells):

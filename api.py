@@ -58,6 +58,8 @@ def get_state(uid, code):
     return as_dict(game, uid)
 
 def _bot_shoots(game, uid):
+    if not game.bot_ai:
+        return []
     own = game.board_for(uid)
     shots = []
     while True:
@@ -104,6 +106,8 @@ def confirm_placement(uid, code):
     pnum = game.player_num(uid)
     board = game.board_for(uid)
     if len(board.ships) < len(SHIPS):
+        return None
+    if game.solo and len(game.board2.ships) < len(SHIPS):
         return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:

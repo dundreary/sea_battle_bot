@@ -648,7 +648,6 @@ function updateUI(){
       setStatus(t('placing'),'');
     }
     $('actions').innerHTML=`
-      ${!s.solo ? `<button class="btn outline" onclick="copyCode()">📋 ${t('joinPlaceholder')}: <b>${s.code}</b></button>` : ''}
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
@@ -693,40 +692,29 @@ async function newMulti(){
   pollGame();
 }
 
-function copyCode(altCode){
-  const code = altCode || gameCode;
-  if(!code)return;
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(code).then(()=>{
-      setStatus('✅ '+code+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],'');
-    }).catch(()=>fallbackCopy(code));
-  }else{fallbackCopy(code)}
-}
-function fallbackCopy(code){
-  if(!code) code = gameCode;
-  if(!code)return;
-  const ta=document.createElement('textarea');
-  ta.value=code;ta.style.position='fixed';ta.style.opacity='0';
-  document.body.appendChild(ta);ta.select();
-  try{document.execCommand('copy');setStatus('✅ '+code+' '+(lang==='uk'?'скопійовано':lang==='en'?'copied':'скопирован'),'')}catch(e){}
-  document.body.removeChild(ta);
-}
-
-function shareGame(){
+async function shareGame(){
   if(!gameCode) return;
   const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
-  const text = encodeURIComponent({ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'}[lang]);
-  copyToClipboard(url, {ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`)}catch(e){}
+  const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
+  const text = texts[lang];
+  if(navigator.share){
+    try{await navigator.share({title:text,text:text,url});return}catch(e){if(e.name==='AbortError')return}
+  }
+  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
 
-function shareAnaGame(){
+async function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
   const url = `https://t.me/${botUsername || '...'}/app?startapp=${code}`;
-  const text = encodeURIComponent({ru:'🎮 Играй со мной в Анаграмму!',uk:'🎮 Грай зі мною в Анаграму!',en:'🎮 Play Anagram with me!'}[lang]);
-  copyToClipboard(url, {ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`)}catch(e){}
+  const texts = {ru:'🎮 Играй со мной в Анаграмму!',uk:'🎮 Грай зі мною в Анаграму!',en:'🎮 Play Anagram with me!'};
+  const text = texts[lang];
+  if(navigator.share){
+    try{await navigator.share({title:text,text:text,url});return}catch(e){if(e.name==='AbortError')return}
+  }
+  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
 
 function copyToClipboard(text, msg){
@@ -810,7 +798,10 @@ async function autoPlace(){
 
 async function confirmPlace(){
   const res=await api('/api/confirm',{uid:getUid(),code:gameCode});
-  if(!res||!res.ok)return;
+  if(!res||!res.ok){
+    setStatus('⚠️ ' + {ru:'Сначала расставь корабли!',uk:'Спочатку розстав кораблі!',en:'Place all ships first!'}[lang],'');
+    return;
+  }
   sfxClick();
   await refreshState();
 }
@@ -1014,9 +1005,7 @@ function anaRender(st){
       <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
     `;
     if(!st.solo){
-      const acode = localStorage.getItem('ana_code') || anaLobbyCode || '';
       ah = `
-        <button class="btn outline" onclick="copyCode('${acode}')">📋 ${t('joinPlaceholder')}: <b>${acode}</b></button>
         <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
         <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
         <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
