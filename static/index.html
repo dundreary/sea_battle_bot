@@ -83,29 +83,29 @@
   --color-header-grad-2: #334155;
 }
 
-:root.palette-ruby {
-  --bg-dark: #1a0a0f;
-  --bg-board: #2d1520;
-  --bg-board-alt: #3d2030;
-  --border-color: #5a3045;
-  --accent-primary: #f43f5e;
-  --accent-primary-light: #fb7185;
-  --accent-primary-alt: #e11d48;
-  --text-muted: #a07a8a;
-  --text-secondary: #d4b0bc;
-  --text-tertiary: #b090a0;
-  --text-hint: #705060;
-  --color-ship: #34d399;
-  --color-hit: #fbbf24;
-  --color-sunk-dark: #0a0508;
-  --color-btn-primary-1: #e11d48;
-  --color-btn-primary-2: #be123c;
-  --color-btn-success-1: #059669;
-  --color-btn-success-2: #047857;
-  --color-btn-outline-border: #f43f5e;
-  --color-warning: #f59e0b;
-  --color-header-grad-1: #2d1520;
-  --color-header-grad-2: #3d2030;
+:root.palette-neon {
+  --bg-dark: #0d0d1a;
+  --bg-board: #161630;
+  --bg-board-alt: #1e1e40;
+  --border-color: #2d2d6b;
+  --accent-primary: #a78bfa;
+  --accent-primary-light: #c4b5fd;
+  --accent-primary-alt: #8b5cf6;
+  --text-muted: #94a3b8;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #a5b4d0;
+  --text-hint: #64748b;
+  --color-ship: #2dd4bf;
+  --color-hit: #f472b6;
+  --color-sunk-dark: #05050f;
+  --color-btn-primary-1: #7c3aed;
+  --color-btn-primary-2: #6d28d9;
+  --color-btn-success-1: #0ea5e9;
+  --color-btn-success-2: #0284c7;
+  --color-btn-outline-border: #a78bfa;
+  --color-warning: #fbbf24;
+  --color-header-grad-1: #161630;
+  --color-header-grad-2: #1e1e40;
 }
 
 
@@ -118,7 +118,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .header.in-game{display:none}
 .board-label{display:none}
 .lang-bar{display:flex;gap:4px;justify-content:center;padding:4px 0}
-.lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer;transition:.15s}
+.lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer;transition:.15s}
 .lang-btn.active{background:var(--color-btn-primary-1);border-color:var(--accent-primary);color:#fff}
 .main{flex:1;width:100%;max-width:480px;padding:8px 12px 80px;display:flex;flex-direction:column;align-items:center}
 .status{text-align:center;padding:6px 0;font-size:14px;color:var(--text-secondary);min-height:28px}
@@ -145,7 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
 @keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
 .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
-.btn{flex:1 1 0;min-width:0;padding:8px 4px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn{flex:1 1 0;min-width:0;padding:12px 8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff}
 .btn.success{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff}
@@ -175,10 +175,10 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
 .active-game-row .badge{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--border-color);color:var(--text-secondary)}
 .active-game-row .badge.playing{background:var(--color-btn-success-1);color:#fff}
 .ana-letters{display:flex;gap:6px;justify-content:center;margin:8px 0;flex-wrap:wrap}
-.ana-tile{width:48px;height:48px;background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;text-transform:uppercase;cursor:pointer;transition:.12s;user-select:none}
+.ana-tile{width:54px;height:54px;background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;text-transform:uppercase;cursor:pointer;transition:.12s;user-select:none}
 .ana-tile:active{transform:scale(.88);opacity:.7}
 .ana-word-display{display:flex;gap:6px;justify-content:center;min-height:48px;align-items:center;width:100%;max-width:340px;background:var(--bg-board);border:1px dashed var(--border-color);border-radius:10px;padding:6px;margin:4px 0;flex-wrap:wrap}
-.ana-word-display .ana-tile{width:40px;height:40px;font-size:18px;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2))}
+.ana-word-display .ana-tile{width:46px;height:46px;font-size:20px;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2))}
 .ana-word-display .ana-tile:active{transform:scale(.88);opacity:.7}
 .ana-submit-row{display:flex;gap:6px;width:100%;max-width:340px;margin:4px 0}
 .ana-submit-row .btn{min-width:unset}
@@ -198,11 +198,11 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
 .ana-base-word:not(.show)::after{content:' (нажми, чтобы открыть)';font-size:11px;color:var(--text-hint)}
 
 .theme-selector{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-wrap:wrap;width:100%;max-width:340px;margin:8px 0}
-.theme-btn{padding:6px 12px;border:2px solid var(--border-color);background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);transition:.15s}
+.theme-btn{padding:10px 16px;border:2px solid var(--border-color);background:transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:.15s}
 .theme-btn:hover{border-color:var(--accent-primary);color:var(--accent-primary)}
 .theme-btn.active{background:var(--accent-primary);color:var(--bg-dark);border-color:var(--accent-primary)}
 .theme-divider{width:1px;background:var(--border-color);height:24px;align-self:center}
-.theme-btn.snd-btn{min-width:36px;padding:6px 8px}
+.theme-btn.snd-btn{min-width:40px;padding:8px 10px}
 
 </style>
 </head>
@@ -238,7 +238,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
   <div class="theme-selector" id="themeSelector" style="display:none">
     <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
     <button class="theme-btn" data-theme="slate" onclick="setTheme('slate')">⛳ Slate</button>
-    <button class="theme-btn" data-theme="ruby" onclick="setTheme('ruby')">💎 Ruby</button>
+    <button class="theme-btn" data-theme="neon" onclick="setTheme('neon')">💜 Neon</button>
     <div class="theme-divider"></div>
     <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
@@ -486,7 +486,7 @@ function updateSettingsUI(){
 }
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'slate', 'ruby'];
+  const validThemes = ['ocean', 'slate', 'neon'];
   if(!validThemes.includes(themeName)) return;
   
   document.documentElement.className = 'palette-' + themeName;
