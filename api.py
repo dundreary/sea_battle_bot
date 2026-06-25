@@ -102,6 +102,9 @@ def place_auto(uid, code):
 def confirm_placement(uid, code):
     game = games.get(code)
     pnum = game.player_num(uid)
+    board = game.board_for(uid)
+    if len(board.ships) < len(SHIPS):
+        return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
         game.phase = "playing"
@@ -196,6 +199,8 @@ def handle_api(path, body):
         if not uid or not code:
             return {"error": "no uid/code"}
         started = confirm_placement(uid, code)
+        if started is None:
+            return {"ok": False, "error": "not_all_placed"}
         game = games.get(code)
         state = as_dict(game, uid) if game else None
         save()
