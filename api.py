@@ -34,6 +34,7 @@ def as_dict(game, uid):
         "my_all_sunk": own.all_sunk(),
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
         "ships_placed": len(own.ships),
+        "ships_list": list(SHIPS),
     }
 
 def new_solo(uid):
