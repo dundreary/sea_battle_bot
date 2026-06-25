@@ -597,9 +597,20 @@ async function fetchBotInfo(){
   } catch(e){}
 }
 
-function renderBoard(boardEl,grid,isOpponent,gameOver){
+let showShipHints = true;
+
+function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData){
   boardEl.innerHTML='';
   const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5;
+  // Build a map cell -> ship size for hints
+  const cellSizeMap = {};
+  if(shipsData && showShipHints){
+    for(const s of shipsData){
+      for(const [r,c] of s.cells){
+        cellSizeMap[r*10+c] = s.size;
+      }
+    }
+  }
   for(let r=0;r<10;r++)for(let c=0;c<10;c++){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
@@ -610,6 +621,14 @@ function renderBoard(boardEl,grid,isOpponent,gameOver){
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
     else cell.classList.add('empty');
+    // Show hint number on ship cells during placement
+    const key = r*10+c;
+    if(!isOpponent && v===SHIP && cellSizeMap[key]){
+      cell.textContent = cellSizeMap[key];
+      cell.style.fontSize = 'clamp(11px,3.2vw,18px)';
+      cell.style.fontWeight = '700';
+      cell.style.color = 'rgba(255,255,255,0.7)';
+    }
     if(isOpponent&&!gameOver&&(v===EMPTY||v===SHIP))cell.classList.add('shootable');
     if(isOpponent&&!gameOver)cell.onclick=()=>handleShot(r,c);
     boardEl.appendChild(cell);
@@ -648,9 +667,11 @@ function updateUI(){
   if(!state)return;
   const s=state;
   const gameOver=s.all_sunk||s.my_all_sunk;
+  const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
+  if(!isPlacing) showShipHints = false;
   $('ownBoardWrap').style.display='block';
   $('oppBoardWrap').style.display='block';
-  renderBoard($('ownBoard'),s.own,false,gameOver);
+  renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships);
   renderBoard($('oppBoard'),s.opp,true,gameOver);
   
   $('gameInfo').textContent = '';
@@ -723,6 +744,7 @@ function updateUI(){
 }
 
 async function startSolo(){
+  showShipHints = true;
   const res=await api('/api/new_solo',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
@@ -732,6 +754,7 @@ async function startSolo(){
 }
 
 async function newMulti(){
+  showShipHints = true;
   const res=await api('/api/new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
@@ -771,6 +794,7 @@ function copyToClipboard(text, msg){
 }
 
 async function joinGame(){
+  showShipHints = true;
   const code=prompt(t('joinPlaceholder'));
   if(!code)return;
   const res=await api('/api/join',{uid:getUid(),code:code.toUpperCase()});
@@ -793,6 +817,7 @@ function pollGame(){
 }
 
 function showMenu(){
+  showShipHints = true;
   gameCode=null;state=null;anaSid=null;anaLetters=[];anaUsed=new Set();anaCurrentWord=[];
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(anaTimer){clearInterval(anaTimer);anaTimer=null}
@@ -834,6 +859,7 @@ function showMenu(){
 }
 
 async function autoPlace(){
+  showShipHints = false;
   const res=await api('/api/place_auto',{uid:getUid(),code:gameCode});
   if(!res||!res.ok)return;
   sfxPlace();
@@ -1121,6 +1147,7 @@ async function fetchActiveGames(){
 }
 
 function resumeSB(code){
+  showShipHints = true;
   gameCode=code;
   localStorage.setItem('sb_game',code);
   $('actions').innerHTML='';
@@ -1188,6 +1215,7 @@ async function checkStartParam(){
       // Try Sea Battle
       const sbRes = await api('/api/join', {uid: getUid(), code});
       if(sbRes && sbRes.ok){
+        showShipHints = true;
         gameCode = code;
         localStorage.setItem('sb_game', code);
         $('actions').innerHTML = '';

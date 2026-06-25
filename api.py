@@ -19,6 +19,11 @@ def as_dict(game, uid):
     own = game.board_for(uid)
     opp = game.opponent_board(uid)
     opp_hidden = [EMPTY if v == SHIP else v for v in [opp.grid[r][c] for r in range(SIZE) for c in range(SIZE)]]
+    # Build ship info: size + cells for each ship on own board
+    ships_data = []
+    for ship in own.ships:
+        ship_size = len(ship.cells)
+        ships_data.append({"size": ship_size, "cells": [list(c) for c in ship.cells]})
     return {
         "code": game.code,
         "solo": game.solo,
@@ -29,6 +34,7 @@ def as_dict(game, uid):
         "ready": game.ready,
         "you": uid,
         "own": [own.grid[r][c] for r in range(SIZE) for c in range(SIZE)],
+        "own_ships": ships_data,
         "opp": opp_hidden,
         "all_sunk": opp.all_sunk(),
         "my_all_sunk": own.all_sunk(),
