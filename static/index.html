@@ -145,6 +145,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
 @keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
 .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
+.btn-row.stack{flex-direction:column;gap:6px}
 .btn{flex:1 1 0;min-width:0;padding:12px 8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff}
@@ -611,6 +612,7 @@ async function refreshState(){
   if(!res||!res.ok){
     localStorage.removeItem('sb_game');
     setStatus(t('gameOver'));
+    $('actions').className='btn-row';
     $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
     return
   }
@@ -658,9 +660,10 @@ function updateUI(){
     }else{
       setStatus(t('placing'),'');
     }
+    $('actions').className='btn-row stack';
     $('actions').innerHTML=`
-      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
+      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
     `;
@@ -678,9 +681,11 @@ function updateUI(){
 
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
+    $('actions').className='btn-row';
     $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('surrender')}</button>`;
   }else{
     setStatus(t('oppTurn'),'');
+    $('actions').className='btn-row';
     $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('quit')}</button>`;
   }
 }
@@ -704,27 +709,21 @@ async function newMulti(){
   pollGame();
 }
 
-async function shareGame(){
+function shareGame(){
   if(!gameCode) return;
   const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
   const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
   const text = texts[lang];
-  if(navigator.share){
-    try{await navigator.share({title:text,text:text,url});return}catch(e){if(e.name==='AbortError')return}
-  }
   copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
 
-async function shareAnaGame(){
+function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
   const url = `https://t.me/${botUsername || '...'}/app?startapp=${code}`;
   const texts = {ru:'🎮 Играй со мной в Анаграмму!',uk:'🎮 Грай зі мною в Анаграму!',en:'🎮 Play Anagram with me!'};
   const text = texts[lang];
-  if(navigator.share){
-    try{await navigator.share({title:text,text:text,url});return}catch(e){if(e.name==='AbortError')return}
-  }
   copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
@@ -781,6 +780,7 @@ function showMenu(){
   setStatus(t('selectGame'));
   // Show lang selector on menu
   var lb=$('langBar');if(lb)lb.style.display='flex';
+  $('actions').className='btn-row';
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
     <div style="text-align:right;padding:0 0 4px"><button class="btn-link" onclick="showSettings()">⚙️</button></div>
@@ -868,6 +868,7 @@ function showSeaBattle(){
   document.title = t('title');
   setStatus(t('welcome'));
   $('gameInfo').textContent='—';
+  $('actions').className='btn-row';
   $('actions').innerHTML=`
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
     <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
@@ -890,6 +891,7 @@ function showAnagram(){
     <button class="btn outline" onclick="anaJoinGame()">${t('joinBtn')}</button>
     <button class="btn outline" onclick="showMenu()">${t('close')}</button>
   `;
+  $('actions').className='btn-row';
   setStatus('');
   $('gameInfo').textContent=t('anaTitle');
 }
