@@ -84,28 +84,28 @@
 }
 
 :root.palette-cyber {
-  --bg-dark: #0a0e27;
-  --bg-board: #101a40;
-  --bg-board-alt: #1a2d5c;
-  --border-color: #2d4a99;
-  --accent-primary: #00ff88;
-  --accent-primary-light: #33ffaa;
-  --accent-primary-alt: #00dd77;
-  --text-muted: #00cc66;
-  --text-secondary: #00ff88;
-  --text-tertiary: #00dd77;
-  --text-hint: #00aa55;
-  --color-ship: #ff00ff;
-  --color-hit: #ff0099;
+  --bg-dark: #0d0d1a;
+  --bg-board: #1a1030;
+  --bg-board-alt: #2a1a45;
+  --border-color: #4a2d8a;
+  --accent-primary: #ff6b35;
+  --accent-primary-light: #ff8c5a;
+  --accent-primary-alt: #e55a2b;
+  --text-muted: #a080c0;
+  --text-secondary: #d4b0ff;
+  --text-tertiary: #b090d0;
+  --text-hint: #705090;
+  --color-ship: #00ffc8;
+  --color-hit: #ff3355;
   --color-sunk-dark: #0a0a0f;
-  --color-btn-primary-1: #0099ff;
-  --color-btn-primary-2: #00ccff;
-  --color-btn-success-1: #00ff88;
-  --color-btn-success-2: #00ffaa;
-  --color-btn-outline-border: #00ff88;
-  --color-warning: #ffff00;
-  --color-header-grad-1: #101a40;
-  --color-header-grad-2: #1a2d5c;
+  --color-btn-primary-1: #ff6b35;
+  --color-btn-primary-2: #e55a2b;
+  --color-btn-success-1: #00cc99;
+  --color-btn-success-2: #00b388;
+  --color-btn-outline-border: #ff6b35;
+  --color-warning: #ffd700;
+  --color-header-grad-1: #1a1030;
+  --color-header-grad-2: #2a1a45;
 }
 
 
@@ -144,8 +144,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cell.shootable{background:var(--border-color);border:1px solid var(--color-btn-outline-border)}
 .cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
 @keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
-.btn-row{display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:340px;margin-top:8px}
-.btn{flex:1;min-width:120px;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn-row{display:flex;flex-wrap:nowrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
+.btn{flex:1 1 0;min-width:0;padding:8px 4px;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff}
 .btn.success{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff}
