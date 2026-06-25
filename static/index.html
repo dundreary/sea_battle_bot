@@ -714,41 +714,19 @@ function fallbackCopy(code){
 
 function shareGame(){
   if(!gameCode) return;
-  clipboardShare(gameCode);
-  tryShareMessage(gameCode);
+  const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
+  const text = encodeURIComponent({ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'}[lang]);
+  copyToClipboard(url, {ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`)}catch(e){}
 }
 
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
-  clipboardShare(code);
-  tryShareMessage(code);
-}
-
-function clipboardShare(code){
-  if(botUsername){
-    const url = `https://t.me/${botUsername}/app?startapp=${code}`;
-    copyToClipboard(url, {ru:'Ссылка скопирована! Отправь её другу',uk:'Посилання скопійовано! Надішли другу',en:'Link copied! Send to a friend'}[lang]);
-  } else {
-    const txt = typeof code === 'string' ? code : gameCode;
-    if(txt) copyToClipboard(txt, t('shareCopied'));
-  }
-}
-
-function tryShareMessage(code){
-  try {
-    if(window.Telegram?.WebApp?.shareMessage && window.Telegram.WebApp.isVersionAtLeast('8.0')){
-      fetch(API + '/api/prepare_invite', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({uid: getUid(), code, friend_uid: getUid()})
-      }).then(r => r.json()).then(res => {
-        if(res && res.ok && res.msg_id){
-          window.Telegram.WebApp.shareMessage(res.msg_id);
-        }
-      }).catch(() => {});
-    }
-  } catch(e){}
+  const url = `https://t.me/${botUsername || '...'}/app?startapp=${code}`;
+  const text = encodeURIComponent({ru:'🎮 Играй со мной в Анаграмму!',uk:'🎮 Грай зі мною в Анаграму!',en:'🎮 Play Anagram with me!'}[lang]);
+  copyToClipboard(url, {ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`)}catch(e){}
 }
 
 function copyToClipboard(text, msg){

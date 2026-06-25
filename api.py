@@ -1,5 +1,5 @@
 import json
-import urllib.request
+
 from game import Game, SIZE, SHIPS, auto_place_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from persist import save
@@ -294,46 +294,6 @@ def handle_api(path, body):
 
     if path == "/api/bot_info":
         return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
-
-    if path == "/api/prepare_invite":
-        code = data.get("code", "").upper()
-        friend_uid = data.get("friend_uid", "")
-        if not code or not friend_uid:
-            return {"error": "missing params"}
-        url = f"https://t.me/{config.BOT_USERNAME}/app?startapp={code}" if config.BOT_USERNAME else f"{config.WEBAPP_URL}?startapp={code}"
-        payload = json.dumps({
-            "user_id": friend_uid,
-            "result": {
-                "type": "article",
-                "id": "1",
-                "title": "🎮 Приглашение в игру!",
-                "description": f"Код: {code}. Нажми Play",
-                "input_message_content": {
-                    "message_text": f"🎮 Друг приглашает тебя сыграть!\n\nКод: <b>{code}</b>\n\nНажми «Play», чтобы открыть игру.",
-                    "parse_mode": "HTML"
-                },
-                "reply_markup": {
-                    "inline_keyboard": [[{
-                        "text": "🎮 Play",
-                        "web_app": {"url": url}
-                    }]]
-                }
-            }
-        }).encode()
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{config.BOT_TOKEN}/savePreparedInlineMessage",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            r = urllib.request.urlopen(req, timeout=10)
-            resp = json.loads(r.read())
-            if resp.get("ok"):
-                return {"ok": True, "msg_id": resp["result"]["id"]}
-            return {"ok": False, "error": "telegram_error"}
-        except Exception as e:
-            return {"ok": False, "error": str(e)}
 
     if path == "/api/resolve_code":
         code = data.get("code", "").strip().upper()
