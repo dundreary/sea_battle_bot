@@ -156,11 +156,12 @@ class Board:
         return board
 
 class Game:
-    def __init__(self, code, player1_id, player2_id=None, solo=False):
+    def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
+        self.strip = strip
         self.board1 = Board()
         self.board2 = Board()
         self.bot_ai = BotAI() if solo else None
@@ -213,6 +214,7 @@ class Game:
             'player1_id': self.player1_id,
             'player2_id': self.player2_id,
             'solo': self.solo,
+            'strip': self.strip,
             'created_at': self.created_at,
             'board1': self.board1.to_dict(),
             'board2': self.board2.to_dict(),
@@ -236,6 +238,7 @@ class Game:
         game.player1_id = data['player1_id']
         game.player2_id = data.get('player2_id')
         game.solo = data.get('solo', False)
+        game.strip = data.get('strip', False)
         game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
         game.board2 = Board.from_dict(data['board2'])
@@ -257,9 +260,27 @@ class Game:
             game.bot_ai = None
         return game
 
-def validate_ship_placement(cells):
+def validate_ship_placement(cells, strip=False):
     if len(cells) < 2:
         return True, ""
+    if strip:
+        # In strip mode, allow any connected shape
+        cell_set = set(cells)
+        start = cells[0]
+        visited = set()
+        stack = [start]
+        while stack:
+            r, c = stack.pop()
+            if (r, c) in visited:
+                continue
+            visited.add((r, c))
+            for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+                nr, nc = r + dr, c + dc
+                if (nr, nc) in cell_set and (nr, nc) not in visited:
+                    stack.append((nr, nc))
+        if len(visited) == len(cell_set):
+            return True, ""
+        return False, "Корабль должен быть связным (все клетки соединены)."
     sorted_cells = sorted(cells)
     rows = sorted([r for r, c in cells])
     cols = sorted([c for r, c in cells])
@@ -274,6 +295,49 @@ def validate_ship_placement(cells):
             return False, "Корабль должен быть прямой линией (все клетки подряд по вертикали)."
         return True, ""
     return False, "Корабль должен быть прямой линией (горизонтально или вертикально)."
+
+CLOTHING_SHAPES = {
+    4: [
+        [(0,0),(0,1),(0,2),(0,3)],
+        [(0,0),(1,0),(2,0),(3,0)],
+        [(0,0),(0,1),(1,1),(1,2)],
+        [(0,1),(0,2),(0,3),(1,0)],
+    ],
+    3: [
+        [(0,0),(0,1),(0,2)],
+        [(0,0),(1,0),(2,0)],
+        [(0,0),(0,1),(1,1)],
+        [(0,0),(1,0),(1,1)],
+    ],
+    2: [
+        [(0,0),(0,1)],
+        [(0,0),(1,0)],
+    ],
+    1: [
+        [(0,0)],
+    ],
+}
+
+def auto_place_strip_ships(board):
+    for length in SHIPS:
+        placed = False
+        attempts = 0
+        while not placed and attempts < 1000:
+            shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
+            shape = random.choice(shapes)
+            r = random.randint(0, SIZE - 1)
+            c = random.randint(0, SIZE - 1)
+            cells = [(r + dr, c + dc) for dr, dc in shape]
+            if all(0 <= cr < SIZE and 0 <= cc < SIZE for cr, cc in cells):
+                if board.can_place(cells):
+                    board.place_ship(cells)
+                    placed = True
+            attempts += 1
+        if not placed:
+            board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+            board.ships = []
+            auto_place_strip_ships(board)
+            return
 
 def auto_place_ships(board):
     for length in SHIPS:

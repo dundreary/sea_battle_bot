@@ -114,6 +114,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cell:active{transform:scale(.92)}
 .cell.empty{background:var(--bg-board-alt)}
 .cell.ship{background:var(--color-ship)}
+.cell.strip-ship{background:#e91e63;border-radius:4px}
 .cell.hit{background:var(--color-hit);animation:pop .3s}
 .cell.miss{background:var(--bg-board);opacity:.4}
 .cell.sunk{background:var(--color-sunk-dark);border:1px solid #424242}
@@ -305,6 +306,10 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вибрация',
     shipHint: '🚢 Корабли: {0}',
+    stripMode: '👗 На раздевание',
+    stripTitle: '👗 Морской бой — На раздевание',
+    stripPlace: '👗 Расставь корабли-одежду',
+    stripDesc: 'Корабли могут быть любой формы!',
   },
   uk: {
     title: 'Морський бій',
@@ -369,6 +374,10 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вібрація',
     shipHint: '🚢 Кораблі: {0}',
+    stripMode: '👗 На роздягання',
+    stripTitle: '👗 Морський бій — На роздягання',
+    stripPlace: '👗 Розстав кораблі-одяг',
+    stripDesc: 'Кораблі можуть бути будь-якої форми!',
   },
   en: {
     title: 'Sea Battle',
@@ -433,6 +442,10 @@ const LANG = {
     sound: 'Sound',
     vibration: 'Vibration',
     shipHint: '🚢 Ships: {0}',
+    stripMode: '👗 Strip Mode',
+    stripTitle: '👗 Sea Battle — Strip Mode',
+    stripPlace: '👗 Place clothing ships',
+    stripDesc: 'Ships can be any shape!',
   }
 };
 
@@ -565,7 +578,7 @@ async function fetchBotInfo(){
 
 let showShipHints = true;
 
-function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData){
+function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
   boardEl.innerHTML='';
   const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5;
   // Build a map cell -> ship size for hints
@@ -581,7 +594,7 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
     cell.className='cell';
-    if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP)cell.classList.add('ship')}
+    if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship')}}
     else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
     else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
@@ -637,11 +650,12 @@ function updateUI(){
   if(!isPlacing) showShipHints = false;
   $('ownBoardWrap').style.display='block';
   $('oppBoardWrap').style.display='block';
-  renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships);
-  renderBoard($('oppBoard'),s.opp,true,gameOver);
+  renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
+  renderBoard($('oppBoard'),s.opp,true,gameOver,null,s.strip);
   
-  $('gameInfo').textContent = '';
+  $('gameInfo').textContent = s.strip ? '👗 Strip' : '';
   $('header').classList.add('in-game');
+  $('title').textContent = s.strip ? t('stripTitle') : t('title');
   
   const ownEl=$('ownBoard'), oppEl=$('oppBoard');
   ownEl.classList.remove('my-turn');
@@ -656,8 +670,8 @@ function updateUI(){
     if(pollTimer){clearInterval(pollTimer);pollTimer=null}
     localStorage.removeItem('sb_game');
     $('app').insertBefore($('status'), $('app').firstChild);
-    if(s.all_sunk)showResult('🏆',t('win'),t('winDesc'));
-    else if(s.my_all_sunk)showResult('💔',t('lose'),t('loseDesc'));
+    if(s.all_sunk)showResult('🏆',t('win'),t('winDesc'),s.strip);
+    else if(s.my_all_sunk)showResult('💔',t('lose'),t('loseDesc'),s.strip);
     return;
   }
 
@@ -673,7 +687,7 @@ function updateUI(){
       $('status').title=t('copyCode');
       $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
     }else{
-      setStatus(t('placing'),'');
+      setStatus(s.strip ? t('stripPlace') : t('placing'),'');
       $('status').style.cursor='';
       $('status').onclick=null;
     }
@@ -708,6 +722,16 @@ function updateUI(){
 async function startSolo(){
   showShipHints = true;
   const res=await api('/api/new_solo',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  gameCode=res.code;
+  localStorage.setItem('sb_game',gameCode);
+  $('actions').innerHTML='';
+  await refreshState();
+}
+
+async function startStripMode(){
+  showShipHints = true;
+  const res=await api('/api/new_solo',{uid:getUid(),strip:true});
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
@@ -780,7 +804,7 @@ function pollGame(){
   },2000);
 }
 
-function showMenu(){
+function showMainMenu(){
   showShipHints = true;
   gameCode=null;state=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
@@ -789,21 +813,40 @@ function showMenu(){
   $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML = '';
-  $('title').textContent = '🎮 ' + t('selectGame');
-  document.title = 'Games';
-  $('gameInfo').textContent='—';
+  $('title').textContent = '⚓ МОРСКОЙ БОЙ';
+  document.title = 'Sea Battle';
+  $('gameInfo').textContent='';
   $('header').classList.remove('in-game');
   document.querySelectorAll('.board').forEach(b => b.classList.remove('my-turn'));
   $('app').insertBefore($('status'), $('app').firstChild);
-  setStatus(t('selectGame'));
-  // Show lang selector on menu
+  setStatus('');
   var lb=$('langBar');if(lb)lb.style.display='flex';
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <button class="btn primary" style="padding:24px 16px;font-size:20px;font-weight:700;border-radius:16px;margin-bottom:8px" onclick="showSeaBattleMenu()">⚓ ${t('seaBattle')}</button>
+  `;
+  fetchActiveGames();
+}
+
+function showMenu(){ showMainMenu(); }
+
+function showSeaBattleMenu(){
+  showShipHints = true;
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  $('title').textContent = t('seaBattle');
+  document.title = t('seaBattle');
+  setStatus(t('welcome'));
+  $('gameInfo').textContent='';
+  $('shipHint').innerHTML = '';
+  $('header').classList.remove('in-game');
+  $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
     <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="startStripMode()">${t('stripMode')}</button>
     <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
-    <button class="btn outline" onclick="window.Telegram?.WebApp?.close()">${t('quit')}</button>
+    <button class="btn outline" onclick="showMainMenu()">${t('quit')}</button>
   `;
   fetchActiveGames();
 }
@@ -851,16 +894,17 @@ async function handleShot(r,c){
   if(msg)setStatus(msg,'battle');
 }
 
-function showResult(icon,title,desc){
+function showResult(icon,title,desc,strip){
   const o=document.createElement('div');
   if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
+  const playAgainFn = strip ? 'startStripMode()' : 'startSolo()';
   o.innerHTML=`
     <div class="modal">
       <div class="result-icon">${icon}</div>
       <h2>${title}</h2>
       <p>${desc}</p>
-      <button class="btn primary" onclick="this.closest('.overlay').remove();startSolo()">${t('playAgain')}</button>
+      <button class="btn primary" onclick="this.closest('.overlay').remove();${playAgainFn}">${t('playAgain')}</button>
       <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -871,21 +915,7 @@ async function leaveGame(){
   showMenu();
 }
 
-function showSeaBattle(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  $('title').textContent = t('title');
-  document.title = t('title');
-  setStatus(t('welcome'));
-  $('gameInfo').textContent='—';
-  $('shipHint').innerHTML = '';
-  $('actions').className='btn-row stack';
-  $('actions').innerHTML=`
-    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
-    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
-    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
-    <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
-  `;
-}
+function showSeaBattle(){ showSeaBattleMenu(); }
 
 /* Anagram game disabled - commented out
 let anaSid=null, anaTimer=null, anaLetters=[], anaUsed=new Set(), anaCurrentWord=[];

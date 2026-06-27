@@ -1,6 +1,6 @@
 import json
 
-from game import Game, SIZE, SHIPS, auto_place_ships
+from game import Game, SIZE, SHIPS, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from persist import save
 import config
@@ -27,6 +27,7 @@ def as_dict(game, uid):
     return {
         "code": game.code,
         "solo": game.solo,
+        "strip": game.strip,
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -43,15 +44,18 @@ def as_dict(game, uid):
         "ships_list": list(SHIPS),
     }
 
-def new_solo(uid):
+def new_solo(uid, strip=False):
     code = Game.generate_code()
     while code in games:
         code = Game.generate_code()
-    game = Game(code, uid, solo=True)
+    game = Game(code, uid, solo=True, strip=strip)
     game.player2_id = 0
     games[code] = game
     game.phase = "placing"
-    auto_place_ships(game.board2)
+    if strip:
+        auto_place_strip_ships(game.board2)
+    else:
+        auto_place_ships(game.board2)
     game.placing[2]["ship_idx"] = len(SHIPS)
     game.ready[2] = True
     return game
@@ -104,7 +108,10 @@ def place_auto(uid, code):
     board = game.board_for(uid)
     board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
     board.ships = []
-    auto_place_ships(board)
+    if game.strip:
+        auto_place_strip_ships(board)
+    else:
+        auto_place_ships(board)
     game.placing[pnum]["ship_idx"] = len(SHIPS)
     return True
 
@@ -152,7 +159,8 @@ def handle_api(path, body):
     if path == "/api/new_solo":
         if not uid:
             return {"error": "no uid"}
-        game = new_solo(uid)
+        strip = data.get("strip", False)
+        game = new_solo(uid, strip=strip)
         player_games[uid] = game.code
         save()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
