@@ -133,11 +133,11 @@ def confirm_placement(uid, code):
         return True
     return False
 
-def new_multi(uid):
+def new_multi(uid, strip=False):
     code = Game.generate_code()
     while code in games:
         code = Game.generate_code()
-    game = Game(code, uid)
+    game = Game(code, uid, strip=strip)
     games[code] = game
     return game
 
@@ -171,7 +171,8 @@ def handle_api(path, body):
     if path == "/api/new_multi":
         if not uid:
             return {"error": "no uid"}
-        game = new_multi(uid)
+        strip = data.get("strip", False)
+        game = new_multi(uid, strip=strip)
         player_games[uid] = game.code
         save()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}

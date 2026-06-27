@@ -36,22 +36,22 @@
   --bg-board: #162e48;
   --bg-board-alt: #1f3d56;
   --border-color: #345575;
-  --accent-primary: #5a8fb4;
-  --accent-primary-light: #7aadc4;
-  --accent-primary-alt: #4c7fa6;
-  --text-muted: #7b8d9a;
-  --text-secondary: #bcc5cc;
-  --text-tertiary: #a5b0b8;
+  --accent-primary: #4a7fa0;
+  --accent-primary-light: #6a9db8;
+  --accent-primary-alt: #3d6d8c;
+  --text-muted: #6b7d8a;
+  --text-secondary: #acb5bc;
+  --text-tertiary: #95a0a8;
   --text-hint: #576672;
-  --color-ship: #4a8f60;
-  --color-hit: #c44848;
+  --color-ship: #3d7d50;
+  --color-hit: #b04040;
   --color-sunk-dark: #1c2328;
-  --color-btn-primary-1: #4574a0;
-  --color-btn-primary-2: #3a6288;
-  --color-btn-success-1: #4a8f60;
-  --color-btn-success-2: #3d7a52;
-  --color-btn-outline-border: #4c7fa6;
-  --color-warning: #d4b05a;
+  --color-btn-primary-1: #3d6b8a;
+  --color-btn-primary-2: #345a78;
+  --color-btn-success-1: #3d7d50;
+  --color-btn-success-2: #336b44;
+  --color-btn-outline-border: #3d6d8c;
+  --color-warning: #b89448;
   --color-header-grad-1: #162e48;
   --color-header-grad-2: #1f3d56;
 }
@@ -63,74 +63,24 @@
   --bg-board: #1e293b;
   --bg-board-alt: #334155;
   --border-color: #475569;
-  --accent-primary: #64748b;
-  --accent-primary-light: #94a3b8;
-  --accent-primary-alt: #57627b;
-  --text-muted: #78909c;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #b1b5c3;
-  --text-hint: #64748b;
-  --color-ship: #4ade80;
-  --color-hit: #ef4444;
+  --accent-primary: #5a6a85;
+  --accent-primary-light: #8b9bc4;
+  --accent-primary-alt: #4d5d7a;
+  --text-muted: #6e8098;
+  --text-secondary: #bec8d8;
+  --text-tertiary: #a5b0c3;
+  --text-hint: #5c6a80;
+  --color-ship: #3ec470;
+  --color-hit: #dc3535;
   --color-sunk-dark: #020617;
-  --color-btn-primary-1: #475569;
-  --color-btn-primary-2: #64748b;
-  --color-btn-success-1: #4ade80;
-  --color-btn-success-2: #22c55e;
-  --color-btn-outline-border: #64748b;
-  --color-warning: #fbbf24;
+  --color-btn-primary-1: #425069;
+  --color-btn-primary-2: #5a6a85;
+  --color-btn-success-1: #3ec470;
+  --color-btn-success-2: #2ec55e;
+  --color-btn-outline-border: #5a6a85;
+  --color-warning: #e5a823;
   --color-header-grad-1: #1e293b;
   --color-header-grad-2: #334155;
-}
-
-:root.palette-midnight {
-  --bg-dark: #0a0a12;
-  --bg-board: #13121f;
-  --bg-board-alt: #1b1a28;
-  --border-color: #2a2937;
-  --accent-primary: #9b87f5;
-  --accent-primary-light: #c4b5fd;
-  --accent-primary-alt: #7e69f5;
-  --text-muted: #7e7d8e;
-  --text-secondary: #a5a4b8;
-  --text-tertiary: #918fa8;
-  --text-hint: #67647b;
-  --color-ship: #7c3aed;
-  --color-hit: #f87171;
-  --color-sunk-dark: #080708;
-  --color-btn-primary-1: #5b21b6;
-  --color-btn-primary-2: #6d28d9;
-  --color-btn-success-1: #7c3aed;
-  --color-btn-success-2: #8b5cf6;
-  --color-btn-outline-border: #7e69f5;
-  --color-warning: #fbbf24;
-  --color-header-grad-1: #13121f;
-  --color-header-grad-2: #1b1a28;
-}
-
-:root.palette-forest {
-  --bg-dark: #0f1408;
-  --bg-board: #1a2310;
-  --bg-board-alt: #243c19;
-  --border-color: #3a5320;
-  --accent-primary: #7aa131;
-  --accent-primary-light: #a3d958;
-  --accent-primary-alt: #6a9a2b;
-  --text-muted: #7f8c69;
-  --text-secondary: #b2c89a;
-  --text-tertiary: #a1b881;
-  --text-hint: #6a7a55;
-  --color-ship: #5b8c33;
-  --color-hit: #9a3412;
-  --color-sunk-dark: #080a04;
-  --color-btn-primary-1: #3f6518;
-  --color-btn-primary-2: #4d7a18;
-  --color-btn-success-1: #5b8c33;
-  --color-btn-success-2: #6a9a2b;
-  --color-btn-outline-border: #7aa131;
-  --color-warning: #d6a80e;
-  --color-header-grad-1: #1a2310;
-  --color-header-grad-2: #243c19;
 }
 
 /* Neon theme removed */
@@ -269,9 +219,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <!-- Legend removed per request -->
   <div class="theme-selector" id="themeSelector" style="display:none">
     <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
     <button class="theme-btn" data-theme="slate" onclick="setTheme('slate')">⛳ Slate</button>
-    <button class="theme-btn" data-theme="midnight" onclick="setTheme('midnight')">🌙 Midnight</button>
     <div class="theme-divider"></div>
     <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
@@ -539,7 +487,7 @@ function updateSettingsUI(){
 }
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'forest', 'slate', 'midnight'];
+  const validThemes = ['ocean', 'slate'];
   if(!validThemes.includes(themeName)) return;
   
   document.documentElement.className = 'palette-' + themeName;
@@ -796,9 +744,9 @@ async function startStripMode(){
   await refreshState();
 }
 
-async function newMulti(){
+async function newMulti(strip=false){
   showShipHints = true;
-  const res=await api('/api/new_multi',{uid:getUid()});
+  const res=await api('/api/new_multi',{uid:getUid(),strip:strip});
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
@@ -900,16 +848,29 @@ function showSeaBattleMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div style="text-align:center;margin-bottom:12px">
-      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovd3d3LnczLm9yZy8yMDAwMHNdlodziaHR0cDovd3d3LmV0YWxpYS5vcmcvbmFtZXMvc3ZnIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMDAgMjAwIj4KIDxjaXJjbGVgIEN4PTIwMCBjeT0yMDAgciI5PSI5NSIgZmlsbD0idXJsKCNvb2NsYW5EZmClIHN0cm9rZT0iIzJjNTI4MiIgc3Ryb2tlQ2M9IjMiLz4KIDxyZWN0IHg9IjYwIiB5PSI2MCIgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiByeD0iMTAiIGZpbGw9InVybCgjc2hpcEJvZHksIHN0cm9rZT0iIzFlNGQzMiIsIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjciMCIgeT0iNzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgeDI9IjUwIiBmaWxsPSIjM2Q4YjQwIiBzdHJva2U9IjMjYzI4MjIiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxyZWN0IHg9IjcwIiB5PSI3MCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiByeD0iNSIgZmlsbD0iIzNkOGI0MCIgc3Ryb2tlPSIjMmMyODI2IiBzdHJva2Utd2lkdGg9IjAuNSIgZGlzc2FsdC1zYXCwLz4KIDxwb2x5Z29uIHBvaW50cz0iODUsOTUgMTE1LDEzMCIgZmlsbD0iIzZjMjgyOCIgc3Ryb2tlPSI4YjAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgogIDxwYXRoIGQ9Ik04MCw5NSBXNTQsODUgMTEwLDEzMCIgZmlsbD0iIzE1NjVjMCIgc3Ryb2tlPSIwZDQ3YTEiIHN0cm9rZS13aWR0aD0iMC41Ii8+CjxwYXRoIGQ9Ik04MCw5NSBRODUsODUgOTUsOTUgODUsOTUgODUsOTUgODUsOTUiIGZpbGw9IiM0ODgyODgiIHN0cm9rZT0iMjZjODQ4Ii8+CjxjaXJjbGUgY3g9IjkwIiBjeT04NSByPSIzIiBmaWxsPSIjfff” style="width:48px;height:48px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></img>
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iOTUiIGZpbGw9InVybCgjb2NlYW5EZmZmKSIgc3Ryb2tlPSIjMmM1MjgyIiBzdHJva2Utd2lkdGg9IjMiLz4KPHJlY3QgeD0iNjAiIHk9IjYwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiIHJ4PSIxMCIgZmlsbD0idXJsKCNzaGlwQm9keSkpIiBzdHJva2U9IiMxZTRkMzIiIHN0cm9rZS13aWR0aD0iMiIvPgo8cmVjdCB4PSI3MCIgeT0iNzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgeDI9IjUwIiBmaWxsPSIjM2Q4YjQwIiBzdHJva2U9IiMyYzI4MjIiIHN0cm9rZS13aWR0aD0iMSIvPgo8cmVjdCB4PSI3MCIgeT0iNzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjUiIGZpbGw9IiMzZDhiNDAiIHN0cm9rZT0iIzJjMjgyNiIgc3Ryb2tlLXdpZHRoPSIwLjUiIGRpc3NhbHQtc2Fjdy8+Cjxwb2x5Z29uIHBvaW50cz0iODUsOTUgMTE1LDEzMCIgZmlsbD0iIzZjMjgyOCIgc3Ryb2tlPSI4YjAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8cGF0aCBkPSJNODAsOTUgUTU0LDg1IDExMCwxMzAiIGZpbGw9IiMxNTY1YzAiIHN0cm9rZT0iMGQ0N2ExIiBzdHJva2Utd2lkdGg9IjAuNSIvPgo8cGF0aCBkPSJNODAsOTUgUTg1LDg1IDk1LDk1IDg1LDk1IDg1LDk1IDg1LDk1IiBmaWxsPSIjNDgyMjg4IiBzdHJva2U9IjI2Yzg0OCIvPgo8Y2lyY2xlIGN4PSI5MCIgY3k9Ijg1IiByPSIzIiBmaWxsPSIjZmZmIiBzdHJva2U9IjI2Yzg0OCIvPjwvc3ZnPg==" style="width:48px;height:48px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></img>
       <h2 style="margin:8px 0 4px;font-size:18px;color:var(--accent-primary);font-weight:700">⚓ ${t('seaBattle')}</h2>
     </div>
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
-    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
-    <button class="btn outline strip-btn" onclick="startStripMode()">${t('stripMode')}</button>
+    <button class="btn primary" onclick="chooseMultiMode()">${t('vsFriend')}</button>
     <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
   fetchActiveGames();
+}
+
+function chooseMultiMode(){
+  const o=document.createElement('div');
+  o.className='overlay';
+  o.innerHTML=`
+    <div class="modal">
+      <h2>👤 ${t('vsFriend')}</h2>
+      <p style="margin-bottom:16px;color:var(--text-secondary)">${t('stripMode')}?</p>
+      <button class="btn primary" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(false)">${t('vsBot').replace('🤖','').replace('С ботом','').replace('vs Bot','').replace('З ботом','').trim() || 'Обычный'}</button>
+      <button class="btn outline strip-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(true)">${t('stripMode')}</button>
+      <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+    </div>`;
+  document.body.appendChild(o);
 }
 
 async function autoPlace(){
