@@ -32,28 +32,28 @@
 }
 
 :root.palette-ocean {
-  --bg-dark: #0d1b2a;
-  --bg-board: #132f4c;
-  --bg-board-alt: #1e3f5a;
-  --border-color: #2c5282;
-  --accent-primary: #4299e1;
-  --accent-primary-light: #63b3ed;
-  --accent-primary-alt: #3182ce;
-  --text-muted: #718096;
-  --text-secondary: #cbd5e0;
-  --text-tertiary: #a0aec0;
-  --text-hint: #4a5568;
-  --color-ship: #38a169;
-  --color-hit: #e53e3e;
-  --color-sunk-dark: #1a202c;
-  --color-btn-primary-1: #3182ce;
-  --color-btn-primary-2: #2c5282;
-  --color-btn-success-1: #38a169;
-  --color-btn-success-2: #2f855a;
-  --color-btn-outline-border: #3182ce;
-  --color-warning: #ecc94b;
-  --color-header-grad-1: #132f4c;
-  --color-header-grad-2: #1e3f5a;
+  --bg-dark: #0f1f30;
+  --bg-board: #162e48;
+  --bg-board-alt: #1f3d56;
+  --border-color: #345575;
+  --accent-primary: #5a8fb4;
+  --accent-primary-light: #7aadc4;
+  --accent-primary-alt: #4c7fa6;
+  --text-muted: #7b8d9a;
+  --text-secondary: #bcc5cc;
+  --text-tertiary: #a5b0b8;
+  --text-hint: #576672;
+  --color-ship: #4a8f60;
+  --color-hit: #c44848;
+  --color-sunk-dark: #1c2328;
+  --color-btn-primary-1: #4574a0;
+  --color-btn-primary-2: #3a6288;
+  --color-btn-success-1: #4a8f60;
+  --color-btn-success-2: #3d7a52;
+  --color-btn-outline-border: #4c7fa6;
+  --color-warning: #d4b05a;
+  --color-header-grad-1: #162e48;
+  --color-header-grad-2: #1f3d56;
 }
 
 
@@ -83,30 +83,7 @@
   --color-header-grad-2: #334155;
 }
 
-:root.palette-neon {
-  --bg-dark: #0d0d1a;
-  --bg-board: #161630;
-  --bg-board-alt: #1e1e40;
-  --border-color: #2d2d6b;
-  --accent-primary: #a78bfa;
-  --accent-primary-light: #c4b5fd;
-  --accent-primary-alt: #8b5cf6;
-  --text-muted: #94a3b8;
-  --text-secondary: #cbd5e1;
-  --text-tertiary: #a5b4d0;
-  --text-hint: #64748b;
-  --color-ship: #2dd4bf;
-  --color-hit: #f472b6;
-  --color-sunk-dark: #05050f;
-  --color-btn-primary-1: #7c3aed;
-  --color-btn-primary-2: #6d28d9;
-  --color-btn-success-1: #0ea5e9;
-  --color-btn-success-2: #0284c7;
-  --color-btn-outline-border: #a78bfa;
-  --color-warning: #fbbf24;
-  --color-header-grad-1: #161630;
-  --color-header-grad-2: #1e1e40;
-}
+/* Neon theme removed */
 
 
 
@@ -233,22 +210,16 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
     <div class="board-label" id="lblOpp">🎯</div>
     <div class="board" id="oppBoard"></div>
   </div>
-  <div class="legend" id="legend" style="display:none">
-    <span>⬜ <span id="legEmpty"></span></span>
-    <span>🟩 <span id="legShip"></span></span>
-    <span>❌ <span id="legHit"></span></span>
-    <span>· <span id="legMiss"></span></span>
-    <span>✖ <span id="legSunk"></span></span>
-  </div>
+  <!-- Legend removed per request -->
   <div class="theme-selector" id="themeSelector" style="display:none">
     <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
     <button class="theme-btn" data-theme="slate" onclick="setTheme('slate')">⛳ Slate</button>
-    <button class="theme-btn" data-theme="neon" onclick="setTheme('neon')">💜 Neon</button>
     <div class="theme-divider"></div>
     <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
   </div>
   <div class="btn-row" id="actions"></div>
+  <!-- Anagram area disabled
   <div id="anaArea" style="display:none">
     <div class="ana-info">
       <span class="timer" id="anaTimer">60</span>
@@ -265,6 +236,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:v
     </div>
     <div class="ana-found" id="anaFound"></div>
   </div>
+  -->
 </div>
 <footer>🎮 Games</footer>
 
@@ -497,7 +469,7 @@ function updateSettingsUI(){
 }
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'slate', 'neon'];
+  const validThemes = ['ocean', 'slate'];
   if(!validThemes.includes(themeName)) return;
   
   document.documentElement.className = 'palette-' + themeName;
@@ -559,13 +531,7 @@ function setLang(l){
 function applyLang(){
   $('lblOwn').textContent = t('ownBoard');
   $('lblOpp').textContent = t('oppBoard');
-  $('legEmpty').textContent = t('legEmpty');
-  $('legShip').textContent = t('legShip');
-  $('legHit').textContent = t('legHit');
-  $('legMiss').textContent = t('legMiss');
-  $('legSunk').textContent = t('legSunk');
-  if(!state && !gameCode && !anaSid) showMenu();
-  else if(anaSid){$('title').textContent=t('anaTitle');document.title='Anagram'}
+  if(!state && !gameCode) showMenu();
   else{$('title').textContent=t('title');document.title=t('title')}
 }
 
@@ -711,22 +677,19 @@ function updateUI(){
       $('status').style.cursor='';
       $('status').onclick=null;
     }
-    renderShipHint(s.ships_list, s.ships_placed);
-    $('actions').className='btn-row stack';
+    $('oppBoardWrap').style.display='none';
+    $('legend').style.display='none';
     $('actions').innerHTML=`
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
     `;
-    $('oppBoardWrap').style.display='none';
-    $('legend').style.display='none';
     $('themeSelector').style.display='none';
     return;
   }
   $('shipHint').innerHTML = '';
 
-  $('legend').style.display='flex';
   $('oppBoardWrap').style.display='block';
   $('themeSelector').style.display='flex';
   updateSettingsUI();
@@ -773,6 +736,7 @@ function shareGame(){
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
 
+/* Anagram sharing disabled
 function shareAnaGame(){
   const code = localStorage.getItem('ana_code') || anaLobbyCode;
   if(!code) return;
@@ -782,6 +746,7 @@ function shareAnaGame(){
   copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
+*/
 
 function copyToClipboard(text, msg){
   if(navigator.clipboard){
@@ -818,16 +783,13 @@ function pollGame(){
 
 function showMenu(){
   showShipHints = true;
-  gameCode=null;state=null;anaSid=null;anaLetters=[];anaUsed=new Set();anaCurrentWord=[];
+  gameCode=null;state=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
-  if(anaTimer){clearInterval(anaTimer);anaTimer=null}
   localStorage.removeItem('sb_game');
-  localStorage.removeItem('ana_sid');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('legend').style.display='none';
   $('themeSelector').style.display='none';
-  $('anaArea').style.display='none';
   $('shipHint').innerHTML = '';
   $('title').textContent = '🎮 ' + t('selectGame');
   document.title = 'Games';
@@ -838,22 +800,12 @@ function showMenu(){
   setStatus(t('selectGame'));
   // Show lang selector on menu
   var lb=$('langBar');if(lb)lb.style.display='flex';
-  $('actions').className='btn-row';
+  $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div id="activeGamesContainer"></div>
-    <div style="text-align:right;padding:0 0 4px"><button class="btn-link" onclick="showSettings()">⚙️</button></div>
-    <div class="game-select">
-      <div class="game-card" onclick="showSeaBattle()">
-        <div class="icon">⚓</div>
-        <div class="name">${t('seaBattle')}</div>
-        <div class="card-desc">${t('vsBot')} / ${t('withFriend')}</div>
-      </div>
-      <div class="game-card" onclick="showAnagram()">
-        <div class="icon">🔤</div>
-        <div class="name">${t('anaTitle')}</div>
-        <div class="card-desc">${t('anaSolo')} / ${t('anaFriend')}</div>
-      </div>
-    </div>
+    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
+    <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+    <button class="btn outline" onclick="window.Telegram?.WebApp?.close()">${t('quit')}</button>
   `;
   fetchActiveGames();
 }
@@ -933,9 +885,11 @@ function showSeaBattle(){
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
     <button class="btn primary" onclick="newMulti()">${t('vsFriend')}</button>
     <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+    <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
   `;
 }
 
+/* Anagram game disabled - commented out
 let anaSid=null, anaTimer=null, anaLetters=[], anaUsed=new Set(), anaCurrentWord=[];
 
 function showAnagram(){
@@ -1052,7 +1006,9 @@ function anaBackspace(){
   anaUsed.delete(origIdx);
   anaRenderWord();
 }
+*/
 
+/* Anagram functions disabled
 function anaRenderWord(){
   $('anaLetters').innerHTML=anaLetters.map((l,i)=>`<div class="ana-tile${anaUsed.has(i)?' used':''}" onclick="anaTileClick(${i})">${l}</div>`).join('');
   $('anaWordDisplay').innerHTML=anaCurrentWord.length
@@ -1122,6 +1078,7 @@ async function anaGetHint(){
   setStatus('💡 '+res.result.word+' (-200)','');
   api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
 }
+*/
 
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
@@ -1137,10 +1094,13 @@ async function fetchActiveGames(){
       var label=g.solo?t('vsBot'):t('withFriend');
       var badge=g.phase==='playing'?'<span class="badge playing">🎯 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+t('placing')+'</span>';
       html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
-    }else if(g.type==='anagram'){
+    }
+    /* Anagram active games disabled
+    else if(g.type==='anagram'){
       var fin=g.finished?'<span class="badge">✅ '+t('anaOver').replace('{}',g.score)+'</span>':'<span class="badge playing">🔤 '+t('yourTurn')+'</span>';
       html+='<div class="active-game-row" onclick="resumeAna(\''+g.code+'\')"><div class="info"><span class="label">🔤 </span><span class="code">'+g.code+'</span></div>'+fin+'</div>';
     }
+    */
   }
   html+='</div>';
   cont.innerHTML=html;
@@ -1155,6 +1115,7 @@ function resumeSB(code){
   setTimeout(pollGame,500);
 }
 
+/* Anagram resume disabled
 function resumeAna(code){
   // Try to find existing ana_sid for this code from local storage, or rejoin
   var sid=localStorage.getItem('ana_sid');
@@ -1168,6 +1129,7 @@ function resumeAna(code){
     anaJoin(code);
   }
 }
+*/
 
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
@@ -1179,6 +1141,7 @@ function tryReconnect(){
     setTimeout(pollGame,1000);
     return;
   }
+  /* Anagram reconnection disabled
   if(savedAna){
     anaSid=savedAna;
     api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
@@ -1192,6 +1155,7 @@ function tryReconnect(){
     });
     return;
   }
+  */
   showMenu();
   fetchActiveGames();
   checkStartParam();
@@ -1202,6 +1166,7 @@ async function checkStartParam(){
     const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
     if(sp){
       const code = sp.trim().toUpperCase();
+      /* Anagram join disabled
       // Try join as Anagram first
       const anaRes = await api('/api/ana_join', {uid: getUid(), code});
       if(anaRes && anaRes.ok){
@@ -1212,6 +1177,7 @@ async function checkStartParam(){
         anaShowGame(anaRes.state);
         return;
       }
+      */
       // Try Sea Battle
       const sbRes = await api('/api/join', {uid: getUid(), code});
       if(sbRes && sbRes.ok){
