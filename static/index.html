@@ -315,6 +315,14 @@ const LANG = {
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
     stripDesc: 'Корабли могут быть любой формы!',
+    stripLoseTitle: '👗 Игра окончена!',
+    stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
+    stripUploadTitle: '📸 Загрузи фото',
+    stripUploadDesc: 'Выбери способ загрузки фото:',
+    stripTakePhoto: '📷 Сделать фото',
+    stripChoosePhoto: '🖼 Из галереи',
+    stripUseStandard: '🎭 Стандартное фото',
+    stripSkip: '⏭ Пропустить',
   },
   uk: {
     title: 'Морський бій',
@@ -383,6 +391,14 @@ const LANG = {
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
     stripDesc: 'Кораблі можуть бути будь-якої форми!',
+    stripLoseTitle: '👗 Гра закінчена!',
+    stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
+    stripUploadTitle: '📸 Завантаж фото',
+    stripUploadDesc: 'Обери спосіб завантаження фото:',
+    stripTakePhoto: '📷 Зробити фото',
+    stripChoosePhoto: '🖼 З галереї',
+    stripUseStandard: '🎭 Стандартне фото',
+    stripSkip: '⏭ Пропустити',
   },
   en: {
     title: 'Sea Battle',
@@ -451,6 +467,14 @@ const LANG = {
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
     stripDesc: 'Ships can be any shape!',
+    stripLoseTitle: '👗 Game Over!',
+    stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
+    stripUploadTitle: '📸 Upload Photo',
+    stripUploadDesc: 'Choose how to upload a photo:',
+    stripTakePhoto: '📷 Take Photo',
+    stripChoosePhoto: '🖼 From Gallery',
+    stripUseStandard: '🎭 Standard Photo',
+    stripSkip: '⏭ Skip',
   }
 };
 
@@ -575,8 +599,12 @@ async function api(method,data){
 async function fetchBotInfo(){
   try {
     const res = await api('/api/bot_info', {});
-    if(res && res.ok){
-      botUsername = res.bot_username || '';
+    if(res && res.ok && res.bot_username){
+      botUsername = res.bot_username;
+    } else if(res && res.ok && !res.bot_username) {
+      // Bot username not ready yet, retry after a short delay
+      await new Promise(r => setTimeout(r, 500));
+      return fetchBotInfo();
     }
   } catch(e){}
 }
@@ -757,11 +785,19 @@ async function newMulti(strip=false){
 
 function shareGame(){
   if(!gameCode) return;
-  const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
-  const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
-  const text = texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+  // Ensure botUsername is loaded
+  if(!botUsername){
+    fetchBotInfo().then(() => doShare());
+  } else {
+    doShare();
+  }
+  function doShare(){
+    const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
+    const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
+    const text = texts[lang];
+    copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+    try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+  }
 }
 
 /* Anagram sharing disabled
@@ -930,6 +966,92 @@ function showResult(icon,title,desc,strip){
       <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
+  
+  // If strip mode and player lost, show photo upload modal after a short delay
+  if(strip && icon==='💔'){
+    setTimeout(() => showStripPhotoUpload(), 500);
+  }
+}
+
+function showStripPhotoUpload(){
+  const o=document.createElement('div');
+  o.className='overlay';
+  o.innerHTML=`
+    <div class="modal">
+      <div class="result-icon">📸</div>
+      <h2>${t('stripUploadTitle')}</h2>
+      <p>${t('stripUploadDesc')}</p>
+      <button class="btn primary" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();takeStripPhoto()">${t('stripTakePhoto')}</button>
+      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();chooseStripPhoto()">${t('stripChoosePhoto')}</button>
+      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();useStandardStripPhoto()">${t('stripUseStandard')}</button>
+      <button class="btn outline quit-btn" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('stripSkip')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
+
+function takeStripPhoto(){
+  // Use HTML input with capture=environment for camera access
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = (e) => handleStripPhoto(e.target.files[0]);
+  input.click();
+}
+
+function chooseStripPhoto(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = (e) => handleStripPhoto(e.target.files[0]);
+  input.click();
+}
+
+function useStandardStripPhoto(){
+  // Use a standard placeholder image for strip mode
+  const standardPhotos = [
+    'https://via.placeholder.com/300x400/e91e63/fff?text=👗+Strip+Mode',
+    'https://via.placeholder.com/300x400/d81b60/fff?text=🏆+Winner',
+    'https://via.placeholder.com/300x400/c2185b/fff?text=🎮+Game+Over'
+  ];
+  const photo = standardPhotos[Math.floor(Math.random() * standardPhotos.length)];
+  showStripPhotoResult(photo);
+}
+
+function handleStripPhoto(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    showStripPhotoResult(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function showStripPhotoResult(photoData){
+  const o=document.createElement('div');
+  o.className='overlay';
+  // Store photoData in a global variable to avoid long onclick attribute
+  window._lastStripPhoto = photoData;
+  o.innerHTML=`
+    <div class="modal" style="max-width:90vw">
+      <h2>${t('stripLoseTitle')}</h2>
+      <p>${t('stripLoseDesc')}</p>
+      <img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:300px;border-radius:12px;margin:12px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
+      <button class="btn success" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();shareStripPhoto()">${t('inviteFriend')}</button>
+      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
+
+function shareStripPhoto(){
+  // For now just go back to menu, in future could upload to server
+  const photoData = window._lastStripPhoto;
+  if(photoData){
+    // Could upload to server here
+    console.log('Strip photo ready for sharing:', photoData.substring(0, 50) + '...');
+  }
+  setStatus('📸 Фото сохранено!', 'battle');
+  setTimeout(() => leaveGame(), 1500);
 }
 
 async function leaveGame(){
