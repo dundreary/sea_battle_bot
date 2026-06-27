@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1f3c"/>
+      <stop offset="100%" stop-color="#1a3a5c"/>
+    </linearGradient>
+    <linearGradient id="shipBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2e7d32"/>
+      <stop offset="100%" stop-color="#3d8b40"/>
+    </linearGradient>
+    <linearGradient id="shipWater" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1565c0"/>
+      <stop offset="100%" stop-color="#1976d2"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="url(#oceanGrad)" stroke="#2c5282" stroke-width="3"/>
+  <rect x="60" y="60" width="80" height="80" rx="10" fill="url(#shipBody)" stroke="#1e4d32" stroke-width="2"/>
+  <rect x="70" y="70" width="60" height="60" rx="5" fill="#3d8b40" stroke="#2c5282" stroke-width="1" opacity="0.8"/>
+  <polygon points="85,95 115,95 100,130" fill="#c62828" stroke="#8b0000" stroke-width="1"/>
+  <path d="M 90,95 Q 100,85 110,95 Q 105,105 95,105 Q 90,95 90,95" fill="#1565c0" stroke="#0d47a1" stroke-width="0.5"/>
+  <circle cx="90" cy="85" r="3" fill="#fff" opacity="0.9"/>
+  <circle cx="110" cy="85" r="3" fill="#fff" opacity="0.9"/>
+</svg>

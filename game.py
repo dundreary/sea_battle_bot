@@ -3,6 +3,7 @@ import time
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+STRIP_SHIPS = [4, 4, 3, 3, 2, 2, 1, 1]
 
 EMPTY = 0
 SHIP = 1
@@ -200,10 +201,12 @@ class Game:
         if pnum is None:
             pnum = self.player_num(self.current_player())
         idx = self.placing[pnum]["ship_idx"]
-        if idx >= len(SHIPS):
+        ships_list = STRIP_SHIPS if self.strip else SHIPS
+        if idx >= len(ships_list):
             return None
-        return SHIPS[idx]
+        return ships_list[idx]
 
+    @staticmethod
     def generate_code():
         import string
         return "".join(random.choices(string.ascii_uppercase, k=6))
@@ -298,28 +301,23 @@ def validate_ship_placement(cells, strip=False):
 
 CLOTHING_SHAPES = {
     4: [
-        [(0,0),(0,1),(0,2),(0,3)],
-        [(0,0),(1,0),(2,0),(3,0)],
-        [(0,0),(0,1),(1,1),(1,2)],
-        [(0,1),(0,2),(0,3),(1,0)],
+        [(0,0), (0,1), (1,0), (1,1)],  # 2x2 square
+        [(0,1), (0,2), (1,0), (1,1)],  # shifted square (S-shape)
     ],
     3: [
-        [(0,0),(0,1),(0,2)],
-        [(0,0),(1,0),(2,0)],
-        [(0,0),(0,1),(1,1)],
-        [(0,0),(1,0),(1,1)],
+        [(0,0), (1,0), (1,1)],  # L-shape (angle)
+        [(0,0), (0,1), (0,2)],  # straight stick
     ],
     2: [
-        [(0,0),(0,1)],
-        [(0,0),(1,0)],
+        [(0,0), (0,1)],  # horizontal pair
     ],
     1: [
-        [(0,0)],
+        [(0,0)],  # single cell
     ],
 }
 
-def auto_place_strip_ships(board):
-    for length in SHIPS:
+def auto_place_strip_ships(board: Board) -> None:
+    for length in STRIP_SHIPS:
         placed = False
         attempts = 0
         while not placed and attempts < 1000:
@@ -339,7 +337,8 @@ def auto_place_strip_ships(board):
             auto_place_strip_ships(board)
             return
 
-def auto_place_ships(board):
+
+def auto_place_ships(board: Board) -> None:
     for length in SHIPS:
         placed = False
         attempts = 0

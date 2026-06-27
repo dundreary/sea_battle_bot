@@ -3,16 +3,17 @@ import random
 import time
 import uuid
 from collections import Counter
+from typing import Dict, List, Set, Optional, Any
 
-WORD_LIST = None
-BASE_WORDS = None
-_SIG_CACHE = {}
-_SIGS = {}
+WORD_LIST: Optional[Set[str]] = None
+BASE_WORDS: Optional[List[str]] = None
+_SIG_CACHE: Dict[str, tuple] = {}
+_SIGS: Dict[str, tuple] = {}
 
 UKR_LETTERS = 'абвгдеєжзиіїйклмнопрстуфхцчшщьюя'
 UKR_INDEX = {ch: i for i, ch in enumerate(UKR_LETTERS)}
 
-def _word_signature(word):
+def _word_signature(word: str) -> tuple:
     if word in _SIG_CACHE:
         return _SIG_CACHE[word]
     counts = [0] * 33
@@ -89,13 +90,13 @@ def _pick_base_word():
     top = max(10, len(scored) // 3)
     return random.choice([w for w, _ in scored[:top]])
 
-rooms = {}
-games = {}
+rooms: Dict[str, Dict[str, Any]] = {}
+games: Dict[str, Dict[str, Any]] = {}
 
-def _code():
+def _code() -> str:
     return ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ', k=5))
 
-def _new_state(letters, all_words, solo):
+def _new_state(letters: str, all_words: List[str], solo: bool) -> Dict[str, Any]:
     return {
         'base_word': letters,  # the original 6-letter word
         'letters': letters,

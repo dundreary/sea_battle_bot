@@ -1,15 +1,16 @@
 import json
+from typing import Dict, Any
 
-from game import Game, SIZE, SHIPS, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from persist import save
 import config
 
-games = {}
-player_games = {}
+games: Dict[str, Game] = {}
+player_games: Dict[int, str] = {}
 
 # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
-ana_player_sessions = {}
+ana_player_sessions: Dict[int, Dict[str, Any]] = {}
 
 EMPTY = 0
 SHIP = 1
@@ -24,6 +25,7 @@ def as_dict(game, uid):
     for ship in own.ships:
         ship_size = len(ship.cells)
         ships_data.append({"size": ship_size, "cells": [list(c) for c in ship.cells]})
+    ships_list = STRIP_SHIPS if game.strip else SHIPS
     return {
         "code": game.code,
         "solo": game.solo,
@@ -41,7 +43,7 @@ def as_dict(game, uid):
         "my_all_sunk": own.all_sunk(),
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
         "ships_placed": len(own.ships),
-        "ships_list": list(SHIPS),
+        "ships_list": list(ships_list),
     }
 
 def new_solo(uid, strip=False):
@@ -119,9 +121,10 @@ def confirm_placement(uid, code):
     game = games.get(code)
     pnum = game.player_num(uid)
     board = game.board_for(uid)
-    if len(board.ships) < len(SHIPS):
+    ships_list = STRIP_SHIPS if game.strip else SHIPS
+    if len(board.ships) < len(ships_list):
         return None
-    if game.solo and len(game.board2.ships) < len(SHIPS):
+    if game.solo and len(game.board2.ships) < len(ships_list):
         return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
@@ -151,7 +154,7 @@ def join_game(uid, code):
 def handle_api(path, body):
     try:
         data = json.loads(body) if body else {}
-    except:
+    except json.JSONDecodeError:
         data = {}
     uid = data.get("uid")
     code = data.get("code")

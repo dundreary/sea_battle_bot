@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ContextTypes
 import config
 
 logger = logging.getLogger(__name__)
@@ -15,10 +15,13 @@ L10N = {
 def _(user, key):
     try:
         lc = (user.language_code or 'ru')[:2]
-        if lc.startswith('uk'): lc = 'uk'
-        elif lc.startswith('en'): lc = 'en'
-        else: lc = 'ru'
-    except:
+        if lc.startswith('uk'):
+            lc = 'uk'
+        elif lc.startswith('en'):
+            lc = 'en'
+        else:
+            lc = 'ru'
+    except Exception:
         lc = 'ru'
     return L10N.get(lc, L10N['ru']).get(key, key)
 
@@ -34,7 +37,10 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = update.message.web_app_data.data.strip().upper()
     user = update.effective_user
     lc = (user.language_code or 'ru')[:2]
-    if lc.startswith('uk'): share = f"🎮 Морський бій\n\nКод гри: <b>{data}</b>\n\nВідкрийте гру та натисніть «🔗 Ввести код»"
-    elif lc.startswith('en'): share = f"🎮 Sea Battle\n\nGame code: <b>{data}</b>\n\nOpen the game and tap «🔗 Enter Code»"
-    else: share = f"🎮 Морской бой\n\nКод игры: <b>{data}</b>\n\nОткройте игру и нажмите «🔗 Ввести код»"
+    if lc.startswith('uk'):
+        share = f"🎮 Морський бій\n\nКод гри: <b>{data}</b>\n\nВідкрийте гру та натисніть «🔗 Ввести код»"
+    elif lc.startswith('en'):
+        share = f"🎮 Sea Battle\n\nGame code: <b>{data}</b>\n\nOpen the game and tap «🔗 Enter Code»"
+    else:
+        share = f"🎮 Морской бой\n\nКод игры: <b>{data}</b>\n\nОткройте игру и нажмите «🔗 Ввести код»"
     await update.message.reply_text(share, parse_mode="HTML")
