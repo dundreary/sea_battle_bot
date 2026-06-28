@@ -155,7 +155,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .mode-card{aspect-ratio:1;background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:2px solid var(--border-color);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.2s;padding:10px;text-align:center}
 .mode-card:hover{transform:translateY(-2px);border-color:var(--accent-primary)}
 .mode-card:active{transform:scale(.95)}
-.mode-card .icon{width:56px;height:56px;margin-bottom:6px;display:block}
+.mode-card .icon{width:28px;height:28px;margin-bottom:6px;display:block}
 .mode-card .label{font-size:13px;font-weight:600;color:var(--text-secondary);line-height:1.2}
 .mode-card.bot{border-color:#1565c0}
 .mode-card.bot:hover{border-color:#4fc3f7}
@@ -1007,7 +1007,7 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-      <img src="/static/game-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <img src="/static/game-icon.svg" style="width:32px;height:32px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
@@ -1034,7 +1034,7 @@ function showSeaBattleMenu(){
   $('actions').className='btn-row';
   $('actions').innerHTML=`
     <div style="text-align:center;width:100%;margin-bottom:4px">
-      <img src="/static/game-icon.svg" style="width:48px;height:48px;display:block;margin:0 auto">
+      <img src="/static/game-icon.svg" style="width:24px;height:24px;display:block;margin:0 auto">
     </div>
     <div class="mode-grid">
       <div class="mode-card bot" onclick="startSolo()">
