@@ -371,14 +371,23 @@ def handle_api(path, body):
         if not game:
             return {"error": "game not found"}
         winner_id = game.opponent_id(uid)
+        solo = game.solo
         if not winner_id or winner_id == 0:
-            return {"error": "no opponent"}
+            # Solo vs bot: send photo to the player themselves
+            winner_id = uid
         user_lang = data.get("lang", "ru")
-        captions = {
-            'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-            'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-            'en': '👗 Your friend lost in Strip Mode!',
-        }
+        if solo:
+            captions = {
+                'ru': '👗 Ты проиграл в режиме «На раздевание»! Фотография сделана.',
+                'uk': '👗 Ти програв у режимі «На роздягання»! Фотографія зроблена.',
+                'en': '👗 You lost in Strip Mode! Photo taken.',
+            }
+        else:
+            captions = {
+                'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
+                'uk': '👗 Твій друг програв у режимі «На роздягання»!',
+                'en': '👗 Your friend lost in Strip Mode!',
+            }
         caption = captions.get(user_lang, captions['ru'])
         ok = send_strip_photo_to_winner(winner_id, photo, caption)
 
