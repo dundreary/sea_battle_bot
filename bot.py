@@ -1,4 +1,3 @@
-import os
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import ContextTypes
@@ -12,24 +11,22 @@ L10N = {
     'en': {'text': '⚓ <b>Sea Battle</b>\n\nTap the button below to open the game 🎯', 'btn': '🎮 Open Game', 'share': '🎮 Sea Battle\n\nGame code: <b>{code}</b>\n\nOpen the game and tap «🔗 Enter Code»'},
 }
 
-def _(user, key):
+def _locale_code(user):
     lc = (user.language_code or 'ru')[:2] if user else 'ru'
-    lc = 'uk' if lc.startswith('uk') else 'en' if lc.startswith('en') else 'ru'
-    return L10N.get(lc, L10N['ru']).get(key, '')
+    return 'uk' if lc.startswith('uk') else 'en' if lc.startswith('en') else 'ru'
+
+def _(user, key):
+    return L10N.get(_locale_code(user), L10N['ru']).get(key, '')
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
     user = update.effective_user
     kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=base or "https://sea-battle-bot.onrender.com"))
+        InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=config.WEBAPP_URL or "https://sea-battle-bot.onrender.com"))
     ]])
     await update.message.reply_text(_(user, 'text'), reply_markup=kb, parse_mode="HTML")
 
 async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = update.message.web_app_data.data.strip().upper()
     user = update.effective_user
-    
-    lc = (user.language_code or 'ru')[:2] if user else 'ru'
-    lc = 'uk' if lc.startswith('uk') else 'en' if lc.startswith('en') else 'ru'
-    share = L10N.get(lc, L10N['ru']).get('share', '').format(code=data)
+    share = L10N.get(_locale_code(user), L10N['ru']).get('share', '').format(code=data)
     await update.message.reply_text(share, parse_mode="HTML")

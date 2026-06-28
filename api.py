@@ -1,3 +1,4 @@
+import atexit
 import json
 import logging
 import threading
@@ -78,7 +79,6 @@ def new_solo(uid, strip=False):
     while code in games:
         code = Game.generate_code()
     game = Game(code, uid, solo=True, strip=strip)
-    game.player2_id = 0
     games[code] = game
     game.phase = "placing"
     if strip:
@@ -207,15 +207,17 @@ def _sync_save():
         for code, game in games.items():
             try:
                 data['api_games'][code] = game.to_dict()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("save game %s: %s", code, e)
         for code, g in yz_games.items():
             try:
                 data['yz_games'][code] = g.to_dict()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("save yahtzee %s: %s", code, e)
     persist.save(data)
 
+
+atexit.register(_sync_save)
 
 MAX_AGE = 86400  # 24 hours
 
@@ -261,7 +263,6 @@ def load_all():
         return
 
     now = time.time()
-    MAX_AGE = 86400
 
     games.clear()
     for code, gdata in data.get('api_games', {}).items():
@@ -270,8 +271,8 @@ def load_all():
             created = getattr(game, 'created_at', 0)
             if now - created < MAX_AGE:
                 games[code] = game
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("load game %s: %s", code, e)
 
     player_games.clear()
     player_games.update({int(k): v for k, v in data.get('api_player_games', {}).items()})
@@ -287,8 +288,8 @@ def load_all():
             started = gdata.get('started_at', 0)
             if now - started < MAX_AGE:
                 anagram.games[sid] = gdata
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("load anagram game %s: %s", sid, e)
 
     anagram.rooms.clear()
     for code, rdata in data.get('anagram_rooms', {}).items():
@@ -297,8 +298,8 @@ def load_all():
             p2 = rdata.get('p2_sid')
             if (p1 and p1 in anagram.games) or (p2 and p2 in anagram.games):
                 anagram.rooms[code] = rdata
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("load anagram room %s: %s", code, e)
 
     ana_player_sessions.clear()
     for k, v in data.get('api_ana_player_sessions', {}).items():
@@ -306,8 +307,8 @@ def load_all():
             sid = v.get('sid')
             if sid and sid in anagram.games:
                 ana_player_sessions[int(k)] = v
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("load ana session %s: %s", k, e)
 
     yz_games.clear()
     for code, gdata in data.get('yz_games', {}).items():
@@ -315,8 +316,8 @@ def load_all():
             g = yahtzee.Yahtzee.from_dict(gdata)
             if time.time() - g.ts < 86400:
                 yz_games[code] = g
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("load yahtzee %s: %s", code, e)
 
     yz_player_games.clear()
     yz_player_games.update({int(k): v for k, v in data.get('yz_player_games', {}).items()})
