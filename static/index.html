@@ -594,15 +594,14 @@ async function api(method,data){
   }catch(e){setStatus(t('error'));return null}
 }
 
-async function fetchBotInfo(){
+async function fetchBotInfo(retries=10){
   try {
     const res = await api('/api/bot_info', {});
     if(res && res.ok && res.bot_username){
       botUsername = res.bot_username;
-    } else if(res && res.ok && !res.bot_username) {
-      // Bot username not ready yet, retry after a short delay
+    } else if(retries > 0) {
       await new Promise(r => setTimeout(r, 500));
-      return fetchBotInfo();
+      return fetchBotInfo(retries - 1);
     }
   } catch(e){}
 }
@@ -809,14 +808,17 @@ async function newMulti(strip=false){
 
 function shareGame(){
   if(!gameCode) return;
-  // Ensure botUsername is loaded
   if(!botUsername){
     fetchBotInfo().then(() => doShare());
   } else {
     doShare();
   }
   function doShare(){
-    const url = `https://t.me/${botUsername || '...'}/app?startapp=${gameCode}`;
+    if(!botUsername){
+      copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+      return;
+    }
+    const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
     const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
     const text = texts[lang];
     copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
@@ -1321,63 +1323,42 @@ function resumeAna(code){
 
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
-  const savedAna=localStorage.getItem('ana_sid');
-  fetchBotInfo();
   if(saved){
     gameCode=saved;
     refreshState();
     setTimeout(pollGame,1000);
+    fetchBotInfo();
     return;
   }
-  /* Anagram reconnection disabled
-  if(savedAna){
-    anaSid=savedAna;
-    api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
-      if(res&&res.ok){
-        anaShowGame(res.state);
-      }else{
-        localStorage.removeItem('ana_sid');
-        localStorage.removeItem('ana_code');
-        showMenu();
-      }
-    });
-    return;
-  }
-  */
   showMenu();
   fetchActiveGames();
-  checkStartParam();
+  fetchBotInfo().then(() => checkStartParam());
 }
 
 async function checkStartParam(){
   try {
     const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if(sp){
-      const code = sp.trim().toUpperCase();
-      /* Anagram join disabled
-      // Try join as Anagram first
-      const anaRes = await api('/api/ana_join', {uid: getUid(), code});
-      if(anaRes && anaRes.ok){
-        anaSid = anaRes.sid;
-        localStorage.setItem('ana_sid', anaSid);
-        localStorage.setItem('ana_code', code);
-        $('actions').innerHTML = '';
-        anaShowGame(anaRes.state);
-        return;
-      }
-      */
-      // Try Sea Battle
-      const sbRes = await api('/api/join', {uid: getUid(), code});
-      if(sbRes && sbRes.ok){
-        showShipHints = true;
-        gameCode = code;
-        localStorage.setItem('sb_game', code);
-        $('actions').innerHTML = '';
-        await refreshState();
-        pollGame();
-        return;
-      }
+    if(!sp) return;
+    const code = sp.trim().toUpperCase();
+    // Verify the code exists before joining
+    const resolveRes = await api('/api/resolve_code', {code});
+    if(!resolveRes || !resolveRes.ok){
+      setStatus(t('joinError'), '');
+      return;
     }
+    // Try Sea Battle
+    const sbRes = await api('/api/join', {uid: getUid(), code});
+    if(sbRes && sbRes.ok){
+      showShipHints = true;
+      gameCode = code;
+      localStorage.setItem('sb_game', code);
+      $('actions').innerHTML = '';
+      await refreshState();
+      pollGame();
+      return;
+    }
+    // Join failed – show error
+    setStatus(t('joinError'), '');
   } catch(e){}
 }
 
