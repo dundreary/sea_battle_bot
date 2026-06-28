@@ -151,12 +151,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .game-card .icon{font-size:48px;margin-bottom:8px}
 .game-card .name{font-size:18px;font-weight:600}
 .game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
-.mode-grid{display:grid;grid-template-columns:1fr;gap:10px;width:100%;max-width:340px;margin-top:12px}
-.mode-card{aspect-ratio:1;background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:2px solid var(--border-color);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.2s;padding:10px;text-align:center}
+.mode-grid{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:340px;margin-top:12px}
+.mode-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:2px solid var(--border-color);border-radius:14px;display:flex;flex-direction:row;align-items:center;gap:14px;cursor:pointer;transition:.2s;padding:14px 16px}
 .mode-card:hover{transform:translateY(-2px);border-color:var(--accent-primary)}
-.mode-card:active{transform:scale(.95)}
-.mode-card .icon{width:28px;height:28px;margin-bottom:6px;display:block}
-.mode-card .label{font-size:13px;font-weight:600;color:var(--text-secondary);line-height:1.2}
+.mode-card:active{transform:scale(.97)}
+.mode-card .icon{width:48px;height:48px;flex-shrink:0;display:block}
+.mode-card .label{font-size:15px;font-weight:600;color:var(--text-secondary);line-height:1.2}
 .mode-card.bot{border-color:#1565c0}
 .mode-card.bot:hover{border-color:#4fc3f7}
 .mode-card.friend{border-color:#2e7d32}
@@ -854,16 +854,16 @@ function startStripMode(){
       <h2>${t('stripTitle')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:4px;font-size:13px">${t('stripDesc')}</p>
       <p style="color:var(--text-muted);margin-bottom:12px;font-size:11px">📸 ${t('stripTakePhoto')}</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-        <div class="mode-card bot" onclick="this.closest('.overlay').remove();captureAndDo('solo')" style="min-height:100px">
+      <div class="mode-grid" style="margin-top:0">
+        <div class="mode-card bot" onclick="this.closest('.overlay').remove();captureAndDo('solo')">
           <img class="icon" src="/static/mode-bot.svg" alt="">
           <div class="label">${t('vsBot')}</div>
         </div>
-        <div class="mode-card friend" onclick="this.closest('.overlay').remove();captureAndDo('multi')" style="min-height:100px">
+        <div class="mode-card friend" onclick="this.closest('.overlay').remove();captureAndDo('multi')">
           <img class="icon" src="/static/mode-friend.svg" alt="">
           <div class="label">${t('vsFriend')}</div>
         </div>
-        <div class="mode-card join" onclick="this.closest('.overlay').remove();joinGame()" style="min-height:100px">
+        <div class="mode-card join" onclick="this.closest('.overlay').remove();joinGame()">
           <img class="icon" src="/static/mode-join.svg" alt="">
           <div class="label">${t('joinBtn')}</div>
         </div>
