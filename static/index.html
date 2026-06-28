@@ -722,6 +722,7 @@ function updateUI(){
       $('status').onclick=null;
     }
     $('oppBoardWrap').style.display='none';
+    $('actions').className = 'btn-row stack';
     $('actions').innerHTML=`
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
