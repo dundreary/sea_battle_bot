@@ -2,245 +2,231 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Games</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
 :root {
-  --bg-dark: #0a1628;
-  --bg-board: #0d1f3c;
-  --bg-board-alt: #162d50;
-  --border-color: #1a3a5c;
-  --accent-primary: #4fc3f7;
-  --accent-primary-light: #80deea;
-  --accent-primary-alt: #29b6f6;
-  --text-muted: #78909c;
-  --text-secondary: #b0bec5;
-  --text-tertiary: #90a4ae;
-  --text-hint: #546e7a;
-  --color-ship: #2e7d32;
-  --color-hit: #c62828;
-  --color-sunk-dark: #1a1a1a;
-  --color-btn-primary-1: #1565c0;
-  --color-btn-primary-2: #1976d2;
-  --color-btn-success-1: #2e7d32;
-  --color-btn-success-2: #388e3c;
-  --color-btn-outline-border: #2962ff;
-  --color-warning: #ffd54f;
-  --color-header-grad-1: #0d1f3c;
-  --color-header-grad-2: #162d50;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.25);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,.3);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --bg-primary: #080c18;
+  --bg-secondary: #0d1225;
+  --bg-card: rgba(15, 23, 52, 0.8);
+  --bg-glass: rgba(255, 255, 255, 0.04);
+  --bg-glass-hover: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --accent-cyan: #00e5ff;
+  --accent-purple: #7c3aed;
+  --accent-pink: #ec4899;
+  --accent-amber: #f59e0b;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+  --accent-blue: #3b82f6;
+  --text-white: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.15);
+  --glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.15);
+  --glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-:root.palette-ocean {
-  --bg-dark: #0f1f30;
-  --bg-board: #162e48;
-  --bg-board-alt: #1f3d56;
-  --border-color: #345575;
-  --accent-primary: #4a7fa0;
-  --accent-primary-light: #6a9db8;
-  --accent-primary-alt: #3d6d8c;
-  --text-muted: #6b7d8a;
-  --text-secondary: #acb5bc;
-  --text-tertiary: #95a0a8;
-  --text-hint: #576672;
-  --color-ship: #3d7d50;
-  --color-hit: #b04040;
-  --color-sunk-dark: #1c2328;
-  --color-btn-primary-1: #3d6b8a;
-  --color-btn-primary-2: #345a78;
-  --color-btn-success-1: #3d7d50;
-  --color-btn-success-2: #336b44;
-  --color-btn-outline-border: #3d6d8c;
-  --color-warning: #b89448;
-  --color-header-grad-1: #162e48;
-  --color-header-grad-2: #1f3d56;
-}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(0,229,255,0.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(124,58,237,0.03) 0%,transparent 60%),radial-gradient(ellipse at 50% 80%,rgba(236,72,153,0.02) 0%,transparent 60%)}
 
-
-
-:root.palette-slate {
-  --bg-dark: #0f172a;
-  --bg-board: #1e293b;
-  --bg-board-alt: #334155;
-  --border-color: #475569;
-  --accent-primary: #5a6a85;
-  --accent-primary-light: #8b9bc4;
-  --accent-primary-alt: #4d5d7a;
-  --text-muted: #6e8098;
-  --text-secondary: #bec8d8;
-  --text-tertiary: #a5b0c3;
-  --text-hint: #5c6a80;
-  --color-ship: #3ec470;
-  --color-hit: #dc3535;
-  --color-sunk-dark: #020617;
-  --color-btn-primary-1: #425069;
-  --color-btn-primary-2: #5a6a85;
-  --color-btn-success-1: #3ec470;
-  --color-btn-success-2: #2ec55e;
-  --color-btn-outline-border: #5a6a85;
-  --color-warning: #e5a823;
-  --color-header-grad-1: #1e293b;
-  --color-header-grad-2: #334155;
-}
-
-/* Neon theme removed */
-
-
-
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
-.header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
-.header .sub{font-size:11px;color:var(--accent-primary-light)}
+/* ── Header ── */
+.header{padding:12px 16px;text-align:center;width:100%;position:sticky;top:0;z-index:50;background:rgba(8,12,24,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border-subtle)}
+.header .sub{font-size:11px;color:var(--text-muted);letter-spacing:0.5px;margin-top:2px}
 .header.in-game{display:none}
-.board-label{display:none}
-.lang-bar{display:flex;gap:6px;justify-content:center;padding:6px 0}
-.lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s ease;letter-spacing:.03em}
-.lang-btn:hover{border-color:var(--accent-primary);color:var(--accent-primary)}
-.lang-btn.active{background:var(--accent-primary);border-color:var(--accent-primary);color:var(--bg-dark);font-weight:600}
-.main{flex:1;width:100%;max-width:480px;padding:8px 12px 80px;display:flex;flex-direction:column;align-items:center}
-.status{text-align:center;padding:8px 0;font-size:14px;color:var(--text-secondary);min-height:32px}
-.status.battle{color:var(--color-warning);font-weight:600;letter-spacing:.02em}
-.board-wrap{width:100%;max-width:340px;margin:4px 0}
-.board-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);padding:2px 0 4px;text-align:center}
-.board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;aspect-ratio:1;background:var(--bg-board);padding:4px;border-radius:var(--radius-md);border:1px solid var(--border-color);transition:all .3s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,.2)}
-.board.my-turn{animation:pulse-glow 1.5s ease-in-out infinite}
-@keyframes pulse-glow{0%{border-color:var(--accent-primary);box-shadow:0 0 8px rgba(79,195,247,0.4)}50%{border-color:var(--accent-primary-alt);box-shadow:0 0 20px rgba(79,195,247,0.8)}100%{border-color:var(--accent-primary);box-shadow:0 0 8px rgba(79,195,247,0.4)}}
-.sett-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;cursor:pointer;border-bottom:1px solid var(--border-color);font-size:15px}
-.sett-row:last-child{border-bottom:none}
-.sett-val{font-size:20px}
-.btn-link{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;transition:.15s}
-.btn-link:hover{color:var(--accent-primary)}
-.cell{border-radius:4px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,4vw,22px);cursor:pointer;transition:all .15s ease;background:var(--bg-board-alt);user-select:none;border:1px solid transparent}
-.cell:active{transform:scale(.9)}
-   .cell.empty{background:var(--bg-board-alt)}
- .cell.ship{background:var(--color-ship)}
- .cell.strip-ship{background:#e91e63;border-radius:4px}
- .cell.hit{background:var(--color-hit);animation:pop .3s}
- .cell.miss{background:var(--bg-board);opacity:.4}
- .cell.sunk{background:var(--color-sunk-dark);border:1px solid #424242}
- .cell.dead{background:var(--bg-board);opacity:.4}
- .cell.highlight{background:#ff9800;border:2px solid #ff6f00;animation:glow 1s ease-in-out infinite}
-.cell.shootable{background:var(--border-color);border-color:var(--color-btn-outline-border)}
-.cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary);transform:scale(1.05);z-index:1;box-shadow:0 0 8px rgba(79,195,247,.3)}
- @keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
- @keyframes glow{0%{box-shadow:0 0 8px rgba(255,152,0,0.6)}50%{box-shadow:0 0 20px rgba(255,152,0,0.9)}100%{box-shadow:0 0 8px rgba(255,152,0,0.6)}}
- .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
-.btn-row.stack{flex-direction:column;gap:8px}
-.btn-row.stack .btn{padding:16px 12px;font-size:16px}
-.btn{flex:1 1 0;min-width:0;padding:14px 20px;border:none;border-radius:var(--radius-md);font-size:14px;font-weight:500;cursor:pointer;transition:all .2s ease;text-align:center;letter-spacing:.01em;user-select:none;-webkit-tap-highlight-color:transparent}
-.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
-.btn:active{transform:translateY(0) scale(.97);box-shadow:var(--shadow-sm)}
-.btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff;box-shadow:0 2px 8px rgba(21,101,192,.3)}
-  .btn.success{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff;box-shadow:0 2px 8px rgba(46,125,50,.3)}
-  .btn.outline{background:transparent;border:1.5px solid var(--color-btn-outline-border);color:var(--accent-primary)}
-  .btn.outline:hover{background:var(--color-btn-outline-border);color:#fff;border-color:var(--color-btn-outline-border)}
-  .btn.strip-btn{background:linear-gradient(135deg,#e91e63,#d81b60);color:#fff;border-radius:var(--radius-md);box-shadow:0 2px 12px rgba(233,30,99,0.25)}
-  .btn.strip-btn:hover{box-shadow:0 4px 16px rgba(233,30,99,0.4)}
-  .btn.quit-btn{background:transparent;border:1.5px solid #c62828;color:#c62828}
-  .btn.quit-btn:hover{background:#c62828;color:#fff}
-  .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(4px)}
-  .modal{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border-radius:var(--radius-lg);padding:28px 24px;max-width:360px;width:100%;text-align:center;border:1px solid var(--border-color);box-shadow:0 12px 40px rgba(0,0,0,.4)}
-  .modal h2{font-size:22px;margin-bottom:8px;letter-spacing:-.01em}
-  .modal p{font-size:14px;color:var(--text-secondary);margin-bottom:16px;line-height:1.4}
-  .result-icon{font-size:52px;margin-bottom:8px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.3))}
-  .legend{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;padding:6px 0;font-size:12px;color:var(--text-tertiary)}
-  .legend span{display:inline-flex;align-items:center;gap:4px}
-  .ship-hint{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:8px 0 4px;font-size:13px;color:var(--accent-primary-light);width:100%;max-width:340px}
-  .ship-hint .ship-item{display:inline-flex;align-items:center;gap:4px;background:var(--bg-board-alt);padding:4px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);font-weight:500}
-  footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:var(--bg-dark);text-align:center;font-size:11px;color:var(--text-hint);border-top:1px solid var(--border-color)}
+.lang-bar{display:flex;gap:4px;justify-content:center;background:var(--bg-glass);border:1px solid var(--border-subtle);border-radius:100px;padding:3px;width:fit-content;margin:0 auto}
+.lang-btn{background:transparent;border:none;color:var(--text-muted);padding:5px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;transition:all .25s ease;letter-spacing:.03em;text-transform:uppercase}
+.lang-btn:hover{color:var(--text-white)}
+.lang-btn.active{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));color:var(--bg-primary);font-weight:700;box-shadow:var(--glow-cyan)}
 
-.game-select{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:20px}
-.game-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:24px 20px;text-align:center;cursor:pointer;transition:all .25s ease}
-.game-card:hover{transform:translateY(-3px);border-color:var(--accent-primary);box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.game-card .icon{font-size:48px;margin-bottom:8px}
-.game-card .name{font-size:17px;font-weight:600;letter-spacing:.01em}
-.game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
+/* ── Main ── */
+.main{flex:1;width:100%;max-width:480px;padding:12px 16px 100px;display:flex;flex-direction:column;align-items:center;gap:8px}
+
+/* ── Status ── */
+.status{text-align:center;padding:12px 16px;font-size:14px;color:var(--text-secondary);min-height:36px;width:100%;background:var(--bg-glass);border:1px solid var(--border-subtle);border-radius:var(--radius-md);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.status.battle{background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(245,158,11,0.05));border-color:rgba(245,158,11,0.2);color:var(--accent-amber);font-weight:600;animation:status-glow 2s ease-in-out infinite}
+@keyframes status-glow{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.05)}50%{box-shadow:0 0 30px rgba(245,158,11,0.15)}}
+
+/* ── Boards ── */
+.board-wrap{width:100%;max-width:340px;margin:4px 0;animation:fadeUp .4s ease-out}
+.board-label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--text-muted);padding:2px 0 6px;text-align:center;font-weight:600}
+.board{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;aspect-ratio:1;background:var(--bg-card);padding:5px;border-radius:var(--radius-lg);border:1px solid var(--border-subtle);transition:all .4s ease;box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 8px 32px rgba(0,0,0,.2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.board.my-turn{animation:board-pulse 2s ease-in-out infinite;border-color:rgba(0,229,255,0.3)}
+@keyframes board-pulse{0%,100%{box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 0 20px rgba(0,229,255,0.1)}50%{box-shadow:inset 0 2px 4px rgba(0,0,0,.3),0 0 40px rgba(0,229,255,0.25)}}
+
+/* ── Cells ── */
+.cell{border-radius:var(--radius-sm);aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(12px,3.5vw,20px);cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);background:var(--bg-glass);user-select:none;border:1px solid var(--border-subtle);position:relative;overflow:hidden}
+.cell::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.03) 100%);pointer-events:none}
+.cell:active{transform:scale(.88)}
+.cell.empty{background:var(--bg-glass)}
+.cell.ship{background:linear-gradient(135deg,rgba(16,185,129,0.4),rgba(16,185,129,0.2));border-color:rgba(16,185,129,0.3);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1)}
+.cell.strip-ship{background:linear-gradient(135deg,rgba(236,72,153,0.4),rgba(236,72,153,0.2));border-color:rgba(236,72,153,0.3);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1)}
+.cell.hit{background:linear-gradient(135deg,rgba(239,68,68,0.5),rgba(239,68,68,0.25));border-color:rgba(239,68,68,0.4);animation:hit-pop .35s cubic-bezier(.4,0,.2,1);box-shadow:0 0 20px rgba(239,68,68,0.2)}
+.cell.miss{background:rgba(100,116,139,0.15);opacity:.5;border-color:transparent}
+.cell.sunk{background:linear-gradient(135deg,rgba(239,68,68,0.6),rgba(239,68,68,0.3));border-color:rgba(239,68,68,0.5);box-shadow:0 0 15px rgba(239,68,68,0.3)}
+.cell.dead{background:rgba(100,116,139,0.1);opacity:.4;border-color:transparent}
+.cell.shootable{background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.2)}
+.cell.shootable:hover{background:rgba(59,130,246,0.2);border-color:rgba(0,229,255,0.4);transform:scale(1.08);z-index:2;box-shadow:0 0 20px rgba(0,229,255,0.2)}
+@keyframes hit-pop{0%{transform:scale(1)}30%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+/* ── Buttons ── */
+.btn-row{display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:340px;margin-top:6px;animation:fadeUp .3s ease-out}
+.btn-row.stack{flex-direction:column;gap:8px}
+.btn-row.stack .btn{padding:16px 12px;font-size:15px}
+.btn{flex:1 1 0;min-width:0;padding:14px 20px;border:none;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);text-align:center;letter-spacing:.01em;user-select:none;-webkit-tap-highlight-color:transparent;font-family:var(--font);position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.08) 100%);pointer-events:none}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn.primary{background:linear-gradient(135deg,var(--accent-blue),var(--accent-purple));color:#fff;box-shadow:0 4px 16px rgba(59,130,246,0.25)}
+.btn.primary:hover{box-shadow:0 6px 24px rgba(59,130,246,0.35)}
+.btn.success{background:linear-gradient(135deg,var(--accent-green),#059669);color:#fff;box-shadow:0 4px 16px rgba(16,185,129,0.25)}
+.btn.success:hover{box-shadow:0 6px 24px rgba(16,185,129,0.35)}
+.btn.glow{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));color:var(--bg-primary);box-shadow:var(--glow-cyan)}
+.btn.glow:hover{box-shadow:0 0 30px rgba(0,229,255,0.25)}
+.btn.outline{background:rgba(255,255,255,0.04);border:1.5px solid var(--border-hover);color:var(--text-secondary)}
+.btn.outline:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.2);color:var(--text-white)}
+.btn.danger{background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.3);color:var(--accent-red)}
+.btn.danger:hover{background:rgba(239,68,68,0.2);border-color:rgba(239,68,68,0.5)}
+.btn.strip-btn{background:linear-gradient(135deg,#ec4899,#db2777);color:#fff;box-shadow:0 4px 16px rgba(236,72,153,0.25)}
+.btn.strip-btn:hover{box-shadow:0 6px 24px rgba(236,72,153,0.35)}
+
+/* ── Overlay / Modal ── */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);animation:fadeIn .2s ease-out}
+.modal{background:var(--bg-card);border-radius:var(--radius-xl);padding:32px 28px;max-width:360px;width:100%;text-align:center;border:1px solid var(--border-subtle);box-shadow:0 24px 64px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:modalIn .35s cubic-bezier(.4,0,.2,1)}
+.modal h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.02em}
+.modal p{font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.5}
+.result-icon{font-size:56px;margin-bottom:12px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.4))}
+.modal .btn{margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;padding:6px 0;font-size:12px;color:var(--text-muted)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+
+/* ── Ship hint ── */
+.ship-hint{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:8px 0 4px;font-size:13px;width:100%;max-width:340px}
+.ship-hint .ship-item{display:inline-flex;align-items:center;gap:4px;background:var(--bg-glass);padding:4px 12px;border-radius:100px;border:1px solid var(--border-subtle);font-weight:600;color:var(--accent-cyan);font-size:12px}
+
+/* ── Footer ── */
+footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:rgba(8,12,24,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);text-align:center;font-size:11px;color:var(--text-dim);border-top:1px solid var(--border-subtle);letter-spacing:1px;text-transform:uppercase}
+
+/* ── Game Select / Cards ── */
+.game-select{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:16px}
+.game-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-xl);padding:28px 24px;text-align:center;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.game-card:hover{transform:translateY(-4px);border-color:rgba(0,229,255,0.2);box-shadow:0 16px 48px rgba(0,0,0,.3),var(--glow-cyan)}
+.game-card .name{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-top:12px}
+.game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:6px}
+
+/* ── Mode Grid ── */
 .mode-grid{display:grid;grid-template-columns:1fr;gap:10px;width:100%;max-width:340px;margin-top:12px}
-.mode-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:1.5px solid var(--border-color);border-radius:var(--radius-md);display:flex;flex-direction:row;align-items:center;gap:14px;cursor:pointer;transition:all .2s ease;padding:14px 16px;box-shadow:var(--shadow-sm)}
-.mode-card:hover{transform:translateY(-2px);border-color:var(--accent-primary);box-shadow:var(--shadow-md)}
+.mode-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);display:flex;flex-direction:row;align-items:center;gap:16px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);padding:16px 18px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.mode-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.25)}
 .mode-card:active{transform:scale(.97)}
-.mode-card .icon{width:48px;height:48px;flex-shrink:0;display:block}
-.mode-card .label{font-size:15px;font-weight:500;color:var(--text-secondary);line-height:1.2}
-.mode-card.bot{border-color:#1565c0}
-.mode-card.bot:hover{border-color:#60a5fa}
-.mode-card.friend{border-color:#2e7d32}
-.mode-card.friend:hover{border-color:#4ade80}
-.mode-card.strip{border-color:#d81b60}
-.mode-card.strip:hover{border-color:#f472b6}
-.mode-card.join{border-color:#e65100}
-.mode-card.join:hover{border-color:#fb923c}
+.mode-card .icon{width:44px;height:44px;flex-shrink:0;display:block}
+.mode-card .label{font-size:15px;font-weight:600;color:var(--text-white);line-height:1.3;letter-spacing:-.01em}
+.mode-card .label small{display:block;font-size:11px;color:var(--text-muted);font-weight:400;margin-top:2px}
+.mode-card.bot{background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(124,58,237,0.05));border-color:rgba(59,130,246,0.15)}
+.mode-card.bot:hover{border-color:rgba(59,130,246,0.35);box-shadow:0 12px 32px rgba(0,0,0,.25),0 0 20px rgba(59,130,246,0.08)}
+.mode-card.friend{background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.05));border-color:rgba(16,185,129,0.15)}
+.mode-card.friend:hover{border-color:rgba(16,185,129,0.35);box-shadow:0 12px 32px rgba(0,0,0,.25),0 0 20px rgba(16,185,129,0.08)}
+.mode-card.strip{background:linear-gradient(135deg,rgba(236,72,153,0.08),rgba(219,39,119,0.05));border-color:rgba(236,72,153,0.15)}
+.mode-card.strip:hover{border-color:rgba(236,72,153,0.35);box-shadow:0 12px 32px rgba(0,0,0,.25),0 0 20px rgba(236,72,153,0.08)}
+.mode-card.join{background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.05));border-color:rgba(245,158,11,0.15)}
+.mode-card.join:hover{border-color:rgba(245,158,11,0.35);box-shadow:0 12px 32px rgba(0,0,0,.25),0 0 20px rgba(245,158,11,0.08)}
+
+/* ── Active Games ── */
 .active-games{width:100%;max-width:340px;margin-bottom:12px}
-.active-games h3{font-size:13px;color:var(--accent-primary);text-transform:uppercase;letter-spacing:1.5px;text-align:center;margin-bottom:10px;font-weight:600}
-.active-game-row{background:var(--bg-board);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;transition:all .2s ease}
-.active-game-row:hover{border-color:var(--accent-primary);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.active-games h3{font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:2px;text-align:center;margin-bottom:12px;font-weight:700;opacity:0.8}
+.active-game-row{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;cursor:pointer;transition:all .3s ease;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.active-game-row:hover{border-color:rgba(0,229,255,0.2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .active-game-row .info{font-size:13px}
 .active-game-row .info .label{color:var(--text-muted)}
-.active-game-row .info .code{color:var(--accent-primary);font-weight:700;letter-spacing:1px}
-.active-game-row .badge{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--border-color);color:var(--text-secondary)}
-.active-game-row .badge.playing{background:var(--color-btn-success-1);color:#fff}
-.ana-letters{display:flex;gap:6px;justify-content:center;margin:10px 0;flex-wrap:wrap}
-.ana-tile{width:54px;height:54px;background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:600;color:#fff;text-transform:uppercase;cursor:pointer;transition:all .15s ease;user-select:none;box-shadow:0 2px 8px rgba(21,101,192,.25)}
-.ana-tile:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(21,101,192,.35)}
-.ana-tile:active{transform:scale(.88);opacity:.8;box-shadow:0 1px 4px rgba(21,101,192,.15)}
-.ana-word-display{display:flex;gap:6px;justify-content:center;min-height:48px;align-items:center;width:100%;max-width:340px;background:var(--bg-board);border:1px dashed var(--border-color);border-radius:10px;padding:6px;margin:4px 0;flex-wrap:wrap}
-.ana-word-display .ana-tile{width:46px;height:46px;font-size:20px;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2))}
+.active-game-row .info .code{color:var(--accent-cyan);font-weight:700;letter-spacing:1px}
+.active-game-row .badge{font-size:10px;padding:3px 10px;border-radius:100px;background:var(--bg-glass);border:1px solid var(--border-subtle);color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.active-game-row .badge.playing{background:linear-gradient(135deg,rgba(16,185,129,0.2),rgba(5,150,105,0.1));border-color:rgba(16,185,129,0.3);color:var(--accent-green)}
+
+/* ── Anagram ── */
+.ana-letters{display:flex;gap:8px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.ana-tile{width:56px;height:56px;background:linear-gradient(135deg,rgba(59,130,246,0.3),rgba(124,58,237,0.2));border:1px solid rgba(99,102,241,0.3);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--text-white);text-transform:uppercase;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);user-select:none;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.ana-tile:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.5)}
+.ana-tile:active{transform:scale(.85);opacity:.7}
+.ana-word-display{display:flex;gap:6px;justify-content:center;min-height:48px;align-items:center;width:100%;max-width:340px;background:var(--bg-card);border:1px dashed var(--border-hover);border-radius:var(--radius-lg);padding:8px;margin:6px 0;flex-wrap:wrap}
+.ana-word-display .ana-tile{width:44px;height:44px;font-size:20px;background:linear-gradient(135deg,rgba(16,185,129,0.3),rgba(5,150,105,0.2));border-color:rgba(16,185,129,0.3)}
 .ana-word-display .ana-tile:active{transform:scale(.88);opacity:.7}
-.ana-submit-row{display:flex;gap:6px;width:100%;max-width:340px;margin:4px 0}
+.ana-submit-row{display:flex;gap:6px;width:100%;max-width:340px;margin:6px 0}
 .ana-submit-row .btn{min-width:unset}
 .ana-submit-row .btn:first-child{flex:2}
 .ana-submit-row .btn:last-child{flex:0 0 48px;padding:10px;font-size:18px}
 .ana-found{width:100%;max-width:340px;margin:8px 0}
-.ana-word{display:inline-block;background:var(--bg-board);border:1px solid var(--border-color);border-radius:6px;padding:4px 10px;margin:3px;font-size:14px}
-.ana-word span{color:var(--accent-primary);font-weight:700;margin-left:6px}
-.ana-info{display:flex;justify-content:space-between;width:100%;max-width:340px;font-size:14px;padding:4px 0}
-.ana-info .timer{color:var(--color-warning);font-weight:700}
-.ana-info .score{color:var(--accent-primary);font-weight:700}
-.ana-hint{flex:0!important;min-width:unset!important;padding:10px 16px!important}
-.ana-tile.used{background:var(--border-color);opacity:.25;cursor:default;pointer-events:none}
+.ana-word{display:inline-block;background:var(--bg-glass);border:1px solid var(--border-subtle);border-radius:100px;padding:5px 12px;margin:3px;font-size:13px;font-weight:500}
+.ana-word span{color:var(--accent-cyan);font-weight:700;margin-left:6px}
+.ana-info{display:flex;justify-content:space-between;width:100%;max-width:340px;font-size:13px;padding:6px 0}
+.ana-info .timer{color:var(--accent-amber);font-weight:700}
+.ana-info .score{color:var(--accent-cyan);font-weight:700}
+.ana-tile.used{background:rgba(100,116,139,0.1);border-color:transparent;opacity:.2;cursor:default;pointer-events:none;box-shadow:none}
 .ana-base-word{text-align:center;font-size:12px;color:var(--text-muted);margin:4px 0 8px;cursor:pointer;user-select:none}
-.ana-base-word .revealed{color:var(--accent-primary);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:2px;display:none}
+.ana-base-word .revealed{color:var(--accent-purple);font-weight:700;font-size:20px;text-transform:uppercase;letter-spacing:3px;display:none}
 .ana-base-word.show .revealed{display:inline}
-.ana-base-word:not(.show)::after{content:' (нажми, чтобы открыть)';font-size:11px;color:var(--text-hint)}
+.ana-base-word:not(.show)::after{content:' (tap to reveal)';font-size:11px;color:var(--text-dim)}
 
+/* ── Settings ── */
+.sett-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;cursor:pointer;border-bottom:1px solid var(--border-subtle);font-size:15px;font-weight:500}
+.sett-row:last-child{border-bottom:none}
+.sett-val{font-size:22px}
+.btn-link{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;transition:.15s}
+.btn-link:hover{color:var(--accent-cyan)}
+
+/* ── Theme Selector ── */
 .theme-selector{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-wrap:wrap;width:100%;max-width:340px;margin:8px 0}
-.theme-btn{padding:10px 18px;border:1.5px solid var(--border-color);background:transparent;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);transition:all .2s ease;letter-spacing:.02em}
-.theme-btn:hover{border-color:var(--accent-primary);color:var(--accent-primary);background:rgba(79,195,247,.08)}
-.theme-btn.active{background:var(--accent-primary);color:var(--bg-dark);border-color:var(--accent-primary);font-weight:600}
-.theme-divider{width:1px;background:var(--border-color);height:24px;align-self:center}
-.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:16px}
+.theme-btn{padding:8px 16px;border:1px solid var(--border-subtle);background:var(--bg-glass);border-radius:100px;cursor:pointer;font-size:11px;font-weight:600;color:var(--text-muted);transition:all .25s ease;letter-spacing:.02em}
+.theme-btn:hover{border-color:var(--border-hover);color:var(--text-white);background:var(--bg-glass-hover)}
+.theme-btn.active{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));color:var(--bg-primary);border-color:transparent;font-weight:700}
+.theme-divider{width:1px;background:var(--border-subtle);height:24px;align-self:center}
+.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:16px;border-radius:100px}
 
+/* ── Yahtzee ── */
+.yz-dice{display:flex;gap:10px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.yz-die{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:30px;border-radius:var(--radius-md);background:var(--bg-card);border:2px solid var(--border-subtle);transition:all .2s ease;user-select:none;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.yz-die.yz-held{border-color:var(--accent-cyan);box-shadow:0 0 20px rgba(0,229,255,0.2);background:rgba(0,229,255,0.05)}
+.yz-die.yz-clickable{cursor:pointer}
+.yz-die.yz-clickable:hover{border-color:var(--accent-cyan);transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.25);background:rgba(0,229,255,0.05)}
+.yz-die.yz-clickable:active{transform:scale(.9)}
+.yz-table-wrap{max-height:300px;overflow-y:auto;margin:8px 0;border-radius:var(--radius-md);background:var(--bg-card);border:1px solid var(--border-subtle)}
+.yz-table{width:100%;border-collapse:collapse;font-size:13px}
+.yz-table th{padding:8px 6px;text-align:left;color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border-subtle)}
+.yz-table td{padding:8px 6px;border-bottom:1px solid var(--border-subtle)}
+.yz-row{cursor:default}
+.yz-row.yz-action{cursor:pointer;transition:background .15s}
+.yz-row.yz-action:hover{background:rgba(16,185,129,0.15)!important}
+.yz-row.yz-bonus{background:var(--bg-glass)}
+.yz-row.yz-total{background:linear-gradient(135deg,rgba(0,229,255,0.1),rgba(59,130,246,0.05));color:var(--accent-cyan);font-weight:700}
+.yz-cat{color:var(--text-secondary);white-space:nowrap}
+.yz-val{text-align:center;font-weight:500}
+.yz-possible{color:var(--accent-amber);font-weight:700}
+.yz-scroll{max-height:320px;overflow-y:auto;margin:6px 0}
 
-/* Yahtzee styles */
-.yz-die {
-  width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
-  font-size: 28px; border-radius: var(--radius-md); background: var(--bg-board);
-  border: 2px solid var(--border-color); transition: all 0.15s ease; user-select: none;
-  box-shadow: var(--shadow-sm);
-}
-.yz-die.yz-held { border-color: #4fc3f7; box-shadow: 0 0 12px rgba(79,195,247,.3); }
-.yz-die.yz-clickable { cursor: pointer; }
-.yz-die.yz-clickable:hover { border-color: var(--accent-primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.yz-die.yz-clickable:active { transform: scale(0.92); }
-.yz-dice-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; flex-wrap: wrap; }
-.yz-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.yz-table th { padding: 4px; text-align: left; color: var(--text-muted); font-size: 11px; }
-.yz-table td { padding: 4px 6px; border-bottom: 1px solid var(--border-color); }
-.yz-row { transition: 0.1s; }
-.yz-row.yz-action { cursor: pointer; }
-.yz-row.yz-action:hover { background: var(--color-btn-success-1) !important; }
-.yz-row.yz-bonus { background: var(--bg-board-alt); }
-.yz-row.yz-total { background: var(--accent-primary); color: var(--bg-dark); font-weight: 700; }
-.yz-cat { color: var(--text-secondary); white-space: nowrap; }
-.yz-val { text-align: center; }
-.yz-possible { color: #ffd54f; font-weight: 700; }
-.yz-scroll { max-height: 320px; overflow-y: auto; margin: 6px 0; }
+/* ── Animations ── */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 
+/* ── Utility ── */
+.glass{background:var(--bg-card);border:1px solid var(--border-subtle);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-subtle);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
 </style>
 </head>
 <body>
@@ -255,7 +241,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 </div>
 
 <div class="main" id="app">
-  <div class="status" id="status">🔱 ...</div>
+  <div class="status" id="status"><span style="opacity:0.5">Loading...</span></div>
   <div class="ship-hint" id="shipHint"></div>
   <div class="board-wrap" id="ownBoardWrap" style="display:none">
     <div class="board-label" id="lblOwn">🚢</div>
@@ -267,9 +253,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
   <!-- Legend removed per request -->
   <div class="theme-selector" id="themeSelector" style="display:none">
-    <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn" data-theme="slate" onclick="setTheme('slate')">⛳ Slate</button>
-    <div class="theme-divider"></div>
     <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
   </div>
@@ -600,17 +583,12 @@ function updateSettingsUI(){
 }
 
 function setTheme(themeName){
-  const validThemes = ['ocean', 'slate'];
-  if(!validThemes.includes(themeName)) return;
-  
-  document.documentElement.className = 'palette-' + themeName;
+  document.documentElement.className = 'theme-' + themeName;
   localStorage.setItem('sb_theme', themeName);
-  
-  const btns = document.querySelectorAll('.theme-btn');
-  btns.forEach(btn => {
-    btn.classList.remove('active');
-    if(btn.dataset.theme === themeName) btn.classList.add('active');
-  });
+}
+function initTheme(){
+  const saved = localStorage.getItem('sb_theme') || 'default';
+  setTheme(saved);
 }
 
 function initTheme(){
@@ -625,10 +603,11 @@ function showSettings(){
   const s=_snd?'✅':'❌',v=_vibe?'✅':'❌';
   o.innerHTML=`
     <div class="modal">
-      <h2>⚙️ ${t('settings')}</h2>
+      <div style="font-size:32px;margin-bottom:8px">⚙️</div>
+      <h2>${t('settings')}</h2>
       <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val">${s}</span></div>
       <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val">${v}</span></div>
-      <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
+      <button class="btn outline" style="margin-top:20px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
 }
@@ -746,7 +725,7 @@ async function refreshState(){
     $('oppBoardWrap').style.display='none';
     $('actions').className='btn-row stack';
     $('actions').innerHTML=`
-      <button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>
+      <button class="btn glow" onclick="startSolo()">${t('startBtn')}</button>
       <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
     `;
     return
@@ -823,8 +802,8 @@ function updateUI(){
     $('actions').innerHTML=`
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-      <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
-      <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
+      <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
+      <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
     `;
     $('themeSelector').style.display='none';
     return;
@@ -839,7 +818,7 @@ function updateUI(){
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('surrender')}</button>`;
+    $('actions').innerHTML=`<button class="btn danger" onclick="leaveGame()">${t('surrender')}</button>`;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
@@ -867,7 +846,7 @@ function startStripMode(){
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
       <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">🎲 ${t('startBtn')}</button>
       <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
-      <button class="btn outline quit-btn" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+      <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
 }
@@ -957,13 +936,13 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-      <img src="/static/game-icon.svg" style="width:48px;height:48px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
+      <img src="/static/game-icon.svg" style="width:52px;height:52px;display:block;margin:0 auto">
+      <div class="name" style="color:var(--accent-cyan)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
     <div class="game-card" onclick="showYahtzeeMenu()" style="margin-bottom:8px">
-      <img src="/static/mode-dice.svg" style="width:48px;height:48px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">${t('yzTitle')}</div>
+      <img src="/static/mode-dice.svg" style="width:52px;height:52px;display:block;margin:0 auto">
+      <div class="name" style="color:var(--accent-purple)">${t('yzTitle')}</div>
       <div class="card-desc">${t('yahtzeeDesc')||'Yahtzee / 1000'}</div>
     </div>
   `;
@@ -989,18 +968,18 @@ function showSeaBattleMenu(){
     <div class="mode-grid">
       <div class="mode-card bot" onclick="startSolo()">
         <img class="icon" src="/static/mode-bot.svg" alt="">
-        <div class="label">${t('vsBot')}</div>
+        <div class="label">${t('vsBot')}<small>${t('solo')||'Solo'}</small></div>
       </div>
       <div class="mode-card friend" onclick="chooseMultiMode()">
         <img class="icon" src="/static/mode-friend.svg" alt="">
-        <div class="label">${t('vsFriend')}</div>
+        <div class="label">${t('vsFriend')}<small>Multiplayer</small></div>
       </div>
       <div class="mode-card strip" onclick="startStripMode()">
         <img class="icon" src="/static/mode-strip.svg" alt="">
-        <div class="label">${t('stripMode')}</div>
+        <div class="label">${t('stripMode')}<small>${t('stripDesc')||''}</small></div>
       </div>
     </div>
-    <button class="btn outline quit-btn" style="margin-top:8px" onclick="showMainMenu()">${t('quit')}</button>
+    <button class="btn danger" style="margin-top:8px" onclick="showMainMenu()">${t('quit')}</button>
     <div id="activeGamesContainer"></div>
   `;
   fetchActiveGames();
@@ -1015,8 +994,8 @@ function chooseMultiMode(){
       <h2>${t('vsFriend')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
       <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(false)">🎲 ${t('startBtn')}</button>
-      <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
-      <button class="btn outline quit-btn" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+      <button class="btn glow" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
+      <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
 }
@@ -1072,8 +1051,8 @@ function showResult(icon,title,desc,strip){
   const playAgainFn = strip ? "startStripMode()" : 'startSolo()';
   const isWin = icon === '🏆';
   const photoHtml = strip && state && state.strip_photo
-    ? `<img src="${state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`
-    : (strip ? '<div id="stripPhotoPending" style="font-size:13px;color:var(--text-muted);margin:8px 0">📸 ' + (isWin
+    ? `<img src="${state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)">`
+    : (strip ? '<div id="stripPhotoPending" style="font-size:13px;color:var(--text-muted);margin:12px 0">📸 ' + (isWin
         ? {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang]
         : {ru:'Загрузка фото...',uk:'Завантаження фото...',en:'Loading photo...'}[lang]) + '</div>' : '');
   o.innerHTML=`
@@ -1111,12 +1090,12 @@ function showStripPhotoInResult(photoData){
   const pending = $('stripPhotoPending');
   const modal = document.querySelector('#resultOverlay .modal');
   if(pending){
-    pending.outerHTML = `<img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`;
+    pending.outerHTML = `<img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)">`;
   } else if(modal && !modal.querySelector('img')){
     const img = document.createElement('img');
     img.src = photoData;
     img.alt = 'Strip photo';
-    img.style.cssText = 'max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)';
+    img.style.cssText = 'max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)';
     modal.insertBefore(img, modal.querySelector('#stripStatus'));
   }
 }
@@ -1135,7 +1114,7 @@ function pollStripPhotoForWinner(){
       const ri = document.querySelector('#resultOverlay .result-icon');
       if(ri) ri.style.display = 'none';
       if(pending){
-        pending.outerHTML = `<img src="${res.state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`;
+        pending.outerHTML = `<img src="${res.state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)">`;
       }
     }
   }, 2000);
@@ -1202,18 +1181,18 @@ function showYahtzeeMenu(){
     '<div class="mode-grid">' +
       '<div class="mode-card bot" onclick="startYahtzeeSolo()">' +
         '<img class="icon" src="/static/mode-dice.svg" alt="">' +
-        '<div class="label">' + t('yzSolo') + '</div>' +
+        '<div class="label">' + t('yzSolo') + '<small>Solo</small></div>' +
       '</div>' +
       '<div class="mode-card friend" onclick="startYahtzeeMulti()">' +
         '<img class="icon" src="/static/mode-friend.svg" alt="">' +
-        '<div class="label">' + t('yzFriend') + '</div>' +
+        '<div class="label">' + t('yzFriend') + '<small>Multiplayer</small></div>' +
       '</div>' +
       '<div class="mode-card join" onclick="joinYahtzeeGame()">' +
         '<img class="icon" src="/static/mode-join.svg" alt="">' +
-        '<div class="label">' + t('yzJoin') + '</div>' +
+        '<div class="label">' + t('yzJoin') + '<small>' + (t('joinBtn')||'') + '</small></div>' +
       '</div>' +
     '</div>' +
-    '<button class="btn outline quit-btn" style="margin-top:8px" onclick="showMainMenu()">' + t('quit') + '</button>' +
+    '<button class="btn danger" style="margin-top:8px" onclick="showMainMenu()">' + t('quit') + '</button>' +
     '<div id="yzActiveContainer"></div>';
   fetchYZActive();
 }
@@ -1299,19 +1278,19 @@ function renderYZ(){
   document.title = t('yzTitle');
 
   const faces = ['','\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
-  let diceHtml = '<div style="display:flex;gap:8px;justify-content:center;margin:8px 0">';
+  let diceHtml = '<div class="yz-dice">';
   for(let i=0;i<5;i++){
     const v = s.dice[i];
     const held = s.held[i];
     const emoji = faces[v]||'\u2b1c';
-    const heldStyle = held ? 'border:3px solid #4fc3f7' : 'border:2px solid var(--border-color)';
-    const clickable = (s.my_turn && s.rolls>0 && s.rolls<3 && !s.finished) ? 'cursor:pointer' : '';
-    diceHtml += '<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:10px;background:var(--bg-board);'+heldStyle+';'+clickable+'" onclick="yzToggle2('+i+')">'+emoji+'</div>';
+    const heldClass = held ? ' yz-held' : '';
+    const clickClass = (s.my_turn && s.rolls>0 && s.rolls<3 && !s.finished) ? ' yz-clickable' : '';
+    diceHtml += '<div class="yz-die'+heldClass+clickClass+'" onclick="yzToggle2('+i+')">'+emoji+'</div>';
   }
   diceHtml += '</div>';
 
   const rollBtn = (!s.finished && s.my_turn && s.rolls<3)
-    ? '<div class="btn-row" style="justify-content:center;margin:4px 0"><button class="btn primary" onclick="yzRoll2()">\ud83c\udfb2 '+t('yzRoll').replace('{0}',s.rolls)+'</button></div>'
+    ? '<div class="btn-row" style="justify-content:center;margin:6px 0;max-width:200px;margin-left:auto;margin-right:auto"><button class="btn glow" onclick="yzRoll2()">\ud83c\udfb2 '+t('yzRoll').replace('{0}',s.rolls)+'</button></div>'
     : '';
 
   const hintText = (s.rolls>0 && !s.finished && s.my_turn)
@@ -1345,38 +1324,39 @@ function renderYZ(){
   const possible = s.possible||{};
   const opSc = s.opp_scores||{};
 
-  let scHtml = '<div style="max-height:300px;overflow-y:auto;margin:6px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">';
-  scHtml += '<tr style="color:var(--text-muted);font-size:11px"><th style="padding:4px;text-align:left"></th><th style="padding:4px;text-align:center">You</th><th style="padding:4px;text-align:center">Opp</th></tr>';
+  let scHtml = '<div class="yz-table-wrap"><table class="yz-table">';
+  scHtml += '<tr><th></th><th style="text-align:center">You</th><th style="text-align:center">Opp</th></tr>';
   for(let catId=0; catId<13; catId++){
     const myVal = mySc[catId];
     const opVal = opSc[catId];
     const canScore = (possible[catId]!==undefined) && !s.finished && s.my_turn;
     const pts = canScore ? possible[catId] : '';
-    const bg = canScore ? 'background:var(--color-btn-success-1);cursor:pointer' : (myVal!==undefined ? 'background:var(--bg-board)' : '');
+    const actionClass = canScore ? ' yz-action' : '';
+    const bgStyle = myVal!==undefined ? 'background:var(--bg-glass)' : '';
     const click = canScore ? ' onclick="yzScore2('+catId+')"' : '';
-    scHtml += '<tr style="'+bg+';border-bottom:1px solid var(--border-color)"'+click+'>';
-    scHtml += '<td style="padding:4px 6px;color:var(--text-secondary)">'+CAT_EMOJI[catId]+' '+t(CATS[catId])+'</td>';
-    scHtml += '<td style="padding:4px;text-align:center;font-weight:'+(myVal!==undefined?'700':'400')+'">'+
-      (myVal!==undefined ? myVal : (canScore ? '<span style="color:#ffd54f">'+pts+'</span>' : '\u2014'))+'</td>';
-    scHtml += '<td style="padding:4px;text-align:center">'+(opVal!==undefined ? opVal : '\u2014')+'</td>';
+    scHtml += '<tr class="yz-row'+actionClass+'" style="'+bgStyle+'"'+click+'>';
+    scHtml += '<td class="yz-cat">'+CAT_EMOJI[catId]+' '+t(CATS[catId])+'</td>';
+    scHtml += '<td class="yz-val" style="font-weight:'+(myVal!==undefined?'700':'400')+'">'+
+      (myVal!==undefined ? myVal : (canScore ? '<span class="yz-possible">'+pts+'</span>' : '\u2014'))+'</td>';
+    scHtml += '<td class="yz-val">'+(opVal!==undefined ? opVal : '\u2014')+'</td>';
     scHtml += '</tr>';
   }
-  scHtml += '<tr style="background:var(--bg-board-alt);border-bottom:1px solid var(--border-color)">';
-  scHtml += '<td style="padding:4px 6px;color:var(--text-muted);font-size:11px">'+t('yzUpperBonus')+'</td>';
-  scHtml += '<td style="padding:4px;text-align:center">'+(s.upper_bonus||'0')+'</td>';
-  scHtml += '<td style="padding:4px;text-align:center">\u2014</td></tr>';
-  scHtml += '<tr style="background:var(--accent-primary);color:var(--bg-dark);font-weight:700">';
-  scHtml += '<td style="padding:6px">\u03a3</td>';
-  scHtml += '<td style="padding:6px;text-align:center">'+s.total+'</td>';
-  scHtml += '<td style="padding:6px;text-align:center">'+(s.opp_total||0)+'</td></tr>';
+  scHtml += '<tr class="yz-row yz-bonus">';
+  scHtml += '<td class="yz-cat" style="font-size:11px">'+t('yzUpperBonus')+'</td>';
+  scHtml += '<td class="yz-val">'+(s.upper_bonus||'0')+'</td>';
+  scHtml += '<td class="yz-val">\u2014</td></tr>';
+  scHtml += '<tr class="yz-row yz-total">';
+  scHtml += '<td style="padding:8px 6px">\u03a3</td>';
+  scHtml += '<td class="yz-val" style="font-weight:700">'+s.total+'</td>';
+  scHtml += '<td class="yz-val" style="font-weight:700">'+(s.opp_total||0)+'</td></tr>';
   scHtml += '</table></div>';
 
-  const quitBtn = '<div class="btn-row" style="justify-content:center;margin-top:6px">'+
-    '<button class="btn outline" onclick="yzQuit2()">'+t('quit')+'</button></div>';
+  const quitBtn = '<div class="btn-row" style="justify-content:center;margin-top:8px;max-width:160px;margin-left:auto;margin-right:auto">'+
+    '<button class="btn danger" onclick="yzQuit2()">'+t('quit')+'</button></div>';
 
   document.getElementById('app').innerHTML =
     '<div class="status" id="status">'+statusText+'</div>'+
-    '<div style="width:100%;max-width:360px;text-align:center">'+
+    '<div style="width:100%;max-width:360px;text-align:center;display:flex;flex-direction:column;align-items:center">'+
       diceHtml + hintText + rollBtn + scHtml + quitBtn +
     '</div>';
 }
@@ -1396,7 +1376,7 @@ async function fetchYZActive(){
   const a = res.active;
   if(a.finished)return;
   const label = a.solo ? t('yzSolo') : t('yzFriend');
-  const badge = a.my_turn ? '<span class="badge playing">\ud83c\udfb2 '+t('yourTurn')+'</span>' : '<span class="badge">\u23f3</span>';
+  const badge = a.my_turn ? '<span class="badge playing">\ud83c\udfb2 '+t('yourTurn')+'</span>' : '<span class="badge">\u23f3 '+(t('waitOpp')||'')+'</span>';
   cont.innerHTML = '<div class="active-games"><h3>\u25b6 '+t('selectGame')+'</h3>'+
     '<div class="active-game-row" onclick="resumeYZ(\'"+a.code+"\')">'+
       '<div class="info"><span class="label">\ud83c\udfb2 '+t('yzTitle')+'</span> <span class="code">'+a.code+'</span> <span class="label">'+label+'</span></div>'+
