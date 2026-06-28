@@ -1,7 +1,6 @@
 import json
 import base64
 import logging
-import os
 import time
 import urllib.request
 from typing import Dict, Any
@@ -382,28 +381,6 @@ def handle_api(path, body):
         }
         caption = captions.get(user_lang, captions['ru'])
         ok = send_strip_photo_to_winner(winner_id, photo, caption)
-
-        # Save photo to disk
-        try:
-            uploads_dir = os.path.join(os.path.dirname(__file__), "static", "uploads")
-            os.makedirs(uploads_dir, exist_ok=True)
-            # Extract bytes and extension
-            _, b64_data = photo.split(',', 1) if ',' in photo else (None, photo)
-            photo_bytes = base64.b64decode(b64_data)
-            ext = '.jpg'
-            if photo.startswith('data:image/png'):
-                ext = '.png'
-            elif photo.startswith('data:image/gif'):
-                ext = '.gif'
-            elif photo.startswith('data:image/webp'):
-                ext = '.webp'
-            fname = f"strip_{code}_{int(time.time())}{ext}"
-            path = os.path.join(uploads_dir, fname)
-            with open(path, 'wb') as f:
-                f.write(photo_bytes)
-            logger.info("Photo saved: %s", path)
-        except Exception as e:
-            logger.error("Failed to save photo: %s", e)
 
         if ok:
             return {"ok": True}
