@@ -10,7 +10,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
 from bot import start, web_app_data
 from api import handle_api
-from persist import load as load_state
+from api import load_all
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -114,7 +114,7 @@ def run_bot():
     app.run_polling()
 
 def main():
-    load_state()
+    load_all()
 
     # HTTP server in background (can run any thread)
     t = threading.Thread(target=run_http, daemon=True)
