@@ -38,6 +38,53 @@
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+.theme-ocean { }
+.theme-neon {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #12122a;
+  --bg-card: rgba(30, 20, 50, 0.85);
+  --accent-cyan: #d946ef;
+  --accent-purple: #a855f7;
+  --accent-pink: #ec4899;
+  --accent-amber: #fbbf24;
+  --accent-green: #22d3ee;
+  --accent-blue: #8b5cf6;
+  --glow-cyan: 0 0 20px rgba(217, 70, 239, 0.2);
+  --glow-purple: 0 0 20px rgba(168, 85, 247, 0.2);
+  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.2);
+  --glow-green: 0 0 20px rgba(34, 211, 238, 0.2);
+}
+.theme-forest {
+  --bg-primary: #0a140e;
+  --bg-secondary: #0f1f15;
+  --bg-card: rgba(15, 35, 25, 0.85);
+  --accent-cyan: #34d399;
+  --accent-purple: #22c55e;
+  --accent-pink: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-green: #16a34a;
+  --accent-blue: #06b6d4;
+  --glow-cyan: 0 0 20px rgba(52, 211, 153, 0.2);
+  --glow-purple: 0 0 20px rgba(34, 197, 94, 0.2);
+  --glow-pink: 0 0 20px rgba(16, 185, 129, 0.2);
+  --glow-green: 0 0 20px rgba(22, 163, 74, 0.2);
+}
+.theme-sunset {
+  --bg-primary: #1a0e08;
+  --bg-secondary: #24140e;
+  --bg-card: rgba(50, 25, 15, 0.85);
+  --accent-cyan: #fb923c;
+  --accent-purple: #ef4444;
+  --accent-pink: #f97316;
+  --accent-amber: #fbbf24;
+  --accent-green: #34d399;
+  --accent-blue: #f59e0b;
+  --glow-cyan: 0 0 20px rgba(251, 146, 60, 0.2);
+  --glow-purple: 0 0 20px rgba(239, 68, 68, 0.2);
+  --glow-pink: 0 0 20px rgba(249, 115, 22, 0.2);
+  --glow-green: 0 0 20px rgba(52, 211, 153, 0.2);
+}
+
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(0,229,255,0.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(124,58,237,0.03) 0%,transparent 60%),radial-gradient(ellipse at 50% 80%,rgba(236,72,153,0.02) 0%,transparent 60%)}
 
@@ -106,7 +153,9 @@ body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white
 .modal{background:var(--bg-card);border-radius:var(--radius-xl);padding:32px 28px;max-width:360px;width:100%;text-align:center;border:1px solid var(--border-subtle);box-shadow:0 24px 64px rgba(0,0,0,.4);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);animation:modalIn .35s cubic-bezier(.4,0,.2,1)}
 .modal h2{font-size:22px;font-weight:700;margin-bottom:8px;letter-spacing:-.02em}
 .modal p{font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.5}
-.result-icon{font-size:56px;margin-bottom:12px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.4))}
+.result-bar{height:4px;border-radius:2px;margin-bottom:16px;width:60px;margin-left:auto;margin-right:auto}
+.bar-win{background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));box-shadow:0 0 16px rgba(16,185,129,0.4)}
+.bar-lose{background:linear-gradient(90deg,var(--accent-red),var(--accent-pink));box-shadow:0 0 16px rgba(239,68,68,0.4)}
 .modal .btn{margin-top:8px}
 .legend{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;padding:6px 0;font-size:12px;color:var(--text-muted)}
 .legend span{display:inline-flex;align-items:center;gap:4px}
@@ -123,6 +172,8 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
 .game-card{background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-xl);padding:28px 24px;text-align:center;cursor:pointer;transition:all .35s cubic-bezier(.4,0,.2,1);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .game-card:hover{transform:translateY(-4px);border-color:rgba(0,229,255,0.2);box-shadow:0 16px 48px rgba(0,0,0,.3),var(--glow-cyan)}
 .game-card .name{font-size:18px;font-weight:700;letter-spacing:-.01em;margin-top:12px}
+.game-card.cyan .name{color:var(--accent-cyan)}
+.game-card.purple .name{color:var(--accent-purple)}
 .game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:6px}
 
 /* ── Mode Grid ── */
@@ -190,7 +241,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
 .theme-btn:hover{border-color:var(--border-hover);color:var(--text-white);background:var(--bg-glass-hover)}
 .theme-btn.active{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));color:var(--bg-primary);border-color:transparent;font-weight:700}
 .theme-divider{width:1px;background:var(--border-subtle);height:24px;align-self:center}
-.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:16px;border-radius:100px}
+.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:11px;border-radius:100px}
 
 /* ── Yahtzee ── */
 .yz-dice{display:flex;gap:10px;justify-content:center;margin:12px 0;flex-wrap:wrap}
@@ -244,309 +295,314 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
   <div class="status" id="status"><span style="opacity:0.5">Loading...</span></div>
   <div class="ship-hint" id="shipHint"></div>
   <div class="board-wrap" id="ownBoardWrap" style="display:none">
-    <div class="board-label" id="lblOwn">🚢</div>
+    <div class="board-label" id="lblOwn"></div>
     <div class="board" id="ownBoard"></div>
   </div>
   <div class="board-wrap" id="oppBoardWrap" style="display:none">
-    <div class="board-label" id="lblOpp">🎯</div>
+    <div class="board-label" id="lblOpp"></div>
     <div class="board" id="oppBoard"></div>
   </div>
   <!-- Legend removed per request -->
   <div class="theme-selector" id="themeSelector" style="display:none">
-    <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
-    <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
+    <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">SND</button>
+    <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">VIB</button>
+    <div class="theme-divider"></div>
+    <button class="theme-btn" onclick="setTheme('ocean')">Ocean</button>
+    <button class="theme-btn" onclick="setTheme('neon')">Neon</button>
+    <button class="theme-btn" onclick="setTheme('forest')">Forest</button>
+    <button class="theme-btn" onclick="setTheme('sunset')">Sunset</button>
   </div>
   <div class="btn-row" id="actions"></div>
 
 </div>
-<footer>🎮 Games</footer>
+<footer>Sea Battle</footer>
 
 <script>
 const LANG = {
   ru: {
-    title: '⚓ МОРСКОЙ БОЙ',
-    startBtn: '🎮 Начать игру',
-    ownBoard: '🚢 ТВОИ КОРАБЛИ',
-    oppBoard: '🎯 ДОСКА СОПЕРНИКА',
-    legEmpty: 'пусто', legShip: 'корабль', legHit: 'попал', legMiss: 'мимо', legSunk: 'потоплен',
-    welcome: '🔱 Добро пожаловать!',
-    placing: '🚢 Расстановка — крути, пока не устроит',
-    reroll: '🔀 Переставить',
-    confirm: '✅ ОК, начинаем!',
-    again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
-    yourTurn: '⚓ ТВОЙ ХОД!',
-    oppTurn: '⏳ ХОД СОПЕРНИКА...',
-    surrender: '🚪 Сдаться',
-    quit: '🚪 Выйти',
-    quitConfirm: 'Выйти из игры?',
-    hit: '🔥 Попадание!',
-    sunk: '💀 Корабль потоплен!',
-    miss: '💨 Мимо!',
-    botHit: 'попал в',
-    botSunk: 'потопил',
-    botMiss: 'мимо',
-    win: '🏆 ПОБЕДА!',
-    winDesc: 'Ты потопил все корабли соперника!',
-    lose: '💔 ПОРАЖЕНИЕ',
-    loseDesc: 'Все твои корабли потоплены...',
-    playAgain: '🔄 Играть ещё',
-    close: '🚪 Закрыть',
-    withBot: '· с ботом',
-    withFriend: '· с другом',
-    vsBot: '🤖 С ботом',
-    vsFriend: '👤 С другом',
-    joinTitle: '🔗 Присоединиться',
-    joinBtn: '🔗 Ввести код',
-    joinPlaceholder: 'Введи код игры',
-    joinError: '⚠️ Игра не найдена или уже полная',
-    waitOpp: '⏳ Ожидаем соперника...',
-    codeShare: '📤 Код: <b>{}</b> — отправь другу',
-    error: '⚠️ Ошибка соединения',
-    errorShot: '⚠️ Сюда уже стреляли',
-    gameOver: '🔱 Игра закончилась.',
-    gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Анаграмма',
-    anaSolo: '🕹️ Соло',
-    anaFriend: '👤 С другом',
-    anaPlaceholder: 'Введи слово...',
-    anaFound: 'Найдено: {}',
-    anaHint: '💡 Подсказка (-200)',
-    anaWaiting: '⏳ Ожидаем соперника...',
-    anaOver: 'Игра окончена! Счёт: {}',
-    anaPlayAgain: '🔄 Играть ещё',
-    seaBattle: '⚓ Морской бой',
-    selectGame: 'Выбери игру',
-    anaLettersCode: 'Буквы: {}',
-    anaAllWords: 'Все возможные слова: {}',
-    anaBaseWord: 'Основное слово: {}',
-    inviteFriend: 'Пригласить друга',
-    shareCopied: 'Код скопирован, отправь другу',
-    copyCode: 'Нажми, чтобы скопировать код',
-    settings: 'Настройки',
-    sound: 'Звук',
-    vibration: 'Вибрация',
-    shipHint: '🚢 Корабли: {0}',
-    stripMode: '👗 На раздевание',
-    stripTitle: '👗 Морской бой — На раздевание',
-    stripPlace: '👗 Расставь корабли-одежду',
-    stripDesc: 'Корабли могут быть любой формы!',
-    stripLoseTitle: '👗 Игра окончена!',
-    stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
-    stripUploadTitle: '📸 Загрузи фото',
-    stripUploadDesc: 'Выбери способ загрузки фото:',
-    stripTakePhoto: '📷 Сделать фото',
-    stripChoosePhoto: '🖼 Из галереи',
-    stripUseStandard: '🎭 Стандартное фото',
-    stripSkip: '⏭ Пропустить',
-    yzTitle: '🎲 Покер на костях',
-    yzSolo: '🕹️ Соло',
-    yzFriend: '👤 С другом',
-    yzJoin: '🔗 Присоединиться',
-    yzRoll: '🎲 Бросить ({0}/3)',
-    yzRolls: 'Броски: {0}/3',
-    yzScore: 'Записать',
-    yzWaiting: '⏳ Ожидаем соперника...',
-    yzWaitTurn: '⏳ ХОД СОПЕРНИКА',
-    yzYourTurn: '🎲 ТВОЙ ХОД!',
-    yzGameOver: '🎲 Игра окончена!',
-    yzWin: '🏆 Ты выиграл!',
-    yzLose: '💔 Ты проиграл!',
-    yzDraw: '🤝 Ничья!',
-    yzTotal: 'Итого: {0}',
-    yzUpperBonus: '+35 бонус',
-    yzLeft: 'Осталось: {0}',
-        yzCat0: 'Единицы', yzCat1: 'Двойки', yzCat2: 'Тройки', yzCat3: 'Четверки', yzCat4: 'Пятерки', yzCat5: 'Шестерки', yzCat6: 'Тройка', yzCat7: 'Каре', yzCat8: 'Фулл-хаус', yzCat9: 'Малый стрит', yzCat10: 'Большой стрит', yzCat11: 'Покер', yzCat12: 'Шанс',
-    yzMultiEnd: '🎲 Игра окончена! Твой счёт: {0}, соперник: {1}',
+    title:'МОРСКОЙ БОЙ',
+    startBtn:'Начать игру',
+    ownBoard:'ТВОИ КОРАБЛИ',
+    oppBoard:'ДОСКА СОПЕРНИКА',
+    legEmpty:'пусто', legShip:'корабль', legHit:'попал', legMiss:'мимо', legSunk:'потоплен',
+    welcome:'Добро пожаловать!',
+    placing:'Расстановка — крути, пока не устроит',
+    reroll:'Переставить',
+    confirm:'ОК, начинаем!',
+    again:'Ещё раз? Нажми «ОК» когда устроит',
+    yourTurn:'ТВОЙ ХОД!',
+    oppTurn:'ХОД СОПЕРНИКА...',
+    surrender:'Сдаться',
+    quit:'Выйти',
+    quitConfirm:'Выйти из игры?',
+    hit:'Попадание!',
+    sunk:'Корабль потоплен!',
+    miss:'Мимо!',
+    botHit:'попал в',
+    botSunk:'потопил',
+    botMiss:'мимо',
+    win:'ПОБЕДА!',
+    winDesc:'Ты потопил все корабли соперника!',
+    lose:'ПОРАЖЕНИЕ',
+    loseDesc:'Все твои корабли потоплены...',
+    playAgain:'Играть ещё',
+    close:'Закрыть',
+    withBot:'· с ботом',
+    withFriend:'· с другом',
+    vsBot:'С ботом',
+    vsFriend:'С другом',
+    joinTitle:'Присоединиться',
+    joinBtn:'Ввести код',
+    joinPlaceholder:'Введи код игры',
+    joinError:'Игра не найдена или уже полная',
+    waitOpp:'Ожидаем соперника...',
+    codeShare:'Код: <b>{}</b> — отправь другу',
+    error:'Ошибка соединения',
+    errorShot:'Сюда уже стреляли',
+    gameOver:'Игра закончилась.',
+    gameInfo:'{code} {mode}',
+    anaTitle:'Анаграмма',
+    anaSolo:'Соло',
+    anaFriend:'С другом',
+    anaPlaceholder:'Введи слово...',
+    anaFound:'Найдено: {}',
+    anaHint:'Подсказка (-200)',
+    anaWaiting:'Ожидаем соперника...',
+    anaOver:'Игра окончена! Счёт: {}',
+    anaPlayAgain:'Играть ещё',
+    seaBattle:'Морской бой',
+    selectGame:'Выбери игру',
+    anaLettersCode:'Буквы: {}',
+    anaAllWords:'Все возможные слова: {}',
+    anaBaseWord:'Основное слово: {}',
+    inviteFriend:'Пригласить друга',
+    shareCopied:'Код скопирован, отправь другу',
+    copyCode:'Нажми, чтобы скопировать код',
+    settings:'Настройки',
+    sound:'Звук',
+    vibration:'Вибрация',
+    shipHint:'Корабли: {0}',
+    stripMode:'На раздевание',
+    stripTitle:'Морской бой — На раздевание',
+    stripPlace:'Расставь корабли-одежду',
+    stripDesc:'Корабли могут быть любой формы!',
+    stripLoseTitle:'Игра окончена!',
+    stripLoseDesc:'Ты проиграл в режиме «На раздевание». Загрузи фото.',
+    stripUploadTitle:'Загрузи фото',
+    stripUploadDesc:'Выбери способ загрузки фото:',
+    stripTakePhoto:'Сделать фото',
+    stripChoosePhoto:'Из галереи',
+    stripUseStandard:'Стандартное фото',
+    stripSkip:'Пропустить',
+    yzTitle:'Покер на костях',
+    yzSolo:'Соло',
+    yzFriend:'С другом',
+    yzJoin:'Присоединиться',
+    yzRoll:'Бросить ({0}/3)',
+    yzRolls:'Броски: {0}/3',
+    yzScore:'Записать',
+    yzWaiting:'Ожидаем соперника...',
+    yzWaitTurn:'ХОД СОПЕРНИКА',
+    yzYourTurn:'ТВОЙ ХОД!',
+    yzGameOver:'Игра окончена!',
+    yzWin:'Ты выиграл!',
+    yzLose:'Ты проиграл!',
+    yzDraw:'Ничья!',
+    yzTotal:'Итого: {0}',
+    yzUpperBonus:'+35 бонус',
+    yzLeft:'Осталось: {0}',
+        yzCat0:'Единицы', yzCat1:'Двойки', yzCat2:'Тройки', yzCat3:'Четверки', yzCat4:'Пятерки', yzCat5:'Шестерки', yzCat6:'Тройка', yzCat7:'Каре', yzCat8:'Фулл-хаус', yzCat9:'Малый стрит', yzCat10:'Большой стрит', yzCat11:'Покер', yzCat12:'Шанс',
+    yzMultiEnd:'Игра окончена! Твой счёт: {0}, соперник: {1}',
   },
   uk: {
-    title: 'Морський бій',
-    startBtn: '🎮 Почати гру',
-    ownBoard: '🚢 ТВОЇ КОРАБЛІ',
-    oppBoard: '🎯 ДОШКА СУПЕРНИКА',
-    legEmpty: 'пусто', legShip: 'корабель', legHit: 'попав', legMiss: 'повз', legSunk: 'потоплено',
-    welcome: '🔱 Ласкаво просимо!',
-    placing: '🚢 Розстановка — крути, поки не сподобається',
-    reroll: '🔀 Переставити',
-    confirm: '✅ ОК, починаємо!',
-    again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
-    yourTurn: '⚓ ТВІЙ ХІД!',
-    oppTurn: '⏳ ХІД СУПЕРНИКА...',
-    surrender: '🚪 Здатися',
-    quit: '🚪 Вийти',
-    quitConfirm: 'Вийти з гри?',
-    hit: '🔥 Влучив!',
-    sunk: '💀 Корабель потоплено!',
-    miss: '💨 Повз!',
-    botHit: 'влучив у',
-    botSunk: 'потопив',
-    botMiss: 'повз',
-    win: '🏆 ПЕРЕМОГА!',
-    winDesc: 'Ти потопив усі кораблі суперника!',
-    lose: '💔 ПОРАЗКА',
-    loseDesc: 'Усі твої кораблі потоплені...',
-    playAgain: '🔄 Грати ще',
-    close: '🚪 Закрити',
-    withBot: '· з ботом',
-    withFriend: '· з другом',
-    vsBot: '🤖 З ботом',
-    vsFriend: '👤 З другом',
-    joinTitle: '🔗 Приєднатися',
-    joinBtn: '🔗 Ввести код',
-    joinPlaceholder: 'Введи код гри',
-    joinError: '⚠️ Гру не знайдено або вже повна',
-    waitOpp: '⏳ Чекаємо суперника...',
-    codeShare: '📤 Код: <b>{}</b> — відправ другу',
-    error: '⚠️ Помилка з\'єднання',
-    errorShot: '⚠️ Сюди вже стріляли',
-    gameOver: '🔱 Гра закінчилась.',
-    gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Анаграма',
-    anaSolo: '🕹️ Соло',
-    anaFriend: '👤 З другом',
-    anaPlaceholder: 'Введи слово...',
-    anaFound: 'Знайдено: {}',
-    anaHint: '💡 Підказка (-200)',
-    anaWaiting: '⏳ Чекаємо суперника...',
-    anaOver: 'Гра закінчена! Рахунок: {}',
-    anaPlayAgain: '🔄 Грати ще',
-    seaBattle: '⚓ Морський бій',
-    selectGame: 'Обери гру',
-    anaLettersCode: 'Букви: {}',
-    anaAllWords: 'Всі можливі слова: {}',
-    anaBaseWord: 'Основне слово: {}',
-    inviteFriend: 'Запросити друга',
-    shareCopied: 'Код скопійовано, надішли другу',
-    copyCode: 'Натисни, щоб скопіювати код',
-    settings: 'Налаштування',
-    sound: 'Звук',
-    vibration: 'Вібрація',
-    shipHint: '🚢 Кораблі: {0}',
-    stripMode: '👗 На роздягання',
-    stripTitle: '👗 Морський бій — На роздягання',
-    stripPlace: '👗 Розстав кораблі-одяг',
-    stripDesc: 'Кораблі можуть бути будь-якої форми!',
-    stripLoseTitle: '👗 Гра закінчена!',
-    stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
-    stripUploadTitle: '📸 Завантаж фото',
-    stripUploadDesc: 'Обери спосіб завантаження фото:',
-    stripTakePhoto: '📷 Зробити фото',
-    stripChoosePhoto: '🖼 З галереї',
-    stripUseStandard: '🎭 Стандартне фото',
-    stripSkip: '⏭ Пропустити',
-    yzTitle: '🎲 Покер на кістках',
-    yzSolo: '🕹️ Соло',
-    yzFriend: '👤 З другом',
-    yzJoin: '🔗 Приєднатися',
-    yzRoll: '🎲 Кинути ({0}/3)',
-    yzRolls: 'Кидки: {0}/3',
-    yzScore: 'Записати',
-    yzWaiting: '⏳ Чекаємо суперника...',
-    yzWaitTurn: '⏳ ХІД СУПЕРНИКА',
-    yzYourTurn: '🎲 ТВІЙ ХІД!',
-    yzGameOver: '🎲 Гра закінчена!',
-    yzWin: '🏆 Ти виграв!',
-    yzLose: '💔 Ти програв!',
-    yzDraw: '🤝 Нічия!',
-    yzTotal: 'Разом: {0}',
-    yzUpperBonus: '+35 бонус',
-    yzLeft: 'Залишилось: {0}',
-        yzCat0: 'Одиниці', yzCat1: 'Двійки', yzCat2: 'Трійки', yzCat3: 'Четверки', yzCat4: 'П\'ятірки', yzCat5: 'Шістки', yzCat6: 'Трійка', yzCat7: 'Каре', yzCat8: 'Фул-хаус', yzCat9: 'Малий стрит', yzCat10: 'Великий стрит', yzCat11: 'Покер', yzCat12: 'Шанс',
-    yzMultiEnd: '🎲 Гра закінчена! Твій рахунок: {0}, суперник: {1}',
+    title:'Морський бій',
+    startBtn:'Почати гру',
+    ownBoard:'ТВОЇ КОРАБЛІ',
+    oppBoard:'ДОШКА СУПЕРНИКА',
+    legEmpty:'пусто', legShip:'корабель', legHit:'попав', legMiss:'повз', legSunk:'потоплено',
+    welcome:'Ласкаво просимо!',
+    placing:'Розстановка — крути, поки не сподобається',
+    reroll:'Переставити',
+    confirm:'ОК, починаємо!',
+    again:'Ще раз? Натисни «ОК» коли влаштує',
+    yourTurn:'ТВІЙ ХІД!',
+    oppTurn:'ХІД СУПЕРНИКА...',
+    surrender:'Здатися',
+    quit:'Вийти',
+    quitConfirm:'Вийти з гри?',
+    hit:'Влучив!',
+    sunk:'Корабель потоплено!',
+    miss:'Повз!',
+    botHit:'влучив у',
+    botSunk:'потопив',
+    botMiss:'повз',
+    win:'ПЕРЕМОГА!',
+    winDesc:'Ти потопив усі кораблі суперника!',
+    lose:'ПОРАЗКА',
+    loseDesc:'Усі твої кораблі потоплені...',
+    playAgain:'Грати ще',
+    close:'Закрити',
+    withBot:'· з ботом',
+    withFriend:'· з другом',
+    vsBot:'З ботом',
+    vsFriend:'З другом',
+    joinTitle:'Приєднатися',
+    joinBtn:'Ввести код',
+    joinPlaceholder:'Введи код гри',
+    joinError:'Гру не знайдено або вже повна',
+    waitOpp:'Чекаємо суперника...',
+    codeShare:'Код: <b>{}</b> — відправ другу',
+    error:'Помилка з\'єднання',
+    errorShot:'Сюди вже стріляли',
+    gameOver:'Гра закінчилась.',
+    gameInfo:'{code} {mode}',
+    anaTitle:'Анаграма',
+    anaSolo:'Соло',
+    anaFriend:'З другом',
+    anaPlaceholder:'Введи слово...',
+    anaFound:'Знайдено: {}',
+    anaHint:'Підказка (-200)',
+    anaWaiting:'Чекаємо суперника...',
+    anaOver:'Гра закінчена! Рахунок: {}',
+    anaPlayAgain:'Грати ще',
+    seaBattle:'Морський бій',
+    selectGame:'Обери гру',
+    anaLettersCode:'Букви: {}',
+    anaAllWords:'Всі можливі слова: {}',
+    anaBaseWord:'Основне слово: {}',
+    inviteFriend:'Запросити друга',
+    shareCopied:'Код скопійовано, надішли другу',
+    copyCode:'Натисни, щоб скопіювати код',
+    settings:'Налаштування',
+    sound:'Звук',
+    vibration:'Вібрація',
+    shipHint:'Кораблі: {0}',
+    stripMode:'На роздягання',
+    stripTitle:'Морський бій — На роздягання',
+    stripPlace:'Розстав кораблі-одяг',
+    stripDesc:'Кораблі можуть бути будь-якої форми!',
+    stripLoseTitle:'Гра закінчена!',
+    stripLoseDesc:'Ти програв у режимі «На роздягання». Завантаж фото.',
+    stripUploadTitle:'Завантаж фото',
+    stripUploadDesc:'Обери спосіб завантаження фото:',
+    stripTakePhoto:'Зробити фото',
+    stripChoosePhoto:'З галереї',
+    stripUseStandard:'Стандартне фото',
+    stripSkip:'Пропустити',
+    yzTitle:'Покер на кістках',
+    yzSolo:'Соло',
+    yzFriend:'З другом',
+    yzJoin:'Приєднатися',
+    yzRoll:'Кинути ({0}/3)',
+    yzRolls:'Кидки: {0}/3',
+    yzScore:'Записати',
+    yzWaiting:'Чекаємо суперника...',
+    yzWaitTurn:'ХІД СУПЕРНИКА',
+    yzYourTurn:'ТВІЙ ХІД!',
+    yzGameOver:'Гра закінчена!',
+    yzWin:'Ти виграв!',
+    yzLose:'Ти програв!',
+    yzDraw:'Нічия!',
+    yzTotal:'Разом: {0}',
+    yzUpperBonus:'+35 бонус',
+    yzLeft:'Залишилось: {0}',
+        yzCat0:'Одиниці', yzCat1:'Двійки', yzCat2:'Трійки', yzCat3:'Четверки', yzCat4:'П\'ятірки', yzCat5:'Шістки', yzCat6:'Трійка', yzCat7:'Каре', yzCat8:'Фул-хаус', yzCat9:'Малий стрит', yzCat10:'Великий стрит', yzCat11:'Покер', yzCat12:'Шанс',
+    yzMultiEnd:'Гра закінчена! Твій рахунок: {0}, суперник: {1}',
   },
   en: {
-    title: 'Sea Battle',
-    startBtn: '🎮 Start Game',
-    ownBoard: '🚢 YOUR SHIPS',
-    oppBoard: '🎯 OPPONENT\'S BOARD',
-    legEmpty: 'empty', legShip: 'ship', legHit: 'hit', legMiss: 'miss', legSunk: 'sunk',
-    welcome: '🔱 Welcome aboard!',
-    placing: '🚢 Place ships — reroll until you like it',
-    reroll: '🔀 Reroll',
-    confirm: '✅ OK, start!',
-    again: '🔄 Again? Press «OK» when ready',
-    yourTurn: '⚓ YOUR TURN!',
-    oppTurn: '⏳ OPPONENT\'S TURN...',
-    surrender: '🚪 Surrender',
-    quit: '🚪 Quit',
-    quitConfirm: 'Leave the game?',
-    hit: '🔥 Hit!',
-    sunk: '💀 Ship sunk!',
-    miss: '💨 Miss!',
-    botHit: 'hit at',
-    botSunk: 'sunk at',
-    botMiss: 'missed',
-    win: '🏆 VICTORY!',
-    winDesc: 'You sank all enemy ships!',
-    lose: '💔 DEFEAT',
-    loseDesc: 'All your ships are sunk...',
-    playAgain: '🔄 Play again',
-    close: '🚪 Close',
-    withBot: '· vs bot',
-    withFriend: '· vs friend',
-    vsBot: '🤖 vs Bot',
-    vsFriend: '👤 vs Friend',
-    joinTitle: '🔗 Join Game',
-    joinBtn: '🔗 Enter Code',
-    joinPlaceholder: 'Enter game code',
-    joinError: '⚠️ Game not found or full',
-    waitOpp: '⏳ Waiting for opponent...',
-    codeShare: '📤 Code: <b>{}</b> — send to your friend',
-    error: '⚠️ Connection error',
-    errorShot: '⚠️ Already targeted',
-    gameOver: '🔱 Game over.',
-    gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Anagram',
-    anaSolo: '🕹️ Solo',
-    anaFriend: '👤 With Friend',
-    anaPlaceholder: 'Type a word...',
-    anaFound: 'Found: {}',
-    anaHint: '💡 Hint (-200)',
-    anaWaiting: '⏳ Waiting for opponent...',
-    anaOver: 'Game over! Score: {}',
-    anaPlayAgain: '🔄 Play again',
-    seaBattle: '⚓ Sea Battle',
-    selectGame: 'Choose game',
-    anaLettersCode: 'Letters: {}',
-    anaAllWords: 'All possible words: {}',
-    anaBaseWord: 'Base word: {}',
-    inviteFriend: 'Invite friend',
-    shareCopied: 'Code copied, send to friend',
-    copyCode: 'Tap to copy code',
-    settings: 'Settings',
-    sound: 'Sound',
-    vibration: 'Vibration',
-    shipHint: '🚢 Ships: {0}',
-    stripMode: '👗 Strip Mode',
-    stripTitle: '👗 Sea Battle — Strip Mode',
-    stripPlace: '👗 Place clothing ships',
-    stripDesc: 'Ships can be any shape!',
-    stripLoseTitle: '👗 Game Over!',
-    stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
-    stripUploadTitle: '📸 Upload Photo',
-    stripUploadDesc: 'Choose how to upload a photo:',
-    stripTakePhoto: '📷 Take Photo',
-    stripChoosePhoto: '🖼 From Gallery',
-    stripUseStandard: '🎭 Standard Photo',
-    stripSkip: '⏭ Skip',
-    yzTitle: '🎲 Dice Poker',
-    yzSolo: '🕹️ Solo',
-    yzFriend: '👤 With Friend',
-    yzJoin: '🔗 Join Game',
-    yzRoll: '🎲 Roll ({0}/3)',
-    yzRolls: 'Rolls: {0}/3',
-    yzScore: 'Score',
-    yzWaiting: '⏳ Waiting for opponent...',
-    yzWaitTurn: '⏳ OPPONENT\'S TURN',
-    yzYourTurn: '🎲 YOUR TURN!',
-    yzGameOver: '🎲 Game Over!',
-    yzWin: '🏆 You win!',
-    yzLose: '💔 You lose!',
-    yzDraw: '🤝 Draw!',
-    yzTotal: 'Total: {0}',
-    yzUpperBonus: '+35 bonus',
-    yzLeft: 'Left: {0}',
-    yzCat0: 'Ones', yzCat1: 'Twos', yzCat2: 'Threes', yzCat3: 'Fours', yzCat4: 'Fives', yzCat5: 'Sixes', yzCat6: 'Three of a Kind', yzCat7: 'Four of a Kind', yzCat8: 'Full House', yzCat9: 'Small Straight', yzCat10: 'Large Straight', yzCat11: 'Yahtzee', yzCat12: 'Chance',
-    yzMultiEnd: '🎲 Game over! Your score: {0}, opponent: {1}',
+    title:'Sea Battle',
+    startBtn:'Start Game',
+    ownBoard:'YOUR SHIPS',
+    oppBoard:'OPPONENT\'S BOARD',
+    legEmpty:'empty', legShip:'ship', legHit:'hit', legMiss:'miss', legSunk:'sunk',
+    welcome:'Welcome aboard!',
+    placing:'Place ships — reroll until you like it',
+    reroll:'Reroll',
+    confirm:'OK, start!',
+    again:'Again? Press «OK» when ready',
+    yourTurn:'YOUR TURN!',
+    oppTurn:'OPPONENT\'S TURN...',
+    surrender:'Surrender',
+    quit:'Quit',
+    quitConfirm:'Leave the game?',
+    hit:'Hit!',
+    sunk:'Ship sunk!',
+    miss:'Miss!',
+    botHit:'hit at',
+    botSunk:'sunk at',
+    botMiss:'missed',
+    win:'VICTORY!',
+    winDesc:'You sank all enemy ships!',
+    lose:'DEFEAT',
+    loseDesc:'All your ships are sunk...',
+    playAgain:'Play again',
+    close:'Close',
+    withBot:'· vs bot',
+    withFriend:'· vs friend',
+    vsBot:'vs Bot',
+    vsFriend:'vs Friend',
+    joinTitle:'Join Game',
+    joinBtn:'Enter Code',
+    joinPlaceholder:'Enter game code',
+    joinError:'Game not found or full',
+    waitOpp:'Waiting for opponent...',
+    codeShare:'Code: <b>{}</b> — send to your friend',
+    error:'Connection error',
+    errorShot:'Already targeted',
+    gameOver:'Game over.',
+    gameInfo:'{code} {mode}',
+    anaTitle:'Anagram',
+    anaSolo:'Solo',
+    anaFriend:'With Friend',
+    anaPlaceholder:'Type a word...',
+    anaFound:'Found: {}',
+    anaHint:'Hint (-200)',
+    anaWaiting:'Waiting for opponent...',
+    anaOver:'Game over! Score: {}',
+    anaPlayAgain:'Play again',
+    seaBattle:'Sea Battle',
+    selectGame:'Choose game',
+    anaLettersCode:'Letters: {}',
+    anaAllWords:'All possible words: {}',
+    anaBaseWord:'Base word: {}',
+    inviteFriend:'Invite friend',
+    shareCopied:'Code copied, send to friend',
+    copyCode:'Tap to copy code',
+    settings:'Settings',
+    sound:'Sound',
+    vibration:'Vibration',
+    shipHint:'Ships: {0}',
+    stripMode:'Strip Mode',
+    stripTitle:'Sea Battle — Strip Mode',
+    stripPlace:'Place clothing ships',
+    stripDesc:'Ships can be any shape!',
+    stripLoseTitle:'Game Over!',
+    stripLoseDesc:'You lost in Strip Mode. Upload a photo.',
+    stripUploadTitle:'Upload Photo',
+    stripUploadDesc:'Choose how to upload a photo:',
+    stripTakePhoto:'Take Photo',
+    stripChoosePhoto:'From Gallery',
+    stripUseStandard:'Standard Photo',
+    stripSkip:'Skip',
+    yzTitle:'Dice Poker',
+    yzSolo:'Solo',
+    yzFriend:'With Friend',
+    yzJoin:'Join Game',
+    yzRoll:'Roll ({0}/3)',
+    yzRolls:'Rolls: {0}/3',
+    yzScore:'Score',
+    yzWaiting:'Waiting for opponent...',
+    yzWaitTurn:'OPPONENT\'S TURN',
+    yzYourTurn:'YOUR TURN!',
+    yzGameOver:'Game Over!',
+    yzWin:'You win!',
+    yzLose:'You lose!',
+    yzDraw:'Draw!',
+    yzTotal:'Total: {0}',
+    yzUpperBonus:'+35 bonus',
+    yzLeft:'Left: {0}',
+    yzCat0:'Ones', yzCat1:'Twos', yzCat2:'Threes', yzCat3:'Fours', yzCat4:'Fives', yzCat5:'Sixes', yzCat6:'Three of a Kind', yzCat7:'Four of a Kind', yzCat8:'Full House', yzCat9:'Small Straight', yzCat10:'Large Straight', yzCat11:'Yahtzee', yzCat12:'Chance',
+    yzMultiEnd:'Game over! Your score: {0}, opponent: {1}',
   }
 };
 
@@ -578,19 +634,17 @@ function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0')
 function updateSettingsUI(){
   const sndBtn=document.getElementById('sndBtn');
   const vibeBtn=document.getElementById('vibeBtn');
-  if(sndBtn)sndBtn.textContent=_snd?'🔊':'🔇';
-  if(vibeBtn)vibeBtn.textContent=_vibe?'📳':'📴';
+  if(sndBtn)sndBtn.textContent=_snd?'SND':'--';
+  if(vibeBtn)vibeBtn.textContent=_vibe?'VIB':'--';
 }
 
 function setTheme(themeName){
   document.documentElement.className = 'theme-' + themeName;
   localStorage.setItem('sb_theme', themeName);
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === themeName);
+  });
 }
-function initTheme(){
-  const saved = localStorage.getItem('sb_theme') || 'default';
-  setTheme(saved);
-}
-
 function initTheme(){
   const saved = localStorage.getItem('sb_theme') || 'ocean';
   setTheme(saved);
@@ -600,13 +654,13 @@ function showSettings(){
   const existing=$('settingsOverlay');
   if(existing){existing.remove()}
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
-  const s=_snd?'✅':'❌',v=_vibe?'✅':'❌';
+  const s=_snd?'ON':'OFF',v=_vibe?'ON':'OFF';
   o.innerHTML=`
     <div class="modal">
-      <div style="font-size:32px;margin-bottom:8px">⚙️</div>
+      <div style="font-size:32px;margin-bottom:8px">*</div>
       <h2>${t('settings')}</h2>
-      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val">${s}</span></div>
-      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val">${v}</span></div>
+      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>${t('sound')}</span><span class="sett-val">${s}</span></div>
+      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>${t('vibration')}</span><span class="sett-val">${v}</span></div>
       <button class="btn outline" style="margin-top:20px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -695,10 +749,10 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
     const v=grid[r*10+c];
     cell.className='cell';
     if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship')}}
-    else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
-    else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
-    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
-    else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
+    else if(v===HIT){cell.classList.add('hit');cell.textContent='\u274c'}
+    else if(v===MISS){cell.classList.add('miss');cell.textContent='\u00b7'}
+    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='\u2716'}
+    else if(v===DEAD){cell.classList.add('dead');cell.textContent='\u00b7'}
     else cell.classList.add('empty');
     // Show hint number on ship cells during placement
     const key = r*10+c;
@@ -759,7 +813,7 @@ function updateUI(){
   renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
   renderBoard($('oppBoard'),s.opp,true,gameOver,null,s.strip);
   
-  $('gameInfo').textContent = s.strip ? '👗 Strip' : '';
+  $('gameInfo').textContent = s.strip ? 'Strip' : '';
   $('header').classList.add('in-game');
   document.title = s.strip ? t('stripTitle') : t('title');
   
@@ -776,8 +830,8 @@ function updateUI(){
     if(pollTimer){clearInterval(pollTimer);pollTimer=null}
     localStorage.removeItem('sb_game');
     $('app').insertBefore($('status'), $('app').firstChild);
-    if(s.all_sunk)showResult('🏆',t('win'),t('winDesc'),s.strip);
-    else if(s.my_all_sunk)showResult('💔',t('lose'),t('loseDesc'),s.strip);
+    if(s.all_sunk)showResult(true,t('win'),t('winDesc'),s.strip);
+    else if(s.my_all_sunk)showResult(false,t('lose'),t('loseDesc'),s.strip);
     return;
   }
 
@@ -788,10 +842,10 @@ function updateUI(){
     $('app').insertBefore($('status'), $('app').firstChild);
     if(!s.solo){
       const c=s.code;
-      setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`,'');
+      setStatus(` <b>${c}</b> — ${t('waitOpp')}`,'');
       $('status').style.cursor='pointer';
       $('status').title=t('copyCode');
-      $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
+      $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus(' '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
     }else{
       setStatus(s.strip ? t('stripPlace') : t('placing'),'');
       $('status').style.cursor='';
@@ -800,11 +854,12 @@ function updateUI(){
     $('oppBoardWrap').style.display='none';
     $('actions').className = 'btn-row stack';
     $('actions').innerHTML=`
-      <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
-      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-      <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
-      <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
-    `;
+      <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px;margin:0 auto">
+        <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
+        ${!s.solo ? `<button class="btn primary" onclick="shareGame()">${t('inviteFriend')}</button>` : ''}
+        <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
+        <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
+      </div>`;
     $('themeSelector').style.display='none';
     return;
   }
@@ -818,11 +873,11 @@ function updateUI(){
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn danger" onclick="leaveGame()">${t('surrender')}</button>`;
+    $('actions').innerHTML=`<div style="display:flex;gap:6px;width:100%;max-width:340px;margin:0 auto;justify-content:center"><button class="btn danger" onclick="leaveGame()" style="flex:0 1 auto;min-width:140px">${t('surrender')}</button></div>`;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('quit')}</button>`;
+    $('actions').innerHTML=`<div style="display:flex;gap:6px;width:100%;max-width:340px;margin:0 auto;justify-content:center"><button class="btn outline" onclick="leaveGame()" style="flex:0 1 auto;min-width:140px">${t('quit')}</button></div>`;
   }
 }
 
@@ -841,10 +896,10 @@ function startStripMode(){
   o.className='overlay';
   o.innerHTML=`
     <div class="modal">
-      <div style="font-size:48px;margin-bottom:8px">👗</div>
+      <div class="result-bar bar-win" style="margin-bottom:16px"></div>
       <h2>${t('stripMode')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
-      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">🎲 ${t('startBtn')}</button>
+      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">${t('startBtn')}</button>
       <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
       <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
@@ -871,13 +926,13 @@ function shareGame(){
   }
   function doShare(){
     if(!botUsername){
-      copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+      copyToClipboard(gameCode, {ru:'Код скопирован',uk:'Код скопійовано',en:'Code copied'}[lang]);
       return;
     }
     const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
-    const texts = {ru:'🎮 Играй со мной в Морской бой!',uk:'🎮 Грай зі мною в Морський бій!',en:'🎮 Play Sea Battle with me!'};
+    const texts = {ru:'Играй со мной в Морской бой!',uk:'Грай зі мною в Морський бій!',en:'Play Sea Battle with me!'};
     const text = texts[lang];
-    copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+    copyToClipboard(url,{ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
     try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
   }
 }
@@ -886,10 +941,10 @@ function shareGame(){
 function copyToClipboard(text, msg){
   if(navigator.clipboard){
     navigator.clipboard.writeText(text).then(()=>{
-      if(msg) setStatus('✅ ' + msg, '');
-    }).catch(()=>{ if(msg) setStatus('✅ ' + msg, ''); });
+      if(msg) setStatus(msg, '');
+    }).catch(()=>{ if(msg) setStatus(msg, ''); });
   } else if(msg) {
-    setStatus('✅ ' + msg, '');
+    setStatus(msg, '');
   }
 }
 
@@ -935,14 +990,14 @@ function showMainMenu(){
   var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
+    <div class="game-card cyan" onclick="showSeaBattleMenu()">
       <img src="/static/game-icon.svg" style="width:52px;height:52px;display:block;margin:0 auto">
-      <div class="name" style="color:var(--accent-cyan)">⚓ ${t('seaBattle')}</div>
+      <div class="name">${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
-    <div class="game-card" onclick="showYahtzeeMenu()" style="margin-bottom:8px">
+    <div class="game-card purple" onclick="showYahtzeeMenu()">
       <img src="/static/mode-dice.svg" style="width:52px;height:52px;display:block;margin:0 auto">
-      <div class="name" style="color:var(--accent-purple)">${t('yzTitle')}</div>
+      <div class="name">${t('yzTitle')}</div>
       <div class="card-desc">${t('yahtzeeDesc')||'Yahtzee / 1000'}</div>
     </div>
   `;
@@ -990,10 +1045,10 @@ function chooseMultiMode(){
   o.className='overlay';
   o.innerHTML=`
     <div class="modal">
-      <div style="font-size:48px;margin-bottom:8px">👤</div>
+      <div class="result-bar bar-win" style="margin-bottom:16px"></div>
       <h2>${t('vsFriend')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
-      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(false)">🎲 ${t('startBtn')}</button>
+      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(false)">${t('startBtn')}</button>
       <button class="btn glow" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
       <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
@@ -1012,7 +1067,7 @@ async function autoPlace(){
 async function confirmPlace(){
   const res=await api('/api/confirm',{uid:getUid(),code:gameCode});
   if(!res||!res.ok){
-    setStatus('⚠️ ' + {ru:'Сначала расставь корабли!',uk:'Спочатку розстав кораблі!',en:'Place all ships first!'}[lang],'');
+    setStatus({ru:'Сначала расставь корабли!',uk:'Спочатку розстав кораблі!',en:'Place all ships first!'}[lang],'');
     return;
   }
   sfxClick();
@@ -1032,7 +1087,7 @@ async function handleShot(r,c){
   const bs=res.result.bot_shots;
   if(bs&&bs.length){
     const bn='ABCDEFGHIJ';
-    msg+=' 🤖';
+    msg+=' ';
     for(const s of bs){
       if(s.result==='hit')msg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
       else if(s.result==='sunk')msg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
@@ -1043,21 +1098,21 @@ async function handleShot(r,c){
   if(msg)setStatus(msg,'battle');
 }
 
-function showResult(icon,title,desc,strip){
+function showResult(isWin,title,desc,strip){
   const o=document.createElement('div');
-  if(icon==='🏆')sfxWin();else sfxLose();
+  if(isWin)sfxWin();else sfxLose();
   o.className='overlay';
   o.id='resultOverlay';
   const playAgainFn = strip ? "startStripMode()" : 'startSolo()';
-  const isWin = icon === '🏆';
   const photoHtml = strip && state && state.strip_photo
     ? `<img src="${state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)">`
-    : (strip ? '<div id="stripPhotoPending" style="font-size:13px;color:var(--text-muted);margin:12px 0">📸 ' + (isWin
+    : (strip ? '<div id="stripPhotoPending" style="font-size:13px;color:var(--text-muted);margin:12px 0">' + (isWin
         ? {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang]
         : {ru:'Загрузка фото...',uk:'Завантаження фото...',en:'Loading photo...'}[lang]) + '</div>' : '');
   o.innerHTML=`
     <div class="modal">
-      ${strip && isWin && state && state.strip_photo ? `<h2>${title}</h2>` : `<div class="result-icon">${icon}</div><h2>${title}</h2>`}
+      <div class="result-bar ${isWin?'bar-win':'bar-lose'}"></div>
+      <h2>${title}</h2>
       <p>${desc}</p>
       ${photoHtml}
       <div id="stripStatus" style="font-size:13px;min-height:20px;margin:4px 0"></div>
@@ -1074,7 +1129,7 @@ function showResult(icon,title,desc,strip){
     }
   }
   
-  if(strip && icon==='💔'){
+  if(strip && !isWin){
     setTimeout(() => {
       if(window._stripPhotoData){
         showStripPhotoInResult(window._stripPhotoData);
@@ -1111,8 +1166,8 @@ function pollStripPhotoForWinner(){
       clearInterval(_stripPhotoPollTimer);
       _stripPhotoPollTimer = null;
       const pending = $('stripPhotoPending');
-      const ri = document.querySelector('#resultOverlay .result-icon');
-      if(ri) ri.style.display = 'none';
+      const rb = document.querySelector('#resultOverlay .result-bar');
+      if(rb) rb.remove();
       if(pending){
         pending.outerHTML = `<img src="${res.state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:16px;margin:12px 0;box-shadow:0 8px 32px rgba(0,0,0,0.4)">`;
       }
@@ -1148,7 +1203,7 @@ async function uploadStripPhotoToGame(photoData){
   });
   if(res && res.ok){
     const st = $('stripStatus');
-    if(st) st.textContent = '✅ ' + {ru:'Фото в игре',uk:'Фото в грі',en:'Photo in game'}[lang];
+    if(st) st.textContent = ' ' + {ru:'Фото в игре',uk:'Фото в грі',en:'Photo in game'}[lang];
   }
 }
 
@@ -1290,11 +1345,11 @@ function renderYZ(){
   diceHtml += '</div>';
 
   const rollBtn = (!s.finished && s.my_turn && s.rolls<3)
-    ? '<div class="btn-row" style="justify-content:center;margin:6px 0;max-width:200px;margin-left:auto;margin-right:auto"><button class="btn glow" onclick="yzRoll2()">\ud83c\udfb2 '+t('yzRoll').replace('{0}',s.rolls)+'</button></div>'
+    ? '<div class="btn-row" style="justify-content:center;margin:6px 0;max-width:200px;margin-left:auto;margin-right:auto"><button class="btn glow" onclick="yzRoll2()">'+t('yzRoll').replace('{0}',s.rolls)+'</button></div>'
     : '';
 
   const hintText = (s.rolls>0 && !s.finished && s.my_turn)
-    ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;margin:2px 0">\ud83d\udc46 tap a die to hold it</div>'
+    ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;margin:2px 0">tap a die to hold it</div>'
     : '';
 
   let statusText = '';
@@ -1317,8 +1372,8 @@ function renderYZ(){
 
   const CATS = ['yzCat0','yzCat1','yzCat2','yzCat3','yzCat4','yzCat5',
     'yzCat6','yzCat7','yzCat8','yzCat9','yzCat10','yzCat11','yzCat12'];
-  const CAT_EMOJI = ['1\u20e3','2\u20e3','3\u20e3','4\u20e3','5\u20e3','6\u20e3',
-    '\ud83d\udd31','\ud83d\udc51','\ud83c\udfe0','\ud83d\udccf','\ud83d\udcd0','\u2b50','\u2753'];
+  const CAT_EMOJI = ['1','2','3','4','5','6',
+    '3K','FH','FL','SM','LG','YZ','CH'];
 
   const mySc = s.scores||{};
   const possible = s.possible||{};
@@ -1376,10 +1431,10 @@ async function fetchYZActive(){
   const a = res.active;
   if(a.finished)return;
   const label = a.solo ? t('yzSolo') : t('yzFriend');
-  const badge = a.my_turn ? '<span class="badge playing">\ud83c\udfb2 '+t('yourTurn')+'</span>' : '<span class="badge">\u23f3 '+(t('waitOpp')||'')+'</span>';
-  cont.innerHTML = '<div class="active-games"><h3>\u25b6 '+t('selectGame')+'</h3>'+
+  const badge = a.my_turn ? '<span class="badge playing">'+t('yourTurn')+'</span>' : '<span class="badge">'+(t('waitOpp')||'')+'</span>';
+  cont.innerHTML = '<div class="active-games"><h3>'+t('selectGame')+'</h3>'+
     '<div class="active-game-row" onclick="resumeYZ(\'"+a.code+"\')">'+
-      '<div class="info"><span class="label">\ud83c\udfb2 '+t('yzTitle')+'</span> <span class="code">'+a.code+'</span> <span class="label">'+label+'</span></div>'+
+      '<div class="info"><span class="label">'+t('yzTitle')+'</span> <span class="code">'+a.code+'</span> <span class="label">'+label+'</span></div>'+
       badge+
     '</div></div>';
 }
@@ -1397,14 +1452,13 @@ async function fetchActiveGames(){
     cont.innerHTML='';
     return;
   }
-  var html='<div class="active-games"><h3>▶ '+t('selectGame')+'</h3>';
+  var html='<div class="active-games"><h3>'+t('selectGame')+'</h3>';
   for(const g of res.games){
     if(g.type==='sea_battle'){
       var label=g.solo?t('vsBot'):t('withFriend');
-      var badge=g.phase==='playing'?'<span class="badge playing">🎯 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+t('placing')+'</span>';
-      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
+      var badge=g.phase==='playing'?'<span class="badge playing">'+t('yourTurn')+'</span>':'<span class="badge">'+t('placing')+'</span>';
+      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label"></span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
     }
-
   }
   html+='</div>';
   cont.innerHTML=html;

@@ -6,9 +6,9 @@ import config
 logger = logging.getLogger(__name__)
 
 L10N = {
-    'ru': {'text': '⚓ <b>Морской бой</b>\n\nНажми кнопку ниже, чтобы открыть игру 🎯', 'btn': '🎮 Открыть игру', 'share': '🎮 Морской бой\n\nКод игры: <b>{code}</b>\n\nОткройте игру и нажмите «🔗 Ввести код»'},
-    'uk': {'text': '⚓ <b>Морський бій</b>\n\nНатисни кнопку нижче, щоб відкрити гру 🎯', 'btn': '🎮 Відкрити гру', 'share': '🎮 Морський бій\n\nКод гри: <b>{code}</b>\n\nВідкрийте гру та натисніть «🔗 Ввести код»'},
-    'en': {'text': '⚓ <b>Sea Battle</b>\n\nTap the button below to open the game 🎯', 'btn': '🎮 Open Game', 'share': '🎮 Sea Battle\n\nGame code: <b>{code}</b>\n\nOpen the game and tap «🔗 Enter Code»'},
+    'ru': {'text': '<b>Морской бой</b>\n\nНажми кнопку ниже, чтобы открыть игру', 'btn': 'Открыть игру', 'share': 'Морской бой\n\nКод игры: <b>{code}</b>\n\nОткройте игру и нажмите «Ввести код»'},
+    'uk': {'text': '<b>Морський бій</b>\n\nНатисни кнопку нижче, щоб відкрити гру', 'btn': 'Відкрити гру', 'share': 'Морський бій\n\nКод гри: <b>{code}</b>\n\nВідкрийте гру та натисніть «Ввести код»'},
+    'en': {'text': '<b>Sea Battle</b>\n\nTap the button below to open the game', 'btn': 'Open Game', 'share': 'Sea Battle\n\nGame code: <b>{code}</b>\n\nOpen the game and tap «Enter Code»'},
 }
 
 def _locale_code(user):
