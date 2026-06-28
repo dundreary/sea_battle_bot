@@ -6,6 +6,7 @@ import urllib.request
 from typing import Dict, Any
 
 import anagram
+import yahtzee
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 import persist
@@ -64,6 +65,11 @@ player_games: Dict[int, str] = {}
 
 # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
 ana_player_sessions: Dict[int, Dict[str, Any]] = {}
+
+# Yahtzee game storage: code -> Yahtzee instance
+yz_games: Dict[str, yahtzee.Yahtzee] = {}
+# uid -> latest yz code
+yz_player_games: Dict[int, str] = {}
 
 EMPTY = 0
 SHIP = 1
@@ -221,6 +227,9 @@ def save_all():
     aps_serialized = {}
     for k, v in ana_player_sessions.items():
         aps_serialized[str(k)] = v
+    yzpg_serialized = {}
+    for k, v in yz_player_games.items():
+        yzpg_serialized[str(k)] = v
     data = {
         'version': 1,
         'saved_at': time.time(),
@@ -229,10 +238,17 @@ def save_all():
         'api_ana_player_sessions': aps_serialized,
         'anagram_games': anagram.games,
         'anagram_rooms': anagram.rooms,
+        'yz_games': {},
+        'yz_player_games': yzpg_serialized,
     }
     for code, game in games.items():
         try:
             data['api_games'][code] = game.to_dict()
+        except Exception:
+            pass
+    for code, g in yz_games.items():
+        try:
+            data['yz_games'][code] = g.to_dict()
         except Exception:
             pass
     persist.save(data)
@@ -291,6 +307,21 @@ def load_all():
                 ana_player_sessions[k] = v
         except Exception:
             pass
+
+    yz_games.clear()
+    for code, gdata in data.get('yz_games', {}).items():
+        try:
+            g = yahtzee.Yahtzee.from_dict(gdata)
+            if time.time() - g.ts < 86400:
+                yz_games[code] = g
+        except Exception:
+            pass
+
+    yz_player_games.clear()
+    yz_player_games.update(data.get('yz_player_games', {}))
+    for uid, code in list(yz_player_games.items()):
+        if code not in yz_games:
+            del yz_player_games[uid]
 
 
 def handle_api(path, body):
@@ -432,6 +463,137 @@ def _handle_upload_photo(uid, data):
     return {"ok": True, "photo_saved": True}
 
 
+@_route("/api/yz_new_solo")
+def _handle_yz_new_solo(uid, data):
+    if not uid:
+        return {"error": "no uid"}
+    code = yahtzee.Yahtzee.generate_code()
+    while code in yz_games:
+        code = yahtzee.Yahtzee.generate_code()
+    g = yahtzee.Yahtzee(code, uid, solo=True)
+    g.phase = "play"
+    yz_games[code] = g
+    yz_player_games[uid] = code
+    save_all()
+    return {"ok": True, "code": code, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_new_multi")
+def _handle_yz_new_multi(uid, data):
+    if not uid:
+        return {"error": "no uid"}
+    code = yahtzee.Yahtzee.generate_code()
+    while code in yz_games:
+        code = yahtzee.Yahtzee.generate_code()
+    g = yahtzee.Yahtzee(code, uid)
+    yz_games[code] = g
+    yz_player_games[uid] = code
+    save_all()
+    return {"ok": True, "code": code, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_join")
+def _handle_yz_join(uid, data):
+    code = data.get("code", "").strip().upper()
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    g = yz_games.get(code)
+    if not g:
+        return {"ok": False, "error": "not_found"}
+    if g.p2 is not None:
+        return {"ok": False, "error": "full"}
+    g.p2 = uid
+    g.phase = "play"
+    g.turn = 1
+    yz_player_games[uid] = code
+    save_all()
+    return {"ok": True, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_state")
+def _handle_yz_state(uid, data):
+    code = data.get("code", "")
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    g = yz_games.get(code)
+    if not g:
+        return {"error": "no game"}
+    if uid != g.p1 and uid != g.p2:
+        return {"error": "not your game"}
+    save_all()
+    return {"ok": True, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_roll")
+def _handle_yz_roll(uid, data):
+    code = data.get("code", "")
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    g = yz_games.get(code)
+    if not g or g.finished:
+        return {"error": "no game"}
+    if g.turn != g.player_num(uid):
+        return {"error": "not your turn"}
+    g.roll()
+    save_all()
+    return {"ok": True, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_hold")
+def _handle_yz_hold(uid, data):
+    code = data.get("code", "")
+    idx = data.get("idx")
+    if not uid or not code or idx is None:
+        return {"error": "no uid/code/idx"}
+    g = yz_games.get(code)
+    if not g or g.finished:
+        return {"error": "no game"}
+    if g.turn != g.player_num(uid):
+        return {"error": "not your turn"}
+    g.toggle(idx)
+    save_all()
+    return {"ok": True, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_score")
+def _handle_yz_score(uid, data):
+    code = data.get("code", "")
+    cat = data.get("cat")
+    if not uid or not code or cat is None:
+        return {"error": "no uid/code/cat"}
+    g = yz_games.get(code)
+    if not g or g.finished:
+        return {"error": "no game"}
+    if g.turn != g.player_num(uid):
+        return {"error": "not your turn"}
+    try:
+        cat = int(cat)
+    except (ValueError, TypeError):
+        return {"error": "invalid category"}
+    pts = g.score_cat(g.player_num(uid), cat)
+    if pts is None:
+        return {"error": "cannot score"}
+    save_all()
+    return {"ok": True, "pts": pts, "state": yahtzee.build_state(g, uid)}
+
+
+@_route("/api/yz_active")
+def _handle_yz_active(uid, data):
+    if not uid:
+        return {"error": "no uid"}
+    code = yz_player_games.get(uid)
+    if code and code in yz_games:
+        g = yz_games[code]
+        return {"ok": True, "active": {
+            'code': code,
+            'solo': g.solo,
+            'finished': g.finished,
+            'phase': g.phase,
+            'my_turn': g.turn == g.player_num(uid) and not g.finished,
+        }}
+    return {"ok": True, "active": None}
+
+
 @_route("/api/ana_new_solo")
 def _handle_ana_new_solo(uid, data):
     sid, g = ana_new()
@@ -525,6 +687,19 @@ def _handle_active_games(uid, data):
                 'score': st.get('score', 0),
                 'remaining': st.get('remaining', 0),
             })
+    yz_code = yz_player_games.get(str(uid))
+    if yz_code is None:
+        yz_code = yz_player_games.get(uid)
+    if yz_code and yz_code in yz_games:
+        g = yz_games[yz_code]
+        games_list.append({
+            'type': 'yahtzee',
+            'code': yz_code,
+            'solo': g.solo,
+            'finished': g.finished,
+            'my_turn': g.turn == g.player_num(uid) and not g.finished,
+            'phase': g.phase,
+        })
     return {"ok": True, "games": games_list}
 
 
@@ -542,4 +717,6 @@ def _handle_resolve_code(uid, data):
         return {"ok": True, "game": "sea_battle", "code": code}
     if code in ana_rooms:
         return {"ok": True, "game": "anagram", "code": code}
+    if code in yz_games:
+        return {"ok": True, "game": "yahtzee", "code": code}
     return {"ok": False, "error": "not_found"}

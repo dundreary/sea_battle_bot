@@ -204,6 +204,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .theme-divider{width:1px;background:var(--border-color);height:24px;align-self:center}
 .theme-btn.snd-btn{min-width:40px;padding:8px 10px}
 
+
+/* Yahtzee styles */
+.yz-die {
+  width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+  font-size: 28px; border-radius: 10px; background: var(--bg-board);
+  border: 2px solid var(--border-color); transition: 0.12s; user-select: none;
+}
+.yz-die.yz-held { border: 3px solid #4fc3f7; }
+.yz-die.yz-clickable { cursor: pointer; }
+.yz-die.yz-clickable:hover { border-color: var(--accent-primary); transform: scale(1.05); }
+.yz-die.yz-clickable:active { transform: scale(0.92); }
+.yz-dice-row { display: flex; gap: 8px; justify-content: center; margin: 8px 0; flex-wrap: wrap; }
+.yz-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.yz-table th { padding: 4px; text-align: left; color: var(--text-muted); font-size: 11px; }
+.yz-table td { padding: 4px 6px; border-bottom: 1px solid var(--border-color); }
+.yz-row { transition: 0.1s; }
+.yz-row.yz-action { cursor: pointer; }
+.yz-row.yz-action:hover { background: var(--color-btn-success-1) !important; }
+.yz-row.yz-bonus { background: var(--bg-board-alt); }
+.yz-row.yz-total { background: var(--accent-primary); color: var(--bg-dark); font-weight: 700; }
+.yz-cat { color: var(--text-secondary); white-space: nowrap; }
+.yz-val { text-align: center; }
+.yz-possible { color: #ffd54f; font-weight: 700; }
+.yz-scroll { max-height: 320px; overflow-y: auto; margin: 6px 0; }
+
 </style>
 </head>
 <body>
@@ -318,6 +343,25 @@ const LANG = {
     stripChoosePhoto: '🖼 Из галереи',
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
+    yzTitle: '🎲 Покер на костях',
+    yzSolo: '🕹️ Соло',
+    yzFriend: '👤 С другом',
+    yzJoin: '🔗 Присоединиться',
+    yzRoll: '🎲 Бросить ({0}/3)',
+    yzRolls: 'Броски: {0}/3',
+    yzScore: 'Записать',
+    yzWaiting: '⏳ Ожидаем соперника...',
+    yzWaitTurn: '⏳ ХОД СОПЕРНИКА',
+    yzYourTurn: '🎲 ТВОЙ ХОД!',
+    yzGameOver: '🎲 Игра окончена!',
+    yzWin: '🏆 Ты выиграл!',
+    yzLose: '💔 Ты проиграл!',
+    yzDraw: '🤝 Ничья!',
+    yzTotal: 'Итого: {0}',
+    yzUpperBonus: '+35 бонус',
+    yzLeft: 'Осталось: {0}',
+        yzCat0: 'Единицы', yzCat1: 'Двойки', yzCat2: 'Тройки', yzCat3: 'Четверки', yzCat4: 'Пятерки', yzCat5: 'Шестерки', yzCat6: 'Тройка', yzCat7: 'Каре', yzCat8: 'Фулл-хаус', yzCat9: 'Малый стрит', yzCat10: 'Большой стрит', yzCat11: 'Покер', yzCat12: 'Шанс',
+    yzMultiEnd: '🎲 Игра окончена! Твой счёт: {0}, соперник: {1}',
   },
   uk: {
     title: 'Морський бій',
@@ -394,6 +438,25 @@ const LANG = {
     stripChoosePhoto: '🖼 З галереї',
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
+    yzTitle: '🎲 Покер на кістках',
+    yzSolo: '🕹️ Соло',
+    yzFriend: '👤 З другом',
+    yzJoin: '🔗 Приєднатися',
+    yzRoll: '🎲 Кинути ({0}/3)',
+    yzRolls: 'Кидки: {0}/3',
+    yzScore: 'Записати',
+    yzWaiting: '⏳ Чекаємо суперника...',
+    yzWaitTurn: '⏳ ХІД СУПЕРНИКА',
+    yzYourTurn: '🎲 ТВІЙ ХІД!',
+    yzGameOver: '🎲 Гра закінчена!',
+    yzWin: '🏆 Ти виграв!',
+    yzLose: '💔 Ти програв!',
+    yzDraw: '🤝 Нічия!',
+    yzTotal: 'Разом: {0}',
+    yzUpperBonus: '+35 бонус',
+    yzLeft: 'Залишилось: {0}',
+        yzCat0: 'Одиниці', yzCat1: 'Двійки', yzCat2: 'Трійки', yzCat3: 'Четверки', yzCat4: 'П\'ятірки', yzCat5: 'Шістки', yzCat6: 'Трійка', yzCat7: 'Каре', yzCat8: 'Фул-хаус', yzCat9: 'Малий стрит', yzCat10: 'Великий стрит', yzCat11: 'Покер', yzCat12: 'Шанс',
+    yzMultiEnd: '🎲 Гра закінчена! Твій рахунок: {0}, суперник: {1}',
   },
   en: {
     title: 'Sea Battle',
@@ -470,6 +533,25 @@ const LANG = {
     stripChoosePhoto: '🖼 From Gallery',
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
+    yzTitle: '🎲 Dice Poker',
+    yzSolo: '🕹️ Solo',
+    yzFriend: '👤 With Friend',
+    yzJoin: '🔗 Join Game',
+    yzRoll: '🎲 Roll ({0}/3)',
+    yzRolls: 'Rolls: {0}/3',
+    yzScore: 'Score',
+    yzWaiting: '⏳ Waiting for opponent...',
+    yzWaitTurn: '⏳ OPPONENT\'S TURN',
+    yzYourTurn: '🎲 YOUR TURN!',
+    yzGameOver: '🎲 Game Over!',
+    yzWin: '🏆 You win!',
+    yzLose: '💔 You lose!',
+    yzDraw: '🤝 Draw!',
+    yzTotal: 'Total: {0}',
+    yzUpperBonus: '+35 bonus',
+    yzLeft: 'Left: {0}',
+    yzCat0: 'Ones', yzCat1: 'Twos', yzCat2: 'Threes', yzCat3: 'Fours', yzCat4: 'Fives', yzCat5: 'Sixes', yzCat6: 'Three of a Kind', yzCat7: 'Four of a Kind', yzCat8: 'Full House', yzCat9: 'Small Straight', yzCat10: 'Large Straight', yzCat11: 'Yahtzee', yzCat12: 'Chance',
+    yzMultiEnd: '🎲 Game over! Your score: {0}, opponent: {1}',
   }
 };
 
@@ -929,6 +1011,11 @@ function showMainMenu(){
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
+    <div class="game-card" onclick="showYahtzeeMenu()" style="margin-bottom:8px">
+      <div style="font-size:48px;margin-bottom:8px">🎲</div>
+      <div class="name" style="color:var(--accent-primary)">🎲 ${t('yzTitle')}</div>
+      <div class="card-desc">${t('yahtzeeDesc')||'Yahtzee / 1000'}</div>
+    </div>
   `;
   fetchActiveGames();
 }
@@ -1189,9 +1276,233 @@ async function leaveGame(){
 
 function showSeaBattle(){ showSeaBattleMenu(); }
 
+// ── Yahtzee (Покер на костях / 1000) ──────────────────────────────
 
+let yzState2 = null, yzPollTimer2 = null, yzCode2 = null;
+function showYahtzeeMenu(){
+  yzCode2=null; yzState2=null; gameCode=null;
+  if(yzPollTimer2){clearInterval(yzPollTimer2); yzPollTimer2=null}
+  localStorage.removeItem('sb_game');
+  document.getElementById('ownBoardWrap').style.display='none';
+  document.getElementById('oppBoardWrap').style.display='none';
+  document.getElementById('themeSelector').style.display='none';
+  document.getElementById('shipHint').innerHTML='';
+  document.getElementById('header').classList.remove('in-game');
+  document.title = t('yzTitle');
+  setStatus(t('welcome'));
+  document.getElementById('app').insertBefore(document.getElementById('status'),document.getElementById('app').firstChild);
+  document.getElementById('actions').className='btn-row';
+  document.getElementById('actions').innerHTML=
+    '<div style="text-align:center;width:100%;margin-bottom:4px"><div style="font-size:48px">\ud83c\udfb2</div></div>' +
+    '<div class="mode-grid">' +
+      '<div class="mode-card bot" onclick="startYahtzeeSolo()">' +
+        '<div class="icon" style="font-size:48px;line-height:1">\ud83d\udef9\ufe0f</div>' +
+        '<div class="label">' + t('yzSolo') + '</div>' +
+      '</div>' +
+      '<div class="mode-card friend" onclick="startYahtzeeMulti()">' +
+        '<div class="icon" style="font-size:48px;line-height:1">\ud83d\udc64</div>' +
+        '<div class="label">' + t('yzFriend') + '</div>' +
+      '</div>' +
+      '<div class="mode-card join" onclick="joinYahtzeeGame()">' +
+        '<div class="icon" style="font-size:48px;line-height:1">\ud83d\udd17</div>' +
+        '<div class="label">' + t('yzJoin') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button class="btn outline quit-btn" style="margin-top:8px" onclick="showMainMenu()">' + t('quit') + '</button>' +
+    '<div id="yzActiveContainer"></div>';
+  fetchYZActive();
+}
 
+async function startYahtzeeSolo(){
+  const res = await api('/api/yz_new_solo',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  yzCode2 = res.code;
+  yzState2 = res.state;
+  renderYZ();
+  yzPoll2();
+}
 
+async function startYahtzeeMulti(){
+  const res = await api('/api/yz_new_multi',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  yzCode2 = res.code;
+  yzState2 = res.state;
+  renderYZ();
+  yzPoll2();
+}
+
+async function joinYahtzeeGame(){
+  const code = prompt(t('joinPlaceholder'));
+  if(!code)return;
+  const res = await api('/api/yz_join',{uid:getUid(),code:code.toUpperCase()});
+  if(!res||!res.ok){setStatus(t('joinError'));return}
+  yzCode2 = code.toUpperCase();
+  yzState2 = res.state;
+  renderYZ();
+  yzPoll2();
+}
+
+async function yzFetchState2(){
+  if(!yzCode2)return null;
+  const res = await api('/api/yz_state',{uid:getUid(),code:yzCode2});
+  if(!res||!res.ok){
+    yzCode2=null; yzState2=null;
+    showMainMenu();
+    return null;
+  }
+  yzState2 = res.state;
+  renderYZ();
+  return res.state;
+}
+
+async function yzRoll2(){
+  if(!yzCode2)return;
+  const res = await api('/api/yz_roll',{uid:getUid(),code:yzCode2});
+  if(!res||!res.ok)return;
+  yzState2 = res.state;
+  renderYZ();
+}
+
+async function yzToggle2(idx){
+  if(!yzCode2)return;
+  const res = await api('/api/yz_hold',{uid:getUid(),code:yzCode2,idx});
+  if(!res||!res.ok)return;
+  yzState2 = res.state;
+  renderYZ();
+}
+
+async function yzScore2(cat){
+  if(!yzCode2)return;
+  const res = await api('/api/yz_score',{uid:getUid(),code:yzCode2,cat});
+  if(!res||!res.ok)return;
+  yzState2 = res.state;
+  renderYZ();
+}
+
+function yzPoll2(){
+  if(yzPollTimer2)clearInterval(yzPollTimer2);
+  yzPollTimer2 = setInterval(()=>{
+    if(!yzCode2){clearInterval(yzPollTimer2);yzPollTimer2=null;return}
+    yzFetchState2();
+  },2000);
+}
+
+function renderYZ(){
+  const s = yzState2;
+  if(!s){showMainMenu();return}
+  document.getElementById('header').classList.add('in-game');
+  document.title = t('yzTitle');
+
+  const faces = ['','\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
+  let diceHtml = '<div style="display:flex;gap:8px;justify-content:center;margin:8px 0">';
+  for(let i=0;i<5;i++){
+    const v = s.dice[i];
+    const held = s.held[i];
+    const emoji = faces[v]||'\u2b1c';
+    const heldStyle = held ? 'border:3px solid #4fc3f7' : 'border:2px solid var(--border-color)';
+    const clickable = (s.my_turn && s.rolls>0 && s.rolls<3 && !s.finished) ? 'cursor:pointer' : '';
+    diceHtml += '<div style="width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:28px;border-radius:10px;background:var(--bg-board);'+heldStyle+';'+clickable+'" onclick="yzToggle2('+i+')">'+emoji+'</div>';
+  }
+  diceHtml += '</div>';
+
+  const rollBtn = (!s.finished && s.my_turn && s.rolls<3)
+    ? '<div class="btn-row" style="justify-content:center;margin:4px 0"><button class="btn primary" onclick="yzRoll2()">\ud83c\udfb2 '+t('yzRoll').replace('{0}',s.rolls)+'</button></div>'
+    : '';
+
+  const hintText = (s.rolls>0 && !s.finished && s.my_turn)
+    ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;margin:2px 0">\ud83d\udc46 tap a die to hold it</div>'
+    : '';
+
+  let statusText = '';
+  if(s.finished){
+    if(s.solo){
+      statusText = '<b>'+t('yzGameOver')+'</b> '+t('yzTotal').replace('{0}',s.total);
+    } else {
+      if(s.winner == getUid()) statusText = '<b>'+t('yzWin')+'</b>';
+      else if(s.winner && s.winner!=getUid()) statusText = '<b>'+t('yzLose')+'</b>';
+      else statusText = '<b>'+t('yzDraw')+'</b>';
+      statusText += ' '+t('yzMultiEnd').replace('{0}',s.total).replace('{1}',s.opp_total);
+    }
+  } else if(s.phase==='waiting'){
+    statusText = t('yzWaiting');
+  } else if(!s.my_turn){
+    statusText = '<b>'+t('yzWaitTurn')+'</b>';
+  } else {
+    statusText = '<b>'+t('yzYourTurn')+'</b>';
+  }
+
+  const CATS = ['yzCat0','yzCat1','yzCat2','yzCat3','yzCat4','yzCat5',
+    'yzCat6','yzCat7','yzCat8','yzCat9','yzCat10','yzCat11','yzCat12'];
+  const CAT_EMOJI = ['1\u20e3','2\u20e3','3\u20e3','4\u20e3','5\u20e3','6\u20e3',
+    '\ud83d\udd31','\ud83d\udc51','\ud83c\udfe0','\ud83d\udccf','\ud83d\udcd0','\u2b50','\u2753'];
+
+  const mySc = s.scores||{};
+  const possible = s.possible||{};
+  const opSc = s.opp_scores||{};
+
+  let scHtml = '<div style="max-height:300px;overflow-y:auto;margin:6px 0"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+  scHtml += '<tr style="color:var(--text-muted);font-size:11px"><th style="padding:4px;text-align:left"></th><th style="padding:4px;text-align:center">You</th><th style="padding:4px;text-align:center">Opp</th></tr>';
+  for(let catId=0; catId<13; catId++){
+    const myVal = mySc[catId];
+    const opVal = opSc[catId];
+    const canScore = (possible[catId]!==undefined) && !s.finished && s.my_turn;
+    const pts = canScore ? possible[catId] : '';
+    const bg = canScore ? 'background:var(--color-btn-success-1);cursor:pointer' : (myVal!==undefined ? 'background:var(--bg-board)' : '');
+    const click = canScore ? ' onclick="yzScore2('+catId+')"' : '';
+    scHtml += '<tr style="'+bg+';border-bottom:1px solid var(--border-color)"'+click+'>';
+    scHtml += '<td style="padding:4px 6px;color:var(--text-secondary)">'+CAT_EMOJI[catId]+' '+t(CATS[catId])+'</td>';
+    scHtml += '<td style="padding:4px;text-align:center;font-weight:'+(myVal!==undefined?'700':'400')+'">'+
+      (myVal!==undefined ? myVal : (canScore ? '<span style="color:#ffd54f">'+pts+'</span>' : '\u2014'))+'</td>';
+    scHtml += '<td style="padding:4px;text-align:center">'+(opVal!==undefined ? opVal : '\u2014')+'</td>';
+    scHtml += '</tr>';
+  }
+  scHtml += '<tr style="background:var(--bg-board-alt);border-bottom:1px solid var(--border-color)">';
+  scHtml += '<td style="padding:4px 6px;color:var(--text-muted);font-size:11px">'+t('yzUpperBonus')+'</td>';
+  scHtml += '<td style="padding:4px;text-align:center">'+(s.upper_bonus||'0')+'</td>';
+  scHtml += '<td style="padding:4px;text-align:center">\u2014</td></tr>';
+  scHtml += '<tr style="background:var(--accent-primary);color:var(--bg-dark);font-weight:700">';
+  scHtml += '<td style="padding:6px">\u03a3</td>';
+  scHtml += '<td style="padding:6px;text-align:center">'+s.total+'</td>';
+  scHtml += '<td style="padding:6px;text-align:center">'+(s.opp_total||0)+'</td></tr>';
+  scHtml += '</table></div>';
+
+  const quitBtn = '<div class="btn-row" style="justify-content:center;margin-top:6px">'+
+    '<button class="btn outline" onclick="yzQuit2()">'+t('quit')+'</button></div>';
+
+  document.getElementById('app').innerHTML =
+    '<div class="status" id="status">'+statusText+'</div>'+
+    '<div style="width:100%;max-width:360px;text-align:center">'+
+      diceHtml + hintText + rollBtn + scHtml + quitBtn +
+    '</div>';
+}
+
+function yzQuit2(){
+  yzCode2=null; yzState2=null;
+  if(yzPollTimer2){clearInterval(yzPollTimer2);yzPollTimer2=null}
+  localStorage.removeItem('sb_game');
+  showMainMenu();
+}
+
+async function fetchYZActive(){
+  const cont = document.getElementById('yzActiveContainer');
+  if(!cont)return;
+  const res = await api('/api/yz_active',{uid:getUid()});
+  if(!res||!res.ok||!res.active){cont.innerHTML='';return}
+  const a = res.active;
+  if(a.finished)return;
+  const label = a.solo ? t('yzSolo') : t('yzFriend');
+  const badge = a.my_turn ? '<span class="badge playing">\ud83c\udfb2 '+t('yourTurn')+'</span>' : '<span class="badge">\u23f3</span>';
+  cont.innerHTML = '<div class="active-games"><h3>\u25b6 '+t('selectGame')+'</h3>'+
+    '<div class="active-game-row" onclick="resumeYZ(\'"+a.code+"\')">'+
+      '<div class="info"><span class="label">\ud83c\udfb2 '+t('yzTitle')+'</span> <span class="code">'+a.code+'</span> <span class="label">'+label+'</span></div>'+
+      badge+
+    '</div></div>';
+}
+
+function resumeYZ(code){
+  yzCode2 = code;
+  yzFetchState2().then(function(){if(yzState2)yzPoll2()});
+}
 
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
