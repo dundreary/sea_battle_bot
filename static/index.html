@@ -851,32 +851,13 @@ function startStripMode(){
   o.innerHTML=`
     <div class="modal">
       <div style="font-size:48px;margin-bottom:8px">👗</div>
-      <h2>${t('stripTitle')}</h2>
-      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('stripDesc')}</p>
-      <div class="mode-grid" style="margin-top:0">
-        <div class="mode-card friend" onclick="this.closest('.overlay').remove();doStripMulti()">
-          <img class="icon" src="/static/mode-friend.svg" alt="">
-          <div class="label">${t('vsFriend')}</div>
-        </div>
-        <div class="mode-card join" onclick="this.closest('.overlay').remove();joinGame()">
-          <img class="icon" src="/static/mode-join.svg" alt="">
-          <div class="label">${t('joinBtn')}</div>
-        </div>
-      </div>
-      <button class="btn outline quit-btn" style="width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+      <h2>${t('stripMode')}</h2>
+      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
+      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">🎲 ${t('startBtn')}</button>
+      <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
+      <button class="btn outline quit-btn" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
-}
-
-async function doStripMulti(){
-  showShipHints = true;
-  const res=await api('/api/new_multi',{uid:getUid(),strip:true});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  gameCode=res.code;
-  localStorage.setItem('sb_game',gameCode);
-  setStatus('', '');
-  await refreshState();
-  pollGame();
 }
 
 async function newMulti(strip=false){
