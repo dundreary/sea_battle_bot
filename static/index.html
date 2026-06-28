@@ -90,7 +90,6 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
 .header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
-.header h1{font-size:18px;letter-spacing:2px;color:var(--accent-primary)}
 .header .sub{font-size:11px;color:var(--accent-primary-light)}
 .header.in-game{display:none}
 .board-label{display:none}
@@ -196,7 +195,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <body>
 
 <div class="header" id="header">
-  <h1 id="title">⚓ МОРСКОЙ БОЙ</h1>
   <div class="lang-bar" id="langBar">
     <button class="lang-btn" onclick="setLang('ru')">RU</button>
     <button class="lang-btn" onclick="setLang('uk')">UA</button>
@@ -574,7 +572,7 @@ function applyLang(){
   $('lblOwn').textContent = t('ownBoard');
   $('lblOpp').textContent = t('oppBoard');
   if(!state && !gameCode) showMenu();
-  else{$('title').textContent=t('title');document.title=t('title')}
+  else document.title=t('title')
 }
 
 function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
@@ -688,7 +686,7 @@ function updateUI(){
   
   $('gameInfo').textContent = s.strip ? '👗 Strip' : '';
   $('header').classList.add('in-game');
-  $('title').textContent = s.strip ? t('stripTitle') : t('title');
+  document.title = s.strip ? t('stripTitle') : t('title');
   
   const ownEl=$('ownBoard'), oppEl=$('oppBoard');
   ownEl.classList.remove('my-turn');
@@ -762,7 +760,22 @@ async function startSolo(){
   await refreshState();
 }
 
-async function startStripMode(){
+function startStripMode(){
+  const o=document.createElement('div');
+  o.className='overlay';
+  o.innerHTML=`
+    <div class="modal">
+      <div class="result-icon">👗</div>
+      <h2>${t('stripTitle')}</h2>
+      <p style="color:var(--text-secondary);margin-bottom:16px">${t('stripDesc')}</p>
+      <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();doStripSolo()">${t('vsBot')}</button>
+      <button class="btn primary" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();doStripMulti()">${t('vsFriend')}</button>
+      <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
+
+async function doStripSolo(){
   showShipHints = true;
   const res=await api('/api/new_solo',{uid:getUid(),strip:true});
   if(!res||!res.ok){setStatus(t('error'));return}
@@ -770,6 +783,17 @@ async function startStripMode(){
   localStorage.setItem('sb_game',gameCode);
   $('actions').innerHTML='';
   await refreshState();
+}
+
+async function doStripMulti(){
+  showShipHints = true;
+  const res=await api('/api/new_multi',{uid:getUid(),strip:true});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  gameCode=res.code;
+  localStorage.setItem('sb_game',gameCode);
+  setStatus('', '');
+  await refreshState();
+  pollGame();
 }
 
 async function newMulti(strip=false){
@@ -854,7 +878,6 @@ function showMainMenu(){
   $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML = '';
-  $('title').textContent = '⚓ МОРСКОЙ БОЙ';
   document.title = 'Sea Battle';
   $('gameInfo').textContent='';
   $('header').classList.remove('in-game');
@@ -864,7 +887,11 @@ function showMainMenu(){
   var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <button class="btn primary" style="padding:24px 16px;font-size:20px;font-weight:700;border-radius:16px;margin-bottom:8px" onclick="showSeaBattleMenu()">⚓ ${t('seaBattle')}</button>
+    <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
+      <img src="/static/game-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
+    </div>
   `;
   fetchActiveGames();
 }
@@ -874,7 +901,6 @@ function showMenu(){ showMainMenu(); }
 function showSeaBattleMenu(){
   showShipHints = true;
   var lb=$('langBar');if(lb)lb.style.display='none';
-  $('title').textContent = t('seaBattle');
   document.title = t('seaBattle');
   setStatus(t('welcome'));
   $('gameInfo').textContent='';
@@ -884,8 +910,7 @@ function showSeaBattleMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div style="text-align:center;margin-bottom:12px">
-      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjIwIiB2aWV3Qm94PSIwIDAgMjAwIDIwMCI+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjEwMCIgcj0iOTUiIGZpbGw9InVybCgjb2NlYW5EZmZmKSIgc3Ryb2tlPSIjMmM1MjgyIiBzdHJva2Utd2lkdGg9IjMiLz4KPHJlY3QgeD0iNjAiIHk9IjYwIiB3aWR0aD0iODAiIGhlaWdodD0iODAiIHJ4PSIxMCIgZmlsbD0idXJsKCNzaGlwQm9keSkpIiBzdHJva2U9IiMxZTRkMzIiIHN0cm9rZS13aWR0aD0iMiIvPgo8cmVjdCB4PSI3MCIgeT0iNzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgeDI9IjUwIiBmaWxsPSIjM2Q4YjQwIiBzdHJva2U9IiMyYzI4MjIiIHN0cm9rZS13aWR0aD0iMSIvPgo8cmVjdCB4PSI3MCIgeT0iNzAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcng9IjUiIGZpbGw9IiMzZDhiNDAiIHN0cm9rZT0iIzJjMjgyNiIgc3Ryb2tlLXdpZHRoPSIwLjUiIGRpc3NhbHQtc2Fjdy8+Cjxwb2x5Z29uIHBvaW50cz0iODUsOTUgMTE1LDEzMCIgZmlsbD0iIzZjMjgyOCIgc3Ryb2tlPSI4YjAwMDAiIHN0cm9rZS13aWR0aD0iMSIvPgo8cGF0aCBkPSJNODAsOTUgUTU0LDg1IDExMCwxMzAiIGZpbGw9IiMxNTY1YzAiIHN0cm9rZT0iMGQ0N2ExIiBzdHJva2Utd2lkdGg9IjAuNSIvPgo8cGF0aCBkPSJNODAsOTUgUTg1LDg1IDk1LDk1IDg1LDk1IDg1LDk1IDg1LDk1IiBmaWxsPSIjNDgyMjg4IiBzdHJva2U9IjI2Yzg0OCIvPgo8Y2lyY2xlIGN4PSI5MCIgY3k9Ijg1IiByPSIzIiBmaWxsPSIjZmZmIiBzdHJva2U9IjI2Yzg0OCIvPjwvc3ZnPg==" style="width:48px;height:48px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"></img>
-      <h2 style="margin:8px 0 4px;font-size:18px;color:var(--accent-primary);font-weight:700">⚓ ${t('seaBattle')}</h2>
+      <img src="/static/game-icon.svg" style="width:64px;height:64px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
     </div>
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
     <button class="btn outline strip-btn" onclick="startStripMode()">${t('stripMode')}</button>
@@ -897,17 +922,7 @@ function showSeaBattleMenu(){
 }
 
 function chooseMultiMode(){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.innerHTML=`
-    <div class="modal">
-      <h2>👤 ${t('vsFriend')}</h2>
-      <p style="margin-bottom:16px;color:var(--text-secondary)">${t('stripMode')}?</p>
-      <button class="btn primary" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(false)">${t('vsBot').replace('🤖','').replace('С ботом','').replace('vs Bot','').replace('З ботом','').trim() || 'Обычный'}</button>
-      <button class="btn outline strip-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(true)">${t('stripMode')}</button>
-      <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
+  newMulti(false);
 }
 
 async function autoPlace(){
@@ -957,7 +972,7 @@ function showResult(icon,title,desc,strip){
   const o=document.createElement('div');
   if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
-  const playAgainFn = strip ? 'startStripMode()' : 'startSolo()';
+  const playAgainFn = strip ? 'doStripSolo()' : 'startSolo()';
   o.innerHTML=`
     <div class="modal">
       <div class="result-icon">${icon}</div>
