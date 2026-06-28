@@ -4,18 +4,24 @@
       <stop offset="0%" stop-color="#60a5fa"/>
       <stop offset="100%" stop-color="#1d4ed8"/>
     </linearGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#e2e8f0"/>
-      <stop offset="100%" stop-color="#cbd5e1"/>
+    <linearGradient id="b2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#93c5fd"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
     </linearGradient>
   </defs>
-  <circle cx="60" cy="42" r="26" fill="url(#bg)"/>
-  <circle cx="60" cy="42" r="20" fill="url(#face)"/>
-  <circle cx="52" cy="38" r="3" fill="#475569"/>
-  <circle cx="68" cy="38" r="3" fill="#475569"/>
-  <rect x="53" y="44" width="14" height="2" rx="1" fill="#94a3b8"/>
-  <rect x="45" y="70" width="30" height="22" rx="6" fill="url(#bg)"/>
-  <rect x="49" y="76" width="8" height="10" rx="2" fill="#cbd5e1"/>
-  <rect x="63" y="76" width="8" height="10" rx="2" fill="#cbd5e1"/>
-  <rect x="50" y="92" width="20" height="4" rx="2" fill="#60a5fa" opacity="0.6"/>
+  <rect x="20" y="30" width="80" height="60" rx="14" fill="url(#bg)"/>
+  <rect x="28" y="38" width="64" height="36" rx="8" fill="url(#b2)"/>
+  <circle cx="48" cy="54" r="8" fill="#1e293b"/>
+  <circle cx="72" cy="54" r="8" fill="#1e293b"/>
+  <rect x="54" y="58" width="12" height="4" rx="2" fill="#1e293b"/>
+  <rect x="44" y="62" width="32" height="3" rx="1.5" fill="#1e293b" opacity="0.3"/>
+  <rect x="34" y="72" width="52" height="2" rx="1" fill="#1e293b" opacity="0.2"/>
+  <rect x="20" y="86" width="80" height="26" rx="8" fill="url(#bg)" opacity="0.85"/>
+  <rect x="28" y="92" width="12" height="14" rx="3" fill="#93c5fd"/>
+  <rect x="54" y="92" width="12" height="14" rx="3" fill="#93c5fd"/>
+  <rect x="80" y="92" width="12" height="14" rx="3" fill="#93c5fd"/>
+  <circle cx="34" cy="12" r="10" fill="url(#bg)"/>
+  <circle cx="86" cy="12" r="10" fill="url(#bg)"/>
+  <rect x="34" y="16" width="8" height="20" rx="3" fill="#60a5fa"/>
+  <rect x="78" y="16" width="8" height="20" rx="3" fill="#60a5fa"/>
 </svg>

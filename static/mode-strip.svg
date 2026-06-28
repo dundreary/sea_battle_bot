@@ -4,8 +4,17 @@
       <stop offset="0%" stop-color="#f472b6"/>
       <stop offset="100%" stop-color="#db2777"/>
     </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f9a8d4"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
   </defs>
-  <path d="M34 26 Q60 22 86 26 L90 38 L82 36 Q60 32 38 36 Z" fill="url(#g)" opacity="0.5"/>
-  <path d="M52 20 L68 20 L72 28 L48 28 Z" fill="url(#g)" rx="2"/>
-  <path d="M38 36 Q42 40 48 38 L50 100 Q52 104 56 104 L64 104 Q68 104 70 100 L72 38 Q78 40 82 36 L84 48 Q86 72 84 96 Q82 108 76 112 Q68 116 60 116 Q52 116 44 112 Q38 108 36 96 Q34 72 36 48 Z" fill="url(#g)"/>
+  <path d="M40 20 L80 20 L84 28 L36 28 Z" fill="url(#g)"/>
+  <path d="M36 28 Q34 34 38 36 L42 96 Q42 104 48 106 Q54 108 60 108 Q66 108 72 106 Q78 104 78 96 L82 36 Q86 34 84 28 Z" fill="url(#g)"/>
+  <path d="M44 30 L76 30 L74 94 Q72 100 60 100 Q48 100 46 94 Z" fill="url(#g2)" opacity="0.15"/>
+  <line x1="60" y1="20" x2="60" y2="108" stroke="url(#g2)" stroke-width="1" opacity="0.3"/>
+  <line x1="44" y1="52" x2="76" y2="52" stroke="url(#g2)" stroke-width="1" opacity="0.15"/>
+  <line x1="44" y1="70" x2="76" y2="70" stroke="url(#g2)" stroke-width="1" opacity="0.15"/>
+  <circle cx="44" cy="20" r="4" fill="#f472b6" opacity="0.4"/>
+  <circle cx="76" cy="20" r="4" fill="#f472b6" opacity="0.4"/>
 </svg>

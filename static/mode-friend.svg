@@ -9,10 +9,15 @@
       <stop offset="100%" stop-color="#0891b2"/>
     </linearGradient>
   </defs>
-  <circle cx="38" cy="34" r="14" fill="url(#p1)"/>
-  <circle cx="82" cy="34" r="14" fill="url(#p2)"/>
-  <path d="M14 62 Q22 57 30 62 Q38 67 46 62 L50 72 Q42 77 34 72 Q26 67 18 72 Z" fill="url(#p1)"/>
-  <path d="M58 62 Q66 57 74 62 Q82 67 90 62 L94 72 Q86 77 78 72 Q70 67 62 72 Z" fill="url(#p2)"/>
-  <rect x="14" y="70" width="36" height="36" rx="14" fill="url(#p1)"/>
-  <rect x="70" y="70" width="36" height="36" rx="14" fill="url(#p2)"/>
+  <circle cx="38" cy="32" r="14" fill="url(#p1)"/>
+  <circle cx="82" cy="32" r="14" fill="url(#p2)"/>
+  <path d="M16 56 Q22 50 30 56 Q38 62 46 56 Q52 50 58 56 L62 64 Q54 70 46 64 Q38 58 30 64 Q22 70 16 64 Z" fill="url(#p1)"/>
+  <path d="M60 56 Q66 50 74 56 Q82 62 90 56 Q96 50 102 56 L106 64 Q98 70 90 64 Q82 58 74 64 Q66 70 60 64 Z" fill="url(#p2)"/>
+  <rect x="12" y="62" width="42" height="40" rx="10" fill="url(#p1)"/>
+  <rect x="66" y="62" width="42" height="40" rx="10" fill="url(#p2)"/>
+  <path d="M38 78 Q42 74 46 78 L48 98 Q46 102 40 102 Q34 102 32 98 Z" fill="#16a34a" opacity="0.3"/>
+  <path d="M84 78 Q88 74 92 78 L94 98 Q92 102 86 102 Q80 102 78 98 Z" fill="#0891b2" opacity="0.3"/>
+  <circle cx="60" cy="32" r="6" fill="#22d3ee" opacity="0.4"/>
+  <line x1="60" y1="38" x2="60" y2="54" stroke="#22d3ee" stroke-width="2" opacity="0.3"/>
+  <path d="M54 54 Q60 58 66 54" fill="none" stroke="#22d3ee" stroke-width="2" opacity="0.3"/>
 </svg>
