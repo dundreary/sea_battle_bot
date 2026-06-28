@@ -28,7 +28,7 @@ class MainHandler(BaseHTTPRequestHandler):
         elif self.path == "/" or self.path == "/index.html":
             self._serve_file("index.html", "text/html; charset=utf-8")
         elif self.path.startswith("/static/"):
-            self._serve_file(self.path[1:], "text/html; charset=utf-8")
+            self._serve_file(self.path[1:], None)
         else:
             self._json({"error": "not found"}, 404)
 
@@ -45,11 +45,29 @@ class MainHandler(BaseHTTPRequestHandler):
             return
         with open(path, "rb") as f:
             data = f.read()
+        if mime is None:
+            mime = self._guess_mime(path)
         self.send_response(200)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    @staticmethod
+    def _guess_mime(path):
+        ext = os.path.splitext(path)[1].lower()
+        return {
+            ".svg": "image/svg+xml",
+            ".html": "text/html; charset=utf-8",
+            ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript; charset=utf-8",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".ico": "image/x-icon",
+            ".json": "application/json",
+        }.get(ext, "application/octet-stream")
 
     def _json(self, data, code=200):
         text = json.dumps(data, ensure_ascii=False).encode("utf-8")
