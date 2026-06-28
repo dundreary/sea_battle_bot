@@ -1,16 +1,20 @@
 import json
 import logging
+import threading
 import time
 from typing import Dict, Any
 
 import anagram
 import yahtzee
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 import persist
 import config
 
 logger = logging.getLogger(__name__)
+
+# ── Thread safety ─────────────────────────────────────────────────────
+_lock = threading.Lock()
 
 # ── Helpers ─────────────────────────────────────────────────────────
 def _serialize_player_dict(d: Dict) -> Dict[str, Any]:
@@ -27,9 +31,6 @@ ana_player_sessions: Dict[int, Dict[str, Any]] = {}
 yz_games: Dict[str, yahtzee.Yahtzee] = {}
 # uid -> latest yz code
 yz_player_games: Dict[int, str] = {}
-
-EMPTY = 0
-SHIP = 1
 
 # ── Route registry ──────────────────────────────────────────────────────
 _ROUTES: Dict[str, Any] = {}
@@ -178,28 +179,112 @@ def join_game(uid, code):
     return game, "ok"
 
 def save_all():
-    data = {
-        'version': 1,
-        'saved_at': time.time(),
-        'api_games': {},
-        'api_player_games': _serialize_player_dict(player_games),
-        'api_ana_player_sessions': _serialize_player_dict(ana_player_sessions),
-        'anagram_games': anagram.games,
-        'anagram_rooms': anagram.rooms,
-        'yz_games': {},
-        'yz_player_games': _serialize_player_dict(yz_player_games),
-    }
-    for code, game in games.items():
-        try:
-            data['api_games'][code] = game.to_dict()
-        except Exception:
-            pass
-    for code, g in yz_games.items():
-        try:
-            data['yz_games'][code] = g.to_dict()
-        except Exception:
-            pass
+    with _lock:
+        data = {
+            'version': 1,
+            'saved_at': time.time(),
+            'api_games': {},
+            'api_player_games': _serialize_player_dict(player_games),
+            'api_ana_player_sessions': _serialize_player_dict(ana_player_sessions),
+            'anagram_games': anagram.games,
+            'anagram_rooms': anagram.rooms,
+            'yz_games': {},
+            'yz_player_games': _serialize_player_dict(yz_player_games),
+        }
+        for code, game in games.items():
+            try:
+                data['api_games'][code] = game.to_dict()
+            except Exception:
+                pass
+        for code, g in yz_games.items():
+            try:
+                data['yz_games'][code] = g.to_dict()
+            except Exception:
+                pass
     persist.save(data)
+
+
+_save_timer = None
+
+def save_all():
+    _debounced_save()
+
+def _debounced_save():
+    global _save_timer
+    if _save_timer is not None:
+        _save_timer.cancel()
+    _save_timer = threading.Timer(2.0, _sync_save)
+    _save_timer.daemon = True
+    _save_timer.start()
+
+def _sync_save():
+    with _lock:
+        data = {
+            'version': 1,
+            'saved_at': time.time(),
+            'api_games': {},
+            'api_player_games': _serialize_player_dict(player_games),
+            'api_ana_player_sessions': _serialize_player_dict(ana_player_sessions),
+            'anagram_games': anagram.games,
+            'anagram_rooms': anagram.rooms,
+            'yz_games': {},
+            'yz_player_games': _serialize_player_dict(yz_player_games),
+        }
+        for code, game in games.items():
+            try:
+                data['api_games'][code] = game.to_dict()
+            except Exception:
+                pass
+        for code, g in yz_games.items():
+            try:
+                data['yz_games'][code] = g.to_dict()
+            except Exception:
+                pass
+    persist.save(data)
+
+
+MAX_AGE = 86400  # 24 hours
+
+def cleanup_old_games():
+    now = time.time()
+    with _lock:
+        for code in list(games.keys()):
+            g = games[code]
+            if now - getattr(g, 'created_at', 0) > MAX_AGE:
+                del games[code]
+        for uid, code in list(player_games.items()):
+            if code not in games:
+                del player_games[uid]
+        for code in list(yz_games.keys()):
+            g = yz_games[code]
+            if now - getattr(g, 'ts', 0) > MAX_AGE:
+                del yz_games[code]
+        for uid, code in list(yz_player_games.items()):
+            if code not in yz_games:
+                del yz_player_games[uid]
+        for sid in list(anagram.games.keys()):
+            g = anagram.games[sid]
+            if now - g.get('started_at', 0) > MAX_AGE:
+                del anagram.games[sid]
+        for code in list(anagram.rooms.keys()):
+            r = anagram.rooms[code]
+            p1 = r.get('p1_sid')
+            p2 = r.get('p2_sid')
+            if (p1 and p1 not in anagram.games) or (p2 and p2 not in anagram.games):
+                del anagram.rooms[code]
+        for uid in list(ana_player_sessions.keys()):
+            sid = ana_player_sessions[uid].get('sid')
+            if sid not in anagram.games:
+                del ana_player_sessions[uid]
+
+_cleanup_timer = None
+
+def _schedule_cleanup():
+    global _cleanup_timer
+    cleanup_old_games()
+    _cleanup_timer = threading.Timer(3600, _schedule_cleanup)
+    _cleanup_timer.daemon = True
+    _cleanup_timer.start()
 
 
 def load_all():
@@ -271,8 +356,7 @@ def load_all():
         if code not in yz_games:
             del yz_player_games[uid]
 
-
-def handle_api(path, body):
+    _schedule_cleanup()
     try:
         data = json.loads(body) if body else {}
     except json.JSONDecodeError:

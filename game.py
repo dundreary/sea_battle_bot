@@ -1,5 +1,6 @@
 import random
 import time
+from collections import deque
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
@@ -40,7 +41,6 @@ class Board:
     def __init__(self):
         self.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         self.ships = []
-        self.placement_mode = True
 
     def can_place(self, cells):
         for r, c in cells:
@@ -93,59 +93,10 @@ class Board:
             return False
         return all(ship.sunk for ship in self.ships)
 
-    def cell_display(self, r, c, hide_ships=False):
-        v = self.grid[r][c]
-        if v == EMPTY:
-            return "⬜"
-        if v == SHIP:
-            return "⬜" if hide_ships else "🟩"
-        if v == HIT:
-            return "❌"
-        if v == MISS:
-            return "·"
-        if v == SUNK:
-            return "✖"
-        if v == DEAD:
-            return "·"
-        return "⬜"
-
-    def render(self, hide_ships=True):
-        return "\n".join(
-            "".join(self.cell_display(i, j, hide_ships) for j in range(SIZE))
-            for i in range(SIZE)
-        )
-
-    def render_own(self):
-        return self.render(hide_ships=False)
-
-    @staticmethod
-    def render_mini_label(label1="МОИ", label2="БОТ"):
-        return f"{label1}|{label2}"
-
-    @staticmethod
-    def render_side_by_side_mini(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
-        r1 = board1.render_mini(hide_ships=False)
-        r2 = board2.render_mini(hide_ships=hide2)
-        merged = [f"{label1}|{label2}"]
-        for i in range(SIZE):
-            merged.append(f"{r1[i]}|{r2[i]}")
-        return "\n".join(merged)
-
-    @staticmethod
-    def render_side_by_side(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
-        r1 = board1.render(hide_ships=False).split("\n")
-        r2 = board2.render(hide_ships=hide2).split("\n")
-        gap = "  "
-        merged = [f"{label1:^12}{gap}{label2:^12}"]
-        for i in range(SIZE):
-            merged.append(f"{r1[i]}{gap}{r2[i]}")
-        return "\n".join(merged)
-
     def to_dict(self):
         return {
             'grid': self.grid,
             'ships': [s.to_dict() for s in self.ships],
-            'placement_mode': self.placement_mode,
         }
 
     @staticmethod
@@ -153,7 +104,6 @@ class Board:
         board = Board()
         board.grid = data['grid']
         board.ships = [Ship.from_dict(s) for s in data['ships']]
-        board.placement_mode = data.get('placement_mode', True)
         return board
 
 class Game:
@@ -175,10 +125,6 @@ class Game:
         self.ready = {1: False, 2: False}
         self.created_at = time.time()
         self.strip_photo = None
-
-    @property
-    def both_placed(self):
-        return self.phase == "playing"
 
     def player_num(self, user_id):
         return 1 if user_id == self.player1_id else 2
@@ -266,42 +212,6 @@ class Game:
             game.bot_ai = None
         return game
 
-def validate_ship_placement(cells, strip=False):
-    if len(cells) < 2:
-        return True, ""
-    if strip:
-        # In strip mode, allow any connected shape
-        cell_set = set(cells)
-        start = cells[0]
-        visited = set()
-        stack = [start]
-        while stack:
-            r, c = stack.pop()
-            if (r, c) in visited:
-                continue
-            visited.add((r, c))
-            for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
-                nr, nc = r + dr, c + dc
-                if (nr, nc) in cell_set and (nr, nc) not in visited:
-                    stack.append((nr, nc))
-        if len(visited) == len(cell_set):
-            return True, ""
-        return False, "Корабль должен быть связным (все клетки соединены)."
-    sorted_cells = sorted(cells)
-    rows = sorted([r for r, c in cells])
-    cols = sorted([c for r, c in cells])
-    if rows[0] == rows[-1]:
-        expected = sorted([(rows[0], c) for c in range(cols[0], cols[-1] + 1)])
-        if sorted_cells != expected:
-            return False, "Корабль должен быть прямой линией (все клетки подряд по горизонтали)."
-        return True, ""
-    if cols[0] == cols[-1]:
-        expected = sorted([(r, cols[0]) for r in range(rows[0], rows[-1] + 1)])
-        if sorted_cells != expected:
-            return False, "Корабль должен быть прямой линией (все клетки подряд по вертикали)."
-        return True, ""
-    return False, "Корабль должен быть прямой линией (горизонтально или вертикально)."
-
 CLOTHING_SHAPES = {
     4: [
         [(0,0), (0,1), (1,0), (1,1)],  # 2x2 square
@@ -368,17 +278,17 @@ def auto_place_ships(board: Board) -> None:
 class BotAI:
     def __init__(self):
         self.shots = set()
-        self.hunt_queue = []
+        self.hunt_queue = deque()
         self.ship_mode = False
 
     def reset_for_board(self, board):
         self.shots = set()
-        self.hunt_queue = []
+        self.hunt_queue = deque()
         self.ship_mode = False
 
     def choose_shot(self, enemy_board):
         try_hunt = list(self.hunt_queue)
-        self.hunt_queue = []
+        self.hunt_queue.clear()
         for r, c in try_hunt:
             if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
                 self.hunt_queue.append((r, c))
@@ -392,7 +302,7 @@ class BotAI:
                                 self.hunt_queue.append((nr, nc))
 
         while self.hunt_queue:
-            r, c = self.hunt_queue.pop(0)
+            r, c = self.hunt_queue.popleft()
             if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS):
                 return r, c
 
@@ -412,7 +322,7 @@ class BotAI:
                         if (nr, nc) not in self.hunt_queue:
                             self.hunt_queue.append((nr, nc))
             if result == "sunk":
-                self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] != SUNK]
+                self.hunt_queue = deque(q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] != SUNK)
 
     def to_dict(self):
         return {
@@ -425,6 +335,6 @@ class BotAI:
     def from_dict(data):
         ai = BotAI()
         ai.shots = set(tuple(s) for s in data['shots'])
-        ai.hunt_queue = [tuple(q) for q in data['hunt_queue']]
+        ai.hunt_queue = deque(tuple(q) for q in data['hunt_queue'])
         ai.ship_mode = data['ship_mode']
         return ai
