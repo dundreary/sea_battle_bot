@@ -97,6 +97,7 @@ def as_dict(game, uid):
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
         "ships_placed": len(own.ships),
         "ships_list": list(ships_list),
+        "strip_photo": game.strip_photo,
     }
 
 def new_solo(uid, strip=False):
@@ -370,10 +371,10 @@ def handle_api(path, body):
         game = games.get(code)
         if not game:
             return {"error": "game not found"}
+        game.strip_photo = photo
         winner_id = game.opponent_id(uid)
         solo = game.solo
         if not winner_id or winner_id == 0:
-            # Solo vs bot: send photo to the player themselves
             winner_id = uid
         user_lang = data.get("lang", "ru")
         if solo:
@@ -389,11 +390,9 @@ def handle_api(path, body):
                 'en': '👗 Your friend lost in Strip Mode!',
             }
         caption = captions.get(user_lang, captions['ru'])
-        ok = send_strip_photo_to_winner(winner_id, photo, caption)
-
-        if ok:
-            return {"ok": True}
-        return {"ok": False, "error": "send_failed"}
+        send_strip_photo_to_winner(winner_id, photo, caption)
+        save_all()
+        return {"ok": True, "photo_saved": True}
 
     if path == "/api/ana_new_solo":
         sid, g = ana_new()

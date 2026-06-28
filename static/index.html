@@ -792,6 +792,10 @@ function startStripMode(){
           <img class="icon" src="/static/mode-friend.svg" alt="">
           <div class="label">${t('vsFriend')}</div>
         </div>
+        <div class="mode-card join" onclick="this.closest('.overlay').remove();joinGame()" style="min-height:100px;grid-column:1/-1">
+          <img class="icon" src="/static/mode-join.svg" alt="">
+          <div class="label">${t('joinBtn')}</div>
+        </div>
       </div>
       <button class="btn outline quit-btn" style="width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
@@ -927,6 +931,7 @@ function showMainMenu(){
   showShipHints = true;
   gameCode=null;state=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  if(_stripPhotoPollTimer){clearInterval(_stripPhotoPollTimer);_stripPhotoPollTimer=null}
   localStorage.removeItem('sb_game');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
@@ -979,10 +984,6 @@ function showSeaBattleMenu(){
         <img class="icon" src="/static/mode-strip.svg" alt="">
         <div class="label">${t('stripMode')}</div>
       </div>
-      <div class="mode-card join" onclick="joinGame()">
-        <img class="icon" src="/static/mode-join.svg" alt="">
-        <div class="label">${t('joinBtn')}</div>
-      </div>
     </div>
     <button class="btn outline quit-btn" style="margin-top:8px" onclick="showMainMenu()">${t('quit')}</button>
     <div id="activeGamesContainer"></div>
@@ -991,7 +992,18 @@ function showSeaBattleMenu(){
 }
 
 function chooseMultiMode(){
-  newMulti(false);
+  const o=document.createElement('div');
+  o.className='overlay';
+  o.innerHTML=`
+    <div class="modal">
+      <div style="font-size:48px;margin-bottom:8px">👤</div>
+      <h2>${t('vsFriend')}</h2>
+      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
+      <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(false)">🎲 ${t('startBtn')}</button>
+      <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
+      <button class="btn outline quit-btn" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+    </div>`;
+  document.body.appendChild(o);
 }
 
 async function autoPlace(){
@@ -1041,17 +1053,32 @@ function showResult(icon,title,desc,strip){
   const o=document.createElement('div');
   if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
+  o.id='resultOverlay';
   const playAgainFn = strip ? "captureAndDo('solo')" : 'startSolo()';
+  const isWin = icon === '🏆';
+  const photoHtml = strip && state && state.strip_photo
+    ? `<img src="${state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`
+    : (strip ? '<div id="stripPhotoPending" style="font-size:13px;color:var(--text-muted);margin:8px 0">📸 ' + (isWin
+        ? {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang]
+        : {ru:'Загрузка фото...',uk:'Завантаження фото...',en:'Loading photo...'}[lang]) + '</div>' : '');
   o.innerHTML=`
     <div class="modal">
-      <div class="result-icon">${icon}</div>
-      <h2>${title}</h2>
+      ${strip && isWin && state && state.strip_photo ? `<h2>${title}</h2>` : `<div class="result-icon">${icon}</div><h2>${title}</h2>`}
       <p>${desc}</p>
+      ${photoHtml}
       <div id="stripStatus" style="font-size:13px;min-height:20px;margin:4px 0"></div>
       <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();${playAgainFn}">${t('playAgain')}</button>
       <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
+
+  if(strip && isWin && (!state || !state.strip_photo)){
+    if(state && state.solo && window._stripPhotoData){
+      showStripPhotoInResult(window._stripPhotoData);
+    } else if(!state || !state.solo) {
+      pollStripPhotoForWinner();
+    }
+  }
   
   if(strip && icon==='💔'){
     if(window._stripPhotoData){
@@ -1062,6 +1089,9 @@ function showResult(icon,title,desc,strip){
         if(st) st.textContent = ok
           ? '✅ ' + {ru:'Фото отправлено!',uk:'Фото надіслано!',en:'Photo sent!'}[lang]
           : '⚠️ ' + {ru:'Не удалось отправить фото',uk:'Не вдалося надіслати фото',en:'Failed to send photo'}[lang];
+        if(ok && state && state.solo){
+          showStripPhotoInResult(window._stripPhotoData);
+        }
       }, 300);
     } else {
       setTimeout(async () => {
@@ -1071,6 +1101,40 @@ function showResult(icon,title,desc,strip){
       }, 500);
     }
   }
+}
+
+function showStripPhotoInResult(photoData){
+  const pending = $('stripPhotoPending');
+  const modal = document.querySelector('#resultOverlay .modal');
+  if(pending){
+    pending.outerHTML = `<img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`;
+  } else if(modal && !modal.querySelector('img')){
+    const img = document.createElement('img');
+    img.src = photoData;
+    img.alt = 'Strip photo';
+    img.style.cssText = 'max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)';
+    modal.insertBefore(img, modal.querySelector('#stripStatus'));
+  }
+}
+
+let _stripPhotoPollTimer = null;
+
+function pollStripPhotoForWinner(){
+  if(_stripPhotoPollTimer) clearInterval(_stripPhotoPollTimer);
+  _stripPhotoPollTimer = setInterval(async () => {
+    if(!gameCode){ clearInterval(_stripPhotoPollTimer); _stripPhotoPollTimer = null; return; }
+    const res = await api('/api/state', {uid: getUid(), code: gameCode});
+    if(res && res.ok && res.state && res.state.strip_photo){
+      clearInterval(_stripPhotoPollTimer);
+      _stripPhotoPollTimer = null;
+      const pending = $('stripPhotoPending');
+      const ri = document.querySelector('#resultOverlay .result-icon');
+      if(ri) ri.style.display = 'none';
+      if(pending){
+        pending.outerHTML = `<img src="${res.state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`;
+      }
+    }
+  }, 2000);
 }
 
 function showStripPhotoUpload(){
@@ -1141,6 +1205,7 @@ function showStripPhotoResult(photoData){
 
 async function leaveGame(){
   if(!confirm(t('quitConfirm')))return;
+  if(_stripPhotoPollTimer){ clearInterval(_stripPhotoPollTimer); _stripPhotoPollTimer = null; }
   showMenu();
 }
 

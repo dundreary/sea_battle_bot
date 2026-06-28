@@ -174,6 +174,7 @@ class Game:
         }
         self.ready = {1: False, 2: False}
         self.created_at = time.time()
+        self.strip_photo = None
 
     @property
     def both_placed(self):
@@ -218,6 +219,7 @@ class Game:
             'player2_id': self.player2_id,
             'solo': self.solo,
             'strip': self.strip,
+            'strip_photo': self.strip_photo,
             'created_at': self.created_at,
             'board1': self.board1.to_dict(),
             'board2': self.board2.to_dict(),
@@ -242,6 +244,7 @@ class Game:
         game.player2_id = data.get('player2_id')
         game.solo = data.get('solo', False)
         game.strip = data.get('strip', False)
+        game.strip_photo = data.get('strip_photo')
         game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
         game.board2 = Board.from_dict(data['board2'])
