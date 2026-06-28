@@ -1,24 +1,33 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <defs>
-    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0d1f3c"/>
-      <stop offset="100%" stop-color="#1a3a5c"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1628"/>
+      <stop offset="100%" stop-color="#0d1f3c"/>
     </linearGradient>
-    <linearGradient id="shipBody" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2e7d32"/>
-      <stop offset="100%" stop-color="#3d8b40"/>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a5568"/>
+      <stop offset="100%" stop-color="#2d3748"/>
     </linearGradient>
-    <linearGradient id="shipWater" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1565c0"/>
-      <stop offset="100%" stop-color="#1976d2"/>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1a365d"/>
+      <stop offset="50%" stop-color="#2b6cb0"/>
+      <stop offset="100%" stop-color="#1a365d"/>
     </linearGradient>
   </defs>
-  <circle cx="100" cy="100" r="95" fill="url(#oceanGrad)" stroke="#2c5282" stroke-width="3"/>
-  <rect x="60" y="60" width="80" height="80" rx="10" fill="url(#shipBody)" stroke="#1e4d32" stroke-width="2"/>
-  <rect x="70" y="70" width="60" height="60" rx="5" fill="#3d8b40" stroke="#2c5282" stroke-width="1" opacity="0.8"/>
-  <polygon points="85,95 115,95 100,130" fill="#c62828" stroke="#8b0000" stroke-width="1"/>
-  <path d="M 90,95 Q 100,85 110,95 Q 105,105 95,105 Q 90,95 90,95" fill="#1565c0" stroke="#0d47a1" stroke-width="0.5"/>
-  <circle cx="90" cy="85" r="3" fill="#fff" opacity="0.9"/>
-  <circle cx="110" cy="85" r="3" fill="#fff" opacity="0.9"/>
+  <circle cx="100" cy="100" r="96" fill="url(#bg)" stroke="#2b6cb0" stroke-width="2"/>
+  <path d="M15 135 Q45 120 75 135 Q105 150 135 135 Q165 120 185 135 L185 155 Q155 140 125 155 Q95 170 65 155 Q35 140 15 155 Z" fill="url(#water)"/>
+  <path d="M45 120 L55 88 L145 88 L155 120 L170 130 L30 130 Z" fill="url(#hull)"/>
+  <rect x="60" y="82" width="80" height="7" rx="2" fill="#718096"/>
+  <rect x="105" y="62" width="28" height="22" rx="3" fill="#718096"/>
+  <rect x="110" y="57" width="18" height="7" rx="2" fill="#a0aec0"/>
+  <rect x="72" y="70" width="18" height="8" rx="2" fill="#718096"/>
+  <rect x="76" y="64" width="10" height="8" rx="1" fill="#a0aec0"/>
+  <line x1="125" y1="57" x2="125" y2="32" stroke="#718096" stroke-width="2.5"/>
+  <line x1="113" y1="40" x2="137" y2="40" stroke="#718096" stroke-width="2"/>
+  <line x1="117" y1="48" x2="133" y2="48" stroke="#718096" stroke-width="1.5"/>
+  <circle cx="100" cy="120" r="48" fill="none" stroke="#fc8181" stroke-width="1.5" opacity="0.2"/>
+  <line x1="52" y1="120" x2="74" y2="120" stroke="#fc8181" stroke-width="1.5" opacity="0.2"/>
+  <line x1="126" y1="120" x2="148" y2="120" stroke="#fc8181" stroke-width="1.5" opacity="0.2"/>
+  <line x1="100" y1="72" x2="100" y2="94" stroke="#fc8181" stroke-width="1.5" opacity="0.2"/>
+  <line x1="100" y1="146" x2="100" y2="168" stroke="#fc8181" stroke-width="1.5" opacity="0.2"/>
 </svg>
