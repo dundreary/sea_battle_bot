@@ -1,8 +1,6 @@
 import json
-import base64
 import logging
 import time
-import urllib.request
 from typing import Dict, Any
 
 import anagram
@@ -14,51 +12,10 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# ── Helpers ─────────────────────────────────────────────────────────
+def _serialize_player_dict(d: Dict) -> Dict[str, Any]:
+    return {str(k): v for k, v in d.items()}
 
-def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) -> bool:
-    try:
-        mime = 'image/jpeg'
-        if ',' in photo_data:
-            header, b64_data = photo_data.split(',', 1)
-            if 'png' in header:
-                mime = 'image/png'
-            elif 'gif' in header:
-                mime = 'image/gif'
-            elif 'webp' in header:
-                mime = 'image/webp'
-        else:
-            b64_data = photo_data
-        photo_bytes = base64.b64decode(b64_data)
-
-        boundary = '----StripPhotoBoundary'
-        body = b''
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
-        body += f'{winner_id}\r\n'.encode()
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="caption"\r\n\r\n'.encode()
-        body += f'{caption}\r\n'.encode()
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="photo"; filename="strip_photo.jpg"\r\n'.encode()
-        body += f'Content-Type: {mime}\r\n\r\n'.encode()
-        body += photo_bytes + b'\r\n'
-        body += f'--{boundary}--\r\n'.encode()
-
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto',
-            data=body,
-            headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            if result.get('ok'):
-                return True
-            logger.error("Telegram API error: %s", result)
-            return False
-    except Exception as e:
-        logger.error("Failed to send strip photo: %s", e)
-        return False
 
 games: Dict[str, Game] = {}
 player_games: Dict[int, str] = {}
@@ -221,25 +178,16 @@ def join_game(uid, code):
     return game, "ok"
 
 def save_all():
-    pg_serialized = {}
-    for k, v in player_games.items():
-        pg_serialized[str(k)] = v
-    aps_serialized = {}
-    for k, v in ana_player_sessions.items():
-        aps_serialized[str(k)] = v
-    yzpg_serialized = {}
-    for k, v in yz_player_games.items():
-        yzpg_serialized[str(k)] = v
     data = {
         'version': 1,
         'saved_at': time.time(),
         'api_games': {},
-        'api_player_games': pg_serialized,
-        'api_ana_player_sessions': aps_serialized,
+        'api_player_games': _serialize_player_dict(player_games),
+        'api_ana_player_sessions': _serialize_player_dict(ana_player_sessions),
         'anagram_games': anagram.games,
         'anagram_rooms': anagram.rooms,
         'yz_games': {},
-        'yz_player_games': yzpg_serialized,
+        'yz_player_games': _serialize_player_dict(yz_player_games),
     }
     for code, game in games.items():
         try:
@@ -273,7 +221,7 @@ def load_all():
             pass
 
     player_games.clear()
-    player_games.update(data.get('api_player_games', {}))
+    player_games.update({int(k): v for k, v in data.get('api_player_games', {}).items()})
 
     valid = set(games.keys())
     for uid, code in list(player_games.items()):
@@ -304,7 +252,7 @@ def load_all():
         try:
             sid = v.get('sid')
             if sid and sid in anagram.games:
-                ana_player_sessions[k] = v
+                ana_player_sessions[int(k)] = v
         except Exception:
             pass
 
@@ -318,7 +266,7 @@ def load_all():
             pass
 
     yz_player_games.clear()
-    yz_player_games.update(data.get('yz_player_games', {}))
+    yz_player_games.update({int(k): v for k, v in data.get('yz_player_games', {}).items()})
     for uid, code in list(yz_player_games.items()):
         if code not in yz_games:
             del yz_player_games[uid]
@@ -330,6 +278,11 @@ def handle_api(path, body):
     except json.JSONDecodeError:
         data = {}
     uid = data.get("uid")
+    if uid is not None:
+        try:
+            uid = int(uid)
+        except (ValueError, TypeError):
+            pass
 
     handler = _ROUTES.get(path)
     if handler is None:
@@ -440,25 +393,6 @@ def _handle_upload_photo(uid, data):
     if not game:
         return {"error": "game not found"}
     game.strip_photo = photo
-    winner_id = game.opponent_id(uid)
-    solo = game.solo
-    if not winner_id or winner_id == 0:
-        winner_id = uid
-    user_lang = data.get("lang", "ru")
-    if solo:
-        captions = {
-            'ru': '👗 Ты проиграл в режиме «На раздевание»! Фотография сделана.',
-            'uk': '👗 Ти програв у режимі «На роздягання»! Фотографія зроблена.',
-            'en': '👗 You lost in Strip Mode! Photo taken.',
-        }
-    else:
-        captions = {
-            'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-            'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-            'en': '👗 Your friend lost in Strip Mode!',
-        }
-    caption = captions.get(user_lang, captions['ru'])
-    send_strip_photo_to_winner(winner_id, photo, caption)
     save_all()
     return {"ok": True, "photo_saved": True}
 
@@ -660,9 +594,7 @@ def _handle_active_games(uid, data):
     if not uid:
         return {"error": "no uid"}
     games_list = []
-    sb_code = player_games.get(str(uid))
-    if sb_code is None:
-        sb_code = player_games.get(uid)
+    sb_code = player_games.get(uid)
     if sb_code and sb_code in games:
         g = games[sb_code]
         games_list.append({
@@ -672,9 +604,7 @@ def _handle_active_games(uid, data):
             'phase': g.phase,
             'my_turn': g.current_player() == uid,
         })
-    ana_data = ana_player_sessions.get(str(uid))
-    if ana_data is None:
-        ana_data = ana_player_sessions.get(uid)
+    ana_data = ana_player_sessions.get(uid)
     if ana_data:
         sid = ana_data['sid']
         code_ = ana_data['code']
@@ -687,9 +617,7 @@ def _handle_active_games(uid, data):
                 'score': st.get('score', 0),
                 'remaining': st.get('remaining', 0),
             })
-    yz_code = yz_player_games.get(str(uid))
-    if yz_code is None:
-        yz_code = yz_player_games.get(uid)
+    yz_code = yz_player_games.get(uid)
     if yz_code and yz_code in yz_games:
         g = yz_games[yz_code]
         games_list.append({

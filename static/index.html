@@ -146,13 +146,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   footer{position:fixed;bottom:0;left:0;right:0;padding:8px 16px 12px;background:var(--bg-dark);text-align:center;font-size:11px;color:var(--text-hint);border-top:1px solid var(--border-color)}
 
 .game-select{display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;margin-top:20px}
-.game-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:1px solid var(--border-color);border-radius:16px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
+.game-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:1px solid var(--border-color);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
 .game-card:hover{transform:translateY(-2px);border-color:var(--accent-primary)}
 .game-card .icon{font-size:48px;margin-bottom:8px}
 .game-card .name{font-size:18px;font-weight:600}
 .game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
 .mode-grid{display:grid;grid-template-columns:1fr;gap:8px;width:100%;max-width:340px;margin-top:12px}
-.mode-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:2px solid var(--border-color);border-radius:14px;display:flex;flex-direction:row;align-items:center;gap:14px;cursor:pointer;transition:.2s;padding:14px 16px}
+.mode-card{background:linear-gradient(135deg,var(--bg-board),var(--bg-board-alt));border:2px solid var(--border-color);border-radius:8px;display:flex;flex-direction:row;align-items:center;gap:14px;cursor:pointer;transition:.2s;padding:14px 16px}
 .mode-card:hover{transform:translateY(-2px);border-color:var(--accent-primary)}
 .mode-card:active{transform:scale(.97)}
 .mode-card .icon{width:48px;height:48px;flex-shrink:0;display:block}
@@ -852,14 +852,9 @@ function startStripMode(){
     <div class="modal">
       <div style="font-size:48px;margin-bottom:8px">👗</div>
       <h2>${t('stripTitle')}</h2>
-      <p style="color:var(--text-secondary);margin-bottom:4px;font-size:13px">${t('stripDesc')}</p>
-      <p style="color:var(--text-muted);margin-bottom:12px;font-size:11px">📸 ${t('stripTakePhoto')}</p>
+      <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('stripDesc')}</p>
       <div class="mode-grid" style="margin-top:0">
-        <div class="mode-card bot" onclick="this.closest('.overlay').remove();captureAndDo('solo')">
-          <img class="icon" src="/static/mode-bot.svg" alt="">
-          <div class="label">${t('vsBot')}</div>
-        </div>
-        <div class="mode-card friend" onclick="this.closest('.overlay').remove();captureAndDo('multi')">
+        <div class="mode-card friend" onclick="this.closest('.overlay').remove();doStripMulti()">
           <img class="icon" src="/static/mode-friend.svg" alt="">
           <div class="label">${t('vsFriend')}</div>
         </div>
@@ -871,44 +866,6 @@ function startStripMode(){
       <button class="btn outline quit-btn" style="width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
-}
-
-function captureAndDo(mode){
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.capture = 'environment';
-  var fallbackTimer = setTimeout(function(){
-    if (mode === 'solo') doStripSolo();
-    else doStripMulti();
-  }, 30000);
-  input.onchange = function(e){
-    clearTimeout(fallbackTimer);
-    var file = e.target.files[0];
-    if (!file) {
-      if (mode === 'solo') doStripSolo();
-      else doStripMulti();
-      return;
-    }
-    var reader = new FileReader();
-    reader.onload = function(ev){
-      window._stripPhotoData = ev.target.result;
-      if (mode === 'solo') doStripSolo();
-      else doStripMulti();
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
-}
-
-async function doStripSolo(){
-  showShipHints = true;
-  const res=await api('/api/new_solo',{uid:getUid(),strip:true});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  gameCode=res.code;
-  localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML='';
-  await refreshState();
 }
 
 async function doStripMulti(){
@@ -1007,7 +964,7 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-      <img src="/static/game-icon.svg" style="width:32px;height:32px;display:block;margin:0 auto 8px">
+      <img src="/static/game-icon.svg" style="width:48px;height:48px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
@@ -1034,7 +991,7 @@ function showSeaBattleMenu(){
   $('actions').className='btn-row';
   $('actions').innerHTML=`
     <div style="text-align:center;width:100%;margin-bottom:4px">
-      <img src="/static/game-icon.svg" style="width:24px;height:24px;display:block;margin:0 auto">
+      <img src="/static/game-icon.svg" style="width:48px;height:48px;display:block;margin:0 auto">
     </div>
     <div class="mode-grid">
       <div class="mode-card bot" onclick="startSolo()">
@@ -1119,7 +1076,7 @@ function showResult(icon,title,desc,strip){
   if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
   o.id='resultOverlay';
-  const playAgainFn = strip ? "captureAndDo('solo')" : 'startSolo()';
+  const playAgainFn = strip ? "startStripMode()" : 'startSolo()';
   const isWin = icon === '🏆';
   const photoHtml = strip && state && state.strip_photo
     ? `<img src="${state.strip_photo}" alt="Strip photo" style="max-width:100%;max-height:260px;border-radius:12px;margin:8px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">`
@@ -1146,25 +1103,14 @@ function showResult(icon,title,desc,strip){
   }
   
   if(strip && icon==='💔'){
-    if(window._stripPhotoData){
-      setTimeout(async () => {
-        const st = $('stripStatus');
-        if(st) st.textContent = '📸 ' + {ru:'Отправка фото...',uk:'Надсилання фото...',en:'Sending photo...'}[lang];
-        const ok = await uploadStripPhoto(window._stripPhotoData);
-        if(st) st.textContent = ok
-          ? '✅ ' + {ru:'Фото отправлено!',uk:'Фото надіслано!',en:'Photo sent!'}[lang]
-          : '⚠️ ' + {ru:'Не удалось отправить фото',uk:'Не вдалося надіслати фото',en:'Failed to send photo'}[lang];
-        if(ok && state && state.solo){
-          showStripPhotoInResult(window._stripPhotoData);
-        }
-      }, 300);
-    } else {
-      setTimeout(async () => {
-        const st = $('stripStatus');
-        if(st) st.textContent = '📸 ' + {ru:'Сделай фото...',uk:'Зроби фото...',en:'Take a photo...'}[lang];
-        showStripPhotoUpload();
-      }, 500);
-    }
+    setTimeout(() => {
+      if(window._stripPhotoData){
+        showStripPhotoInResult(window._stripPhotoData);
+        uploadStripPhotoToGame(window._stripPhotoData);
+      } else {
+        takeStripPhotoForLose();
+      }
+    }, 500);
   }
 }
 
@@ -1202,22 +1148,7 @@ function pollStripPhotoForWinner(){
   }, 2000);
 }
 
-function showStripPhotoUpload(){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.id='stripPhotoModal';
-  o.innerHTML=`
-    <div class="modal">
-      <div style="font-size:48px;margin-bottom:8px">📸</div>
-      <h2>${t('stripUploadTitle')}</h2>
-      <p style="color:var(--text-secondary);font-size:13px">${t('stripUploadDesc')}</p>
-      <button class="btn primary" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove();takeStripPhoto()">${t('stripTakePhoto')}</button>
-      <button class="btn outline quit-btn" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
-}
-
-function takeStripPhoto(){
+function takeStripPhotoForLose(){
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -1229,43 +1160,24 @@ function takeStripPhoto(){
     reader.onload = (ev) => {
       const photoData = ev.target.result;
       window._stripPhotoData = photoData;
-      showStripPhotoResult(photoData);
-      uploadStripPhoto(photoData);
+      showStripPhotoInResult(photoData);
+      uploadStripPhotoToGame(photoData);
     };
     reader.readAsDataURL(file);
   };
   input.click();
 }
 
-async function uploadStripPhoto(photoData){
+async function uploadStripPhotoToGame(photoData){
   const res = await api('/api/upload_photo', {
     uid: getUid(),
     code: gameCode,
     photo: photoData,
-    lang: lang
   });
   if(res && res.ok){
-    setStatus('📸 ' + {ru:'Фото отправлено!',uk:'Фото надіслано!',en:'Photo sent!'}[lang], 'battle');
-    return true;
-  } else {
-    setStatus('⚠️ ' + {ru:'Не удалось отправить фото',uk:'Не вдалося надіслати фото',en:'Failed to send photo'}[lang], '');
-    return false;
+    const st = $('stripStatus');
+    if(st) st.textContent = '✅ ' + {ru:'Фото в игре',uk:'Фото в грі',en:'Photo in game'}[lang];
   }
-}
-
-function showStripPhotoResult(photoData){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.id='stripPhotoResult';
-  window._lastStripPhoto = photoData;
-  o.innerHTML=`
-    <div class="modal" style="max-width:90vw">
-      <h2>${t('stripLoseTitle')}</h2>
-      <p>${t('stripLoseDesc')}</p>
-      <img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:300px;border-radius:12px;margin:12px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
-      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
 }
 
 async function leaveGame(){
