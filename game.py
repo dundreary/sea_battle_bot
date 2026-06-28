@@ -230,61 +230,67 @@ CLOTHING_SHAPES = {
 }
 
 def auto_place_strip_ships(board: Board) -> None:
-    for length in STRIP_SHIPS:
-        placed = False
-        attempts = 0
-        while not placed and attempts < 1000:
-            shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
-            shape = random.choice(shapes)
-            r = random.randint(0, SIZE - 1)
-            c = random.randint(0, SIZE - 1)
-            cells = [(r + dr, c + dc) for dr, dc in shape]
-            if all(0 <= cr < SIZE and 0 <= cc < SIZE for cr, cc in cells):
-                if board.can_place(cells):
-                    board.place_ship(cells)
-                    placed = True
-            attempts += 1
-        if not placed:
-            board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
-            board.ships = []
-            auto_place_strip_ships(board)
+    for _ in range(100):
+        board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+        board.ships = []
+        ok = True
+        for length in STRIP_SHIPS:
+            placed = False
+            attempts = 0
+            while not placed and attempts < 1000:
+                shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
+                shape = random.choice(shapes)
+                r = random.randint(0, SIZE - 1)
+                c = random.randint(0, SIZE - 1)
+                cells = [(r + dr, c + dc) for dr, dc in shape]
+                if all(0 <= cr < SIZE and 0 <= cc < SIZE for cr, cc in cells):
+                    if board.can_place(cells):
+                        board.place_ship(cells)
+                        placed = True
+                attempts += 1
+            if not placed:
+                ok = False
+                break
+        if ok:
             return
 
 
 def auto_place_ships(board: Board) -> None:
-    for length in SHIPS:
-        placed = False
-        attempts = 0
-        while not placed and attempts < 1000:
-            is_horizontal = random.choice([True, False])
-            if is_horizontal:
-                r = random.randint(0, SIZE - 1)
-                c = random.randint(0, SIZE - length)
-                cells = [(r, c + i) for i in range(length)]
-            else:
-                r = random.randint(0, SIZE - length)
-                c = random.randint(0, SIZE - 1)
-                cells = [(r + i, c) for i in range(length)]
-            if board.can_place(cells):
-                board.place_ship(cells)
-                placed = True
-            attempts += 1
-        if not placed:
-            board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
-            board.ships = []
-            auto_place_ships(board)
+    for _ in range(100):
+        board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+        board.ships = []
+        ok = True
+        for length in SHIPS:
+            placed = False
+            attempts = 0
+            while not placed and attempts < 1000:
+                is_horizontal = random.choice([True, False])
+                if is_horizontal:
+                    r = random.randint(0, SIZE - 1)
+                    c = random.randint(0, SIZE - length)
+                    cells = [(r, c + i) for i in range(length)]
+                else:
+                    r = random.randint(0, SIZE - length)
+                    c = random.randint(0, SIZE - 1)
+                    cells = [(r + i, c) for i in range(length)]
+                if board.can_place(cells):
+                    board.place_ship(cells)
+                    placed = True
+                attempts += 1
+            if not placed:
+                ok = False
+                break
+        if ok:
             return
 
 class BotAI:
     def __init__(self):
         self.shots = set()
         self.hunt_queue = deque()
-        self.ship_mode = False
 
     def reset_for_board(self, board):
         self.shots = set()
         self.hunt_queue = deque()
-        self.ship_mode = False
 
     def choose_shot(self, enemy_board):
         try_hunt = list(self.hunt_queue)
@@ -292,7 +298,6 @@ class BotAI:
         for r, c in try_hunt:
             if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
                 self.hunt_queue.append((r, c))
-                self.ship_mode = True
             else:
                 for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                     nr, nc = r + dr, c + dc
@@ -328,7 +333,6 @@ class BotAI:
         return {
             'shots': [list(s) for s in self.shots],
             'hunt_queue': [list(q) for q in self.hunt_queue],
-            'ship_mode': self.ship_mode,
         }
 
     @staticmethod
@@ -336,5 +340,4 @@ class BotAI:
         ai = BotAI()
         ai.shots = set(tuple(s) for s in data['shots'])
         ai.hunt_queue = deque(tuple(q) for q in data['hunt_queue'])
-        ai.ship_mode = data['ship_mode']
         return ai

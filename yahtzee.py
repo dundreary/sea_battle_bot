@@ -138,6 +138,16 @@ class Yahtzee:
         self.rolls += 1
         return self.dice
 
+    def join(self, uid: int) -> bool:
+        if self.p2 is not None:
+            return False
+        if uid == self.p1:
+            return False
+        self.p2 = uid
+        self.phase = "play"
+        self.turn = 1
+        return True
+
     def toggle(self, idx: int) -> bool:
         if self.rolls == 0 or self.rolls >= 3:
             return False

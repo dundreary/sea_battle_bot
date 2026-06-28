@@ -178,32 +178,6 @@ def join_game(uid, code):
     game.phase = "placing"
     return game, "ok"
 
-def save_all():
-    with _lock:
-        data = {
-            'version': 1,
-            'saved_at': time.time(),
-            'api_games': {},
-            'api_player_games': _serialize_player_dict(player_games),
-            'api_ana_player_sessions': _serialize_player_dict(ana_player_sessions),
-            'anagram_games': anagram.games,
-            'anagram_rooms': anagram.rooms,
-            'yz_games': {},
-            'yz_player_games': _serialize_player_dict(yz_player_games),
-        }
-        for code, game in games.items():
-            try:
-                data['api_games'][code] = game.to_dict()
-            except Exception:
-                pass
-        for code, g in yz_games.items():
-            try:
-                data['yz_games'][code] = g.to_dict()
-            except Exception:
-                pass
-    persist.save(data)
-
-
 _save_timer = None
 
 def save_all():
@@ -262,16 +236,7 @@ def cleanup_old_games():
         for uid, code in list(yz_player_games.items()):
             if code not in yz_games:
                 del yz_player_games[uid]
-        for sid in list(anagram.games.keys()):
-            g = anagram.games[sid]
-            if now - g.get('started_at', 0) > MAX_AGE:
-                del anagram.games[sid]
-        for code in list(anagram.rooms.keys()):
-            r = anagram.rooms[code]
-            p1 = r.get('p1_sid')
-            p2 = r.get('p2_sid')
-            if (p1 and p1 not in anagram.games) or (p2 and p2 not in anagram.games):
-                del anagram.rooms[code]
+        anagram.cleanup(MAX_AGE)
         for uid in list(ana_player_sessions.keys()):
             sid = ana_player_sessions[uid].get('sid')
             if sid not in anagram.games:
@@ -281,7 +246,10 @@ _cleanup_timer = None
 
 def _schedule_cleanup():
     global _cleanup_timer
-    cleanup_old_games()
+    try:
+        cleanup_old_games()
+    except Exception:
+        logger.exception("cleanup_old_games failed")
     _cleanup_timer = threading.Timer(3600, _schedule_cleanup)
     _cleanup_timer.daemon = True
     _cleanup_timer.start()
@@ -357,6 +325,9 @@ def load_all():
             del yz_player_games[uid]
 
     _schedule_cleanup()
+
+
+def handle_api(path: str, body: str) -> dict:
     try:
         data = json.loads(body) if body else {}
     except json.JSONDecodeError:
@@ -371,7 +342,8 @@ def load_all():
     handler = _ROUTES.get(path)
     if handler is None:
         return {"error": "unknown path"}
-    return handler(uid, data)
+    with _lock:
+        return handler(uid, data)
 
 
 # ── Route handlers ──────────────────────────────────────────────────────
@@ -518,11 +490,8 @@ def _handle_yz_join(uid, data):
     g = yz_games.get(code)
     if not g:
         return {"ok": False, "error": "not_found"}
-    if g.p2 is not None:
+    if not g.join(uid):
         return {"ok": False, "error": "full"}
-    g.p2 = uid
-    g.phase = "play"
-    g.turn = 1
     yz_player_games[uid] = code
     save_all()
     return {"ok": True, "state": yahtzee.build_state(g, uid)}
@@ -538,7 +507,6 @@ def _handle_yz_state(uid, data):
         return {"error": "no game"}
     if uid != g.p1 and uid != g.p2:
         return {"error": "not your game"}
-    save_all()
     return {"ok": True, "state": yahtzee.build_state(g, uid)}
 
 
@@ -669,7 +637,6 @@ def _handle_ana_state(uid, data):
     st = ana_state(sid)
     if not st:
         return {"error": "not_found"}
-    save_all()
     return {"ok": True, "state": st}
 
 

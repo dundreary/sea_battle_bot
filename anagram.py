@@ -172,6 +172,20 @@ def hint(sid):
     g['hints_used'] += 1
     return {'word': word, 'penalty': 200, 'total': g['score']}
 
+def cleanup(max_age: float) -> None:
+    now = time.time()
+    for sid in list(games.keys()):
+        g = games[sid]
+        if now - g.get('started_at', 0) > max_age:
+            del games[sid]
+    for code in list(rooms.keys()):
+        r = rooms[code]
+        p1 = r.get('p1_sid')
+        p2 = r.get('p2_sid')
+        if (p1 and p1 not in games) or (p2 and p2 not in games):
+            del rooms[code]
+
+
 def get_state(sid):
     g = games.get(sid)
     if not g:
