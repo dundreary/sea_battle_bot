@@ -1,26 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0d1f3c"/>
-      <stop offset="100%" stop-color="#0a1628"/>
-    </linearGradient>
-    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#4fc3f7"/>
-      <stop offset="100%" stop-color="#1565c0"/>
-    </linearGradient>
-    <linearGradient id="wt" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1e3a5f"/>
-      <stop offset="50%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#1e3a5f"/>
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
     </linearGradient>
   </defs>
-  <circle cx="100" cy="100" r="96" fill="url(#bg)" stroke="#2563eb" stroke-width="1.5"/>
-  <circle cx="100" cy="100" r="90" fill="none" stroke="#1e3a5f" stroke-width="1" stroke-dasharray="4 4"/>
-  <circle cx="100" cy="100" r="72" fill="url(#t)" opacity="0.15"/>
-  <circle cx="100" cy="100" r="60" fill="none" stroke="url(#t)" stroke-width="3" stroke-dasharray="8 6"/>
-  <line x1="100" y1="12" x2="100" y2="188" stroke="url(#t)" stroke-width="2" opacity="0.4"/>
-  <line x1="12" y1="100" x2="188" y2="100" stroke="url(#t)" stroke-width="2" opacity="0.4"/>
-  <circle cx="100" cy="100" r="12" fill="none" stroke="#ef4444" stroke-width="3"/>
-  <circle cx="100" cy="100" r="4" fill="#ef4444"/>
-  <path d="M20 160 Q55 145 85 155 Q110 162 140 155 Q165 145 185 158 L185 172 Q165 160 140 170 Q110 177 85 170 Q55 160 20 168 Z" fill="url(#wt)" opacity="0.6"/>
+  <circle cx="100" cy="100" r="96" fill="url(#bg)" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="100" cy="100" r="88" fill="none" stroke="#334155" stroke-width="1"/>
+  <line x1="100" y1="14" x2="100" y2="186" stroke="#334155" stroke-width="1" opacity="0.6"/>
+  <line x1="14" y1="100" x2="186" y2="100" stroke="#334155" stroke-width="1" opacity="0.6"/>
+  <circle cx="100" cy="100" r="52" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.3"/>
+  <circle cx="100" cy="100" r="36" fill="none" stroke="#3b82f6" stroke-width="2"/>
+  <circle cx="100" cy="100" r="8" fill="#3b82f6"/>
+  <path d="M70 120 L100 140 L130 120" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M100 140 L100 160" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+  <rect x="94" y="178" width="12" height="12" rx="2" fill="#3b82f6" opacity="0.4"/>
 </svg>
