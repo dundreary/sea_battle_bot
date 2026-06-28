@@ -1,12 +1,15 @@
 import json
 import base64
 import logging
+import os
+import time
 import urllib.request
 from typing import Dict, Any
 
+import anagram
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
-from persist import save
+import persist
 import config
 
 logger = logging.getLogger(__name__)
@@ -202,6 +205,85 @@ def join_game(uid, code):
     game.phase = "placing"
     return game, "ok"
 
+def save_all():
+    pg_serialized = {}
+    for k, v in player_games.items():
+        pg_serialized[str(k)] = v
+    aps_serialized = {}
+    for k, v in ana_player_sessions.items():
+        aps_serialized[str(k)] = v
+    data = {
+        'version': 1,
+        'saved_at': time.time(),
+        'api_games': {},
+        'api_player_games': pg_serialized,
+        'api_ana_player_sessions': aps_serialized,
+        'anagram_games': anagram.games,
+        'anagram_rooms': anagram.rooms,
+    }
+    for code, game in games.items():
+        try:
+            data['api_games'][code] = game.to_dict()
+        except Exception:
+            pass
+    persist.save(data)
+
+
+def load_all():
+    data = persist.load()
+    if not data:
+        return
+
+    now = time.time()
+    MAX_AGE = 86400
+
+    games.clear()
+    for code, gdata in data.get('api_games', {}).items():
+        try:
+            game = Game.from_dict(gdata)
+            created = getattr(game, 'created_at', 0)
+            if now - created < MAX_AGE:
+                games[code] = game
+        except Exception:
+            pass
+
+    player_games.clear()
+    player_games.update(data.get('api_player_games', {}))
+
+    valid = set(games.keys())
+    for uid, code in list(player_games.items()):
+        if code not in valid:
+            del player_games[uid]
+
+    anagram.games.clear()
+    for sid, gdata in data.get('anagram_games', {}).items():
+        try:
+            started = gdata.get('started_at', 0)
+            if now - started < MAX_AGE:
+                anagram.games[sid] = gdata
+        except Exception:
+            pass
+
+    anagram.rooms.clear()
+    for code, rdata in data.get('anagram_rooms', {}).items():
+        try:
+            p1 = rdata.get('p1_sid')
+            p2 = rdata.get('p2_sid')
+            if (p1 and p1 in anagram.games) or (p2 and p2 in anagram.games):
+                anagram.rooms[code] = rdata
+        except Exception:
+            pass
+
+    ana_player_sessions.clear()
+    for k, v in data.get('api_ana_player_sessions', {}).items():
+        try:
+            sid = v.get('sid')
+            if sid and sid in anagram.games:
+                ana_player_sessions[k] = v
+        except Exception:
+            pass
+
+
 def handle_api(path, body):
     try:
         data = json.loads(body) if body else {}
@@ -216,7 +298,7 @@ def handle_api(path, body):
         strip = data.get("strip", False)
         game = new_solo(uid, strip=strip)
         player_games[uid] = game.code
-        save()
+        save_all()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
     if path == "/api/new_multi":
@@ -225,7 +307,7 @@ def handle_api(path, body):
         strip = data.get("strip", False)
         game = new_multi(uid, strip=strip)
         player_games[uid] = game.code
-        save()
+        save_all()
         return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
     if path == "/api/join":
@@ -235,7 +317,7 @@ def handle_api(path, body):
         if not game:
             return {"ok": False, "error": status}
         player_games[uid] = code
-        save()
+        save_all()
         return {"ok": True, "state": as_dict(game, uid)}
 
     if path == "/api/state":
@@ -257,7 +339,7 @@ def handle_api(path, body):
             return {"error": "invalid shot"}
         game = games.get(code)
         state = as_dict(game, uid) if game else None
-        save()
+        save_all()
         return {"ok": True, "result": result, "state": state}
 
     if path == "/api/place_auto":
@@ -266,7 +348,7 @@ def handle_api(path, body):
         place_auto(uid, code)
         game = games.get(code)
         state = as_dict(game, uid) if game else None
-        save()
+        save_all()
         return {"ok": True, "state": state}
 
     if path == "/api/confirm":
@@ -277,7 +359,7 @@ def handle_api(path, body):
             return {"ok": False, "error": "not_all_placed"}
         game = games.get(code)
         state = as_dict(game, uid) if game else None
-        save()
+        save_all()
         return {"ok": True, "started": started, "state": state}
 
     if path == "/api/upload_photo":
@@ -300,20 +382,43 @@ def handle_api(path, body):
         }
         caption = captions.get(user_lang, captions['ru'])
         ok = send_strip_photo_to_winner(winner_id, photo, caption)
+
+        # Save photo to disk
+        try:
+            uploads_dir = os.path.join(os.path.dirname(__file__), "static", "uploads")
+            os.makedirs(uploads_dir, exist_ok=True)
+            # Extract bytes and extension
+            _, b64_data = photo.split(',', 1) if ',' in photo else (None, photo)
+            photo_bytes = base64.b64decode(b64_data)
+            ext = '.jpg'
+            if photo.startswith('data:image/png'):
+                ext = '.png'
+            elif photo.startswith('data:image/gif'):
+                ext = '.gif'
+            elif photo.startswith('data:image/webp'):
+                ext = '.webp'
+            fname = f"strip_{code}_{int(time.time())}{ext}"
+            path = os.path.join(uploads_dir, fname)
+            with open(path, 'wb') as f:
+                f.write(photo_bytes)
+            logger.info("Photo saved: %s", path)
+        except Exception as e:
+            logger.error("Failed to save photo: %s", e)
+
         if ok:
             return {"ok": True}
         return {"ok": False, "error": "send_failed"}
 
     if path == "/api/ana_new_solo":
         sid, g = ana_new()
-        save()
+        save_all()
         return {"ok": True, "sid": sid, "state": ana_state(sid)}
 
     if path == "/api/ana_new_multi":
         sid, code, g = ana_new_multi()
         if uid:
             ana_player_sessions[uid] = {'code': code, 'sid': sid}
-        save()
+        save_all()
         return {"ok": True, "sid": sid, "code": code, "state": ana_state(sid)}
 
     if path == "/api/ana_join":
@@ -327,7 +432,7 @@ def handle_api(path, body):
             ana_player_sessions[uid] = {'code': c.upper(), 'sid': result[0]}
             # Also update player_games for Sea Battle reconnection
             # (this endpoint returns sid for both SB and Ana, map by convention)
-        save()
+        save_all()
         return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
 
     if path == "/api/ana_guess":
@@ -336,7 +441,7 @@ def handle_api(path, body):
         result = ana_guess(sid, word)
         if result[0] != "ok":
             return {"ok": False, "error": result[0] if result[0] else result[1]}
-        save()
+        save_all()
         return {"ok": True, "result": result[1], "state": ana_state(sid)}
 
     if path == "/api/ana_hint":
@@ -344,7 +449,7 @@ def handle_api(path, body):
         result = ana_hint(sid)
         if not result:
             return {"ok": False, "error": "no_hint"}
-        save()
+        save_all()
         return {"ok": True, "result": result, "state": ana_state(sid)}
 
     if path == "/api/ana_state":
@@ -352,7 +457,7 @@ def handle_api(path, body):
         st = ana_state(sid)
         if not st:
             return {"error": "not_found"}
-        save()
+        save_all()
         return {"ok": True, "state": st}
 
     if path == "/api/active_games":
