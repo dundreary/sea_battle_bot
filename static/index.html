@@ -995,6 +995,7 @@ function showResult(icon,title,desc,strip){
 function showStripPhotoUpload(){
   const o=document.createElement('div');
   o.className='overlay';
+  o.id='stripPhotoModal';
   o.innerHTML=`
     <div class="modal">
       <div class="result-icon">📸</div>
@@ -1002,8 +1003,7 @@ function showStripPhotoUpload(){
       <p>${t('stripUploadDesc')}</p>
       <button class="btn primary" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();takeStripPhoto()">${t('stripTakePhoto')}</button>
       <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();chooseStripPhoto()">${t('stripChoosePhoto')}</button>
-      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();useStandardStripPhoto()">${t('stripUseStandard')}</button>
-      <button class="btn outline quit-btn" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('stripSkip')}</button>
+      <button class="btn outline quit-btn" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
 }
@@ -1026,51 +1026,44 @@ function chooseStripPhoto(){
   input.click();
 }
 
-function useStandardStripPhoto(){
-  // Use a standard placeholder image for strip mode
-  const standardPhotos = [
-    'https://via.placeholder.com/300x400/e91e63/fff?text=👗+Strip+Mode',
-    'https://via.placeholder.com/300x400/d81b60/fff?text=🏆+Winner',
-    'https://via.placeholder.com/300x400/c2185b/fff?text=🎮+Game+Over'
-  ];
-  const photo = standardPhotos[Math.floor(Math.random() * standardPhotos.length)];
-  showStripPhotoResult(photo);
-}
-
 function handleStripPhoto(file){
   if(!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
-    showStripPhotoResult(e.target.result);
+    const photoData = e.target.result;
+    showStripPhotoResult(photoData);
+    uploadStripPhoto(photoData);
   };
   reader.readAsDataURL(file);
+}
+
+async function uploadStripPhoto(photoData){
+  const res = await api('/api/upload_photo', {
+    uid: getUid(),
+    code: gameCode,
+    photo: photoData,
+    lang: lang
+  });
+  if(res && res.ok){
+    setStatus('📸 Фото отправлено сопернику!', 'battle');
+  } else {
+    setStatus('⚠️ Не удалось отправить фото', '');
+  }
 }
 
 function showStripPhotoResult(photoData){
   const o=document.createElement('div');
   o.className='overlay';
-  // Store photoData in a global variable to avoid long onclick attribute
+  o.id='stripPhotoResult';
   window._lastStripPhoto = photoData;
   o.innerHTML=`
     <div class="modal" style="max-width:90vw">
       <h2>${t('stripLoseTitle')}</h2>
       <p>${t('stripLoseDesc')}</p>
       <img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:300px;border-radius:12px;margin:12px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
-      <button class="btn success" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();shareStripPhoto()">${t('inviteFriend')}</button>
       <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
-}
-
-function shareStripPhoto(){
-  // For now just go back to menu, in future could upload to server
-  const photoData = window._lastStripPhoto;
-  if(photoData){
-    // Could upload to server here
-    console.log('Strip photo ready for sharing:', photoData.substring(0, 50) + '...');
-  }
-  setStatus('📸 Фото сохранено!', 'battle');
-  setTimeout(() => leaveGame(), 1500);
 }
 
 async function leaveGame(){

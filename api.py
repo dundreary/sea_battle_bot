@@ -1,10 +1,61 @@
 import json
+import base64
+import logging
+import urllib.request
 from typing import Dict, Any
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from persist import save
 import config
+
+logger = logging.getLogger(__name__)
+
+
+def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) -> bool:
+    try:
+        mime = 'image/jpeg'
+        if ',' in photo_data:
+            header, b64_data = photo_data.split(',', 1)
+            if 'png' in header:
+                mime = 'image/png'
+            elif 'gif' in header:
+                mime = 'image/gif'
+            elif 'webp' in header:
+                mime = 'image/webp'
+        else:
+            b64_data = photo_data
+        photo_bytes = base64.b64decode(b64_data)
+
+        boundary = '----StripPhotoBoundary'
+        body = b''
+        body += f'--{boundary}\r\n'.encode()
+        body += f'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
+        body += f'{winner_id}\r\n'.encode()
+        body += f'--{boundary}\r\n'.encode()
+        body += f'Content-Disposition: form-data; name="caption"\r\n\r\n'.encode()
+        body += f'{caption}\r\n'.encode()
+        body += f'--{boundary}\r\n'.encode()
+        body += f'Content-Disposition: form-data; name="photo"; filename="strip_photo.jpg"\r\n'.encode()
+        body += f'Content-Type: {mime}\r\n\r\n'.encode()
+        body += photo_bytes + b'\r\n'
+        body += f'--{boundary}--\r\n'.encode()
+
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto',
+            data=body,
+            headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            if result.get('ok'):
+                return True
+            logger.error("Telegram API error: %s", result)
+            return False
+    except Exception as e:
+        logger.error("Failed to send strip photo: %s", e)
+        return False
 
 games: Dict[str, Game] = {}
 player_games: Dict[int, str] = {}
@@ -228,6 +279,30 @@ def handle_api(path, body):
         state = as_dict(game, uid) if game else None
         save()
         return {"ok": True, "started": started, "state": state}
+
+    if path == "/api/upload_photo":
+        if not uid or not code:
+            return {"error": "no uid/code"}
+        photo = data.get("photo")
+        if not photo:
+            return {"error": "no photo"}
+        game = games.get(code)
+        if not game:
+            return {"error": "game not found"}
+        winner_id = game.opponent_id(uid)
+        if not winner_id or winner_id == 0:
+            return {"error": "no opponent"}
+        user_lang = data.get("lang", "ru")
+        captions = {
+            'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
+            'uk': '👗 Твій друг програв у режимі «На роздягання»!',
+            'en': '👗 Your friend lost in Strip Mode!',
+        }
+        caption = captions.get(user_lang, captions['ru'])
+        ok = send_strip_photo_to_winner(winner_id, photo, caption)
+        if ok:
+            return {"ok": True}
+        return {"ok": False, "error": "send_failed"}
 
     if path == "/api/ana_new_solo":
         sid, g = ana_new()
