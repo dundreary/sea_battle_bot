@@ -835,14 +835,12 @@ function updateUI(){
       $('status').onclick=null;
     }
     $('oppBoardWrap').style.display='none';
-    $('actions').className = 'btn-row';
+    $('actions').className = 'btn-row stack';
     $('actions').innerHTML=`
-      <div style="display:flex;flex-direction:column;gap:6px;width:100%">
-        <button class="btn success" style="width:100%" onclick="autoPlace()">${t('reroll')}</button>
-        ${!s.solo ? `<button class="btn primary" style="width:100%" onclick="shareGame()">${t('inviteFriend')}</button>` : ''}
-        <button class="btn glow" style="width:100%" onclick="confirmPlace()">${t('confirm')}</button>
-        <button class="btn danger" style="width:100%" onclick="leaveGame()">${t('quit')}</button>
-      </div>
+      <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
+      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">${t('inviteFriend')}</button>` : ''}
+      <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
+      <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
     `;
     $('themeSelector').style.display='none';
     return;
@@ -895,7 +893,7 @@ function startStripMode(){
 }
 
 function getStripIcon(){
-  const saved = parseInt(localStorage.getItem('sb_strip_icon')) || 1;
+  const saved = parseInt(localStorage.getItem('sb_strip_icon')) || 4;
   return Math.max(1, Math.min(10, saved));
 }
 
@@ -969,6 +967,9 @@ function shareGame(){
     const text = texts[lang];
     copyToClipboard(url,{ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
     try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+    setTimeout(() => {
+      copyToClipboard(gameCode, {ru:'Код скопирован',uk:'Код скопійовано',en:'Code copied'}[lang]);
+    }, 1000);
   }
 }
 
