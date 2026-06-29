@@ -553,7 +553,8 @@ function detectLang(){
   const nav = (navigator.language || '').slice(0,2);
   if(nav==='uk')return'uk';
   if(nav==='en')return'en';
-  return localStorage.getItem('sb_lang')||'ru';
+  try{var s=localStorage.getItem('sb_lang');if(s)return s}catch(e){}
+  return 'ru';
 }
 
 function t(key, ...args){
@@ -564,7 +565,7 @@ function t(key, ...args){
 
 function setLang(l){
   lang = l;
-  localStorage.setItem('sb_lang', l);
+  try{localStorage.setItem('sb_lang', l)}catch(e){}
   const langMap = {ru:'ru', ua:'uk', en:'en'};
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', (langMap[b.textContent.toLowerCase()]||b.textContent.toLowerCase()) === l));
   applyLang();
@@ -841,7 +842,7 @@ function shareGame(){
   }
   function doShare(){
     copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
-    try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e:{})
+    try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
   }
 }
 
