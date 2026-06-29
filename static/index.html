@@ -322,6 +322,7 @@ const LANG = {
     stripPhotoSent: 'Фото отправлено победителю ✅',
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
+    stripPlayAgain: '💪 Отыграться',
   },
   uk: {
     title: 'Морський бій',
@@ -399,6 +400,7 @@ const LANG = {
     stripPhotoSent: 'Фото надіслано переможцю ✅',
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
+    stripPlayAgain: '💪 Відігратись',
   },
   en: {
     title: 'Sea Battle',
@@ -476,6 +478,7 @@ const LANG = {
     stripPhotoSent: 'Photo sent to winner ✅',
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
+    stripPlayAgain: '💪 Redeem',
   }
 };
 
@@ -764,17 +767,37 @@ async function startSolo(){
   await refreshState();
 }
 
+function compressImage(dataUrl, maxW=800, quality=0.7){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if(w > maxW || h > maxW){
+        const ratio = Math.min(maxW/w, maxW/h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
 function startStripMode(){
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
   input.capture = 'environment';
-  input.onchange = (e) => {
+  input.onchange = async (e) => {
     const file = e.target.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      window._stripPhotoData = ev.target.result;
+    reader.onload = async (ev) => {
+      window._stripPhotoData = await compressImage(ev.target.result);
       showStripModeChoice();
     };
     reader.readAsDataURL(file);
@@ -997,9 +1020,9 @@ function showResult(icon,title,desc,strip){
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        ${isSolo && photo ? `<img src="${photo}" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0;display:block">` : ''}
+        ${isSolo && photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
         ${!isSolo ? `<p style="margin:12px 0;color:var(--text-secondary)">✅ ${t('stripPhotoSent')}</p>` : ''}
-        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('playAgain')}</button>
+        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
@@ -1014,8 +1037,8 @@ function showResult(icon,title,desc,strip){
         <div class="result-icon">🏆</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        ${photo ? `<img src="${photo}" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0;display:block">` : ''}
-        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('playAgain')}</button>
+        ${photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
+        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
