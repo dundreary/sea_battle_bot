@@ -798,38 +798,11 @@ function startStripMode(){
     const reader = new FileReader();
     reader.onload = async (ev) => {
       window._stripPhotoData = await compressImage(ev.target.result);
-      showStripModeChoice();
+      doStripMulti();
     };
     reader.readAsDataURL(file);
   };
   input.click();
-}
-
-function showStripModeChoice(){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.innerHTML=`
-    <div class="modal">
-      <div class="result-icon">👗</div>
-      <h2>${t('stripTitle')}</h2>
-      <p style="color:var(--text-secondary);margin-bottom:16px">${t('stripDesc')}</p>
-      <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();doStripSolo()">${t('vsBot')}</button>
-      <button class="btn primary" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();doStripMulti()">${t('vsFriend')}</button>
-      <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();window._stripPhotoData=null">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
-}
-
-async function doStripSolo(){
-  if(!window._stripPhotoData){setStatus(t('error'));return}
-  showShipHints = true;
-  const res=await api('/api/new_solo',{uid:getUid(),strip:true});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  gameCode=res.code;
-  await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
-  localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML='';
-  await refreshState();
 }
 
 async function doStripMulti(){
@@ -1012,16 +985,12 @@ function showResult(icon,title,desc,strip){
   if(icon==='🏆')sfxWin();else sfxLose();
   
   if(strip && icon==='💔'){
-    const isSolo = state && state.solo;
-    const photo = state && state.strip_photo ? state.strip_photo : null;
-    // Solo: show photo; Multi: show "photo sent"
     o.innerHTML=`
       <div class="modal">
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        ${isSolo && photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
-        ${!isSolo ? `<p style="margin:12px 0;color:var(--text-secondary)">✅ ${t('stripPhotoSent')}</p>` : ''}
+        <p style="margin:12px 0;color:var(--text-secondary)">✅ ${t('stripPhotoSent')}</p>
         <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
@@ -1030,7 +999,7 @@ function showResult(icon,title,desc,strip){
   }
   
   if(strip && icon==='🏆'){
-    // Strip win: show opponent's photo (own photo in solo)
+    // Strip win: show opponent's photo
     const photo = state && state.strip_photo ? state.strip_photo : null;
     o.innerHTML=`
       <div class="modal">
