@@ -886,7 +886,7 @@ function startStripMode(){
       </div>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
       <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">${t('startBtn')}</button>
-      <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
+      <button class="btn glow" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
       <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -952,25 +952,16 @@ async function newMulti(strip=false){
 
 function shareGame(){
   if(!gameCode) return;
-  if(!botUsername){
-    fetchBotInfo().then(() => doShare());
-  } else {
-    doShare();
-  }
-  function doShare(){
-    if(!botUsername){
+  fetchBotInfo().then(() => {
+    const url = botUsername
+      ? `https://t.me/${botUsername}/app?startapp=${gameCode}`
+      : null;
+    if(url){
+      copyToClipboard(url, {ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
+    } else {
       copyToClipboard(gameCode, {ru:'Код скопирован',uk:'Код скопійовано',en:'Code copied'}[lang]);
-      return;
     }
-    const url = `https://t.me/${botUsername}/app?startapp=${gameCode}`;
-    const texts = {ru:'Играй со мной в Морской бой!',uk:'Грай зі мною в Морський бій!',en:'Play Sea Battle with me!'};
-    const text = texts[lang];
-    copyToClipboard(url,{ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
-    try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
-    setTimeout(() => {
-      copyToClipboard(gameCode, {ru:'Код скопирован',uk:'Код скопійовано',en:'Code copied'}[lang]);
-    }, 1000);
-  }
+  });
 }
 
 
