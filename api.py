@@ -81,6 +81,7 @@ def as_dict(game, uid):
         "code": game.code,
         "solo": game.solo,
         "strip": game.strip,
+        "strip_photo": game.strip_photo,
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -289,6 +290,8 @@ def handle_api(path, body):
         game = games.get(code)
         if not game:
             return {"error": "game not found"}
+        game.strip_photo = photo
+        save()
         winner_id = game.opponent_id(uid)
         if game.solo or not winner_id or winner_id == 0:
             return {"ok": True}
