@@ -389,17 +389,17 @@ class BotAI:
                 for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < SIZE and 0 <= nc < SIZE and (nr, nc) not in self.shots:
-                        if enemy_board.grid[nr][nc] not in (HIT, MISS):
+                        if enemy_board.grid[nr][nc] not in (HIT, MISS, SUNK, DEAD):
                             if (nr, nc) not in self.hunt_queue:
                                 self.hunt_queue.append((nr, nc))
 
         while self.hunt_queue:
             r, c = self.hunt_queue.pop(0)
-            if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS):
+            if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS, SUNK, DEAD):
                 return r, c
 
         available = [(r, c) for r in range(SIZE) for c in range(SIZE)
-                     if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS)]
+                     if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS, SUNK, DEAD)]
         if not available:
             return None
         return random.choice(available)
@@ -410,7 +410,7 @@ class BotAI:
             for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                    if (nr, nc) not in self.shots and enemy_board.grid[nr][nc] not in (HIT, MISS):
+                    if (nr, nc) not in self.shots and enemy_board.grid[nr][nc] not in (HIT, MISS, SUNK, DEAD):
                         if (nr, nc) not in self.hunt_queue:
                             self.hunt_queue.append((nr, nc))
             if result == "sunk":

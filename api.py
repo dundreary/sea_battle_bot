@@ -81,7 +81,7 @@ def as_dict(game, uid):
         "code": game.code,
         "solo": game.solo,
         "strip": game.strip,
-        "strip_photo": game.strip_photo,
+        "strip_photo": game.strip_photo if game.both_placed and (opp.all_sunk() or own.all_sunk()) else "",
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -110,7 +110,7 @@ def new_solo(uid, strip=False):
         auto_place_strip_ships(game.board2)
     else:
         auto_place_ships(game.board2)
-    game.placing[2]["ship_idx"] = len(SHIPS)
+    game.placing[2]["ship_idx"] = len(STRIP_SHIPS if game.strip else SHIPS)
     game.ready[2] = True
     return game
 
@@ -132,6 +132,8 @@ def _bot_shoots(game, uid):
         if br is None:
             break
         bresult = own.receive_shot(br, bc)
+        if bresult == "repeat":
+            continue
         game.bot_ai.register_shot(br, bc, bresult, own)
         shots.append({"r": br, "c": bc, "result": bresult})
         if bresult == "miss":
@@ -166,7 +168,8 @@ def place_auto(uid, code):
         auto_place_strip_ships(board)
     else:
         auto_place_ships(board)
-    game.placing[pnum]["ship_idx"] = len(SHIPS)
+    ships_list = STRIP_SHIPS if game.strip else SHIPS
+    game.placing[pnum]["ship_idx"] = len(ships_list)
     return True
 
 def confirm_placement(uid, code):

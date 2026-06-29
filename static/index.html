@@ -835,15 +835,8 @@ async function newMulti(strip=false){
 
 function shareGame(){
   if(!gameCode) return;
-  if(!botUsername){
-    fetchBotInfo().then(() => doShare());
-  } else {
-    doShare();
-  }
-  function doShare(){
-    copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
-    try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
-  }
+  copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
 }
 
 /* Anagram sharing disabled
