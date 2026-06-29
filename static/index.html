@@ -962,11 +962,7 @@ function shareGame(){
       : null;
     if(url){
       if(window.Telegram?.WebApp?.shareUrl){
-        window.Telegram.WebApp.shareUrl(url).then(() => {
-          setStatus({ru:'Ссылка отправлена',uk:'Посилання надіслано',en:'Link sent'}[lang], '');
-        }).catch(() => {
-          copyToClipboard(url, {ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
-        });
+        window.Telegram.WebApp.shareUrl(url);
       } else {
         copyToClipboard(url, {ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
       }
