@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
+import asyncio
 import os
 import json
 import logging
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
+from telegram import Bot, BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
 from bot import start, web_app_data
@@ -113,8 +114,26 @@ def run_bot():
     logger.info("Bot started!")
     app.run_polling()
 
+def _init_bot_info():
+    async def _fetch():
+        try:
+            bot = Bot(config.BOT_TOKEN)
+            me = await bot.get_me()
+            config.BOT_USERNAME = me.username
+            config.BOT_ID = me.id
+            logger.info("✅ Bot username: @%s", me.username)
+        except Exception as e:
+            logger.warning("Could not get bot info: %s", e)
+    try:
+        asyncio.run(_fetch())
+    except Exception as e:
+        logger.warning("Bot info fetch failed: %s", e)
+
 def main():
     load_all()
+
+    # Fetch bot info before HTTP server starts so /api/bot_info returns it immediately
+    _init_bot_info()
 
     # HTTP server in background (can run any thread)
     t = threading.Thread(target=run_http, daemon=True)

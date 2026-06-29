@@ -861,6 +861,16 @@ async function startSolo(){
   await refreshState();
 }
 
+async function startSoloStrip(){
+  showShipHints = true;
+  const res=await api('/api/new_solo',{uid:getUid(),strip:true});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  gameCode=res.code;
+  localStorage.setItem('sb_game',gameCode);
+  $('actions').innerHTML='';
+  await refreshState();
+}
+
 function startStripMode(){
   const o=document.createElement('div');
   o.className='overlay';
@@ -869,6 +879,7 @@ function startStripMode(){
       <div class="result-bar bar-win" style="margin-bottom:16px"></div>
       <h2>${t('stripMode')}</h2>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
+      <button class="btn strip-btn" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();startSoloStrip()">${t('vsBot')}</button>
       <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">${t('startBtn')}</button>
       <button class="btn glow" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
       <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
@@ -903,7 +914,11 @@ function shareGame(){
       : null;
     if(url){
       if(window.Telegram?.WebApp?.shareUrl){
-        window.Telegram.WebApp.shareUrl(url);
+        window.Telegram.WebApp.shareUrl(url).then(() => {
+          setStatus({ru:'Ссылка отправлена',uk:'Посилання надіслано',en:'Link sent'}[lang], '');
+        }).catch(() => {
+          copyToClipboard(url, {ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
+        });
       } else {
         copyToClipboard(url, {ru:'Ссылка скопирована',uk:'Посилання скопійовано',en:'Link copied'}[lang]);
       }

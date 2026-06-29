@@ -137,11 +137,12 @@ def place_auto(uid, code):
     board = game.board_for(uid)
     board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
     board.ships = []
+    ships_list = STRIP_SHIPS if game.strip else SHIPS
     if game.strip:
         auto_place_strip_ships(board)
     else:
         auto_place_ships(board)
-    game.placing[pnum]["ship_idx"] = len(SHIPS)
+    game.placing[pnum]["ship_idx"] = len(ships_list)
     return True
 
 def confirm_placement(uid, code):
