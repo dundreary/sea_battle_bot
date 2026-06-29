@@ -189,6 +189,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .theme-btn.active{background:var(--accent-primary);color:var(--bg-dark);border-color:var(--accent-primary)}
 .theme-divider{width:1px;background:var(--border-color);height:24px;align-self:center}
 .theme-btn.snd-btn{min-width:40px;padding:8px 10px}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.loading-overlay .spinner{width:40px;height:40px;border:4px solid var(--border-color);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 </style>
 </head>
@@ -313,6 +316,7 @@ const LANG = {
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
     stripDesc: 'Корабли могут быть любой формы!',
+    stripInfoDesc: 'Тебе нужно сделать или загрузить фото. Фотография будет отправлена сопернику только в случае твоего проигрыша.',
     stripLoseTitle: '👗 Игра окончена!',
     stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
     stripUploadTitle: '📸 Загрузи фото',
@@ -391,6 +395,7 @@ const LANG = {
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
     stripDesc: 'Кораблі можуть бути будь-якої форми!',
+    stripInfoDesc: 'Тобі потрібно зробити або завантажити фото. Фотографія буде надіслана супернику тільки в разі твого програшу.',
     stripLoseTitle: '👗 Гра закінчена!',
     stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
     stripUploadTitle: '📸 Завантаж фото',
@@ -469,6 +474,7 @@ const LANG = {
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
     stripDesc: 'Ships can be any shape!',
+    stripInfoDesc: 'You need to take or upload a photo. The photo will only be sent to the opponent if you lose.',
     stripLoseTitle: '👗 Game Over!',
     stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
     stripUploadTitle: '📸 Upload Photo',
@@ -704,6 +710,10 @@ function updateUI(){
   }
 
   if(gameOver){
+    if(s.all_sunk && s.strip && !s.strip_photo){
+      setStatus('⏳ ' + {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang], 'battle');
+      return;
+    }
     if(pollTimer){clearInterval(pollTimer);pollTimer=null}
     localStorage.removeItem('sb_game');
     $('app').insertBefore($('status'), $('app').firstChild);
@@ -787,17 +797,53 @@ function compressImage(dataUrl, maxW=800, quality=0.7){
   });
 }
 
-function startStripMode(){
+function showLoadingOverlay(msg){
+  const existing = document.querySelector('.loading-overlay');
+  if(existing) existing.remove();
+  const o = document.createElement('div');
+  o.className = 'loading-overlay';
+  o.innerHTML = `<div class="modal"><div class="spinner"></div><p>${msg || ''}</p></div>`;
+  document.body.appendChild(o);
+}
+
+function hideLoadingOverlay(){
+  const o = document.querySelector('.loading-overlay');
+  if(o) o.remove();
+}
+
+const STRIP_LOADING_MSGS = {
+  ru: { camera: '📸 Подготовка камеры...', process: '⏳ Обработка фото...', create: '⏳ Создание игры...', send: '📤 Отправка фото...' },
+  uk: { camera: '📸 Підготовка камери...', process: '⏳ Обробка фото...', create: '⏳ Створення гри...', send: '📤 Надсилання фото...' },
+  en: { camera: '📸 Preparing camera...', process: '⏳ Processing photo...', create: '⏳ Creating game...', send: '📤 Sending photo...' },
+};
+
+function showStripInfoOverlay(){
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.innerHTML = `
+    <div class="modal">
+      <h2>${t('stripMode')}</h2>
+      <p>${t('stripInfoDesc')}</p>
+      <button class="btn success" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();startStripCapture()">📸 ${t('stripTakePhoto')}</button>
+      <button class="btn outline" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
+
+async function startStripCapture(){
+  showLoadingOverlay(STRIP_LOADING_MSGS[lang].camera);
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
   input.capture = 'environment';
   input.onchange = async (e) => {
     const file = e.target.files[0];
-    if(!file) return;
+    if(!file){hideLoadingOverlay();return}
+    showLoadingOverlay(STRIP_LOADING_MSGS[lang].process);
     const reader = new FileReader();
     reader.onload = async (ev) => {
       window._stripPhotoData = await compressImage(ev.target.result);
+      hideLoadingOverlay();
       doStripMulti();
     };
     reader.readAsDataURL(file);
@@ -807,11 +853,12 @@ function startStripMode(){
 
 async function doStripMulti(){
   if(!window._stripPhotoData){setStatus(t('error'));return}
+  showLoadingOverlay(STRIP_LOADING_MSGS[lang].create);
   showShipHints = true;
   const res=await api('/api/new_multi',{uid:getUid(),strip:true});
+  hideLoadingOverlay();
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
-  await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
   await refreshState();
@@ -924,7 +971,7 @@ function showSeaBattleMenu(){
       <img src="/static/game-icon.svg" style="width:64px;height:64px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
     </div>
     <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
-    <button class="btn outline strip-btn" onclick="startStripMode()">${t('stripMode')}</button>
+    <button class="btn outline strip-btn" onclick="showStripInfoOverlay()">${t('stripMode')}</button>
     <button class="btn primary" onclick="chooseMultiMode()">${t('vsFriend')}</button>
     <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
@@ -990,11 +1037,23 @@ function showResult(icon,title,desc,strip){
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        <p style="margin:12px 0;color:var(--text-secondary)">✅ ${t('stripPhotoSent')}</p>
-        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('stripPlayAgain')}</button>
+        <p style="margin:12px 0;color:var(--text-secondary)" id="stripStatus">⏳ ${STRIP_LOADING_MSGS[lang].send}</p>
+        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
+    (async () => {
+      try {
+        if(window._stripPhotoData){
+          await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
+        }
+        const st=$('stripStatus');
+        if(st) st.innerHTML = '✅ ' + t('stripPhotoSent');
+      } catch(e){
+        const st=$('stripStatus');
+        if(st) st.innerHTML = '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
+      }
+    })();
     return;
   }
   
@@ -1007,7 +1066,7 @@ function showResult(icon,title,desc,strip){
         <h2>${title}</h2>
         <p>${desc}</p>
         ${photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
-        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();startStripMode()">🔄 ${t('stripPlayAgain')}</button>
+        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
