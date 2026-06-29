@@ -271,6 +271,19 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border-subtle);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:var(--border-hover)}
+
+/* ── Icon Picker ── */
+.icon-picker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:12px 0}
+.icon-picker-item{background:var(--bg-glass);border:2px solid var(--border-subtle);border-radius:var(--radius-lg);padding:12px;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;align-items:center;gap:6px}
+.icon-picker-item:hover{transform:translateY(-4px);border-color:var(--accent-pink);box-shadow:0 8px 24px rgba(236,72,153,0.15)}
+.icon-picker-item:active{transform:scale(.94)}
+.icon-picker-item.active{border-color:var(--accent-pink);background:rgba(236,72,153,0.1);box-shadow:0 0 20px rgba(236,72,153,0.15)}
+.icon-picker-item img{width:56px;height:56px;display:block;pointer-events:none;user-select:none}
+.icon-picker-item .num{font-size:10px;color:var(--text-muted);font-weight:600}
+.icon-picker-item.active .num{color:var(--accent-pink)}
+.icon-picker-current{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0;cursor:pointer;padding:8px 16px;border-radius:100px;background:var(--bg-glass);border:1px solid var(--border-subtle);transition:all .25s ease;font-size:13px;color:var(--text-secondary)}
+.icon-picker-current:hover{border-color:var(--accent-pink);color:var(--accent-pink)}
+.icon-picker-current img{width:28px;height:28px;display:block;pointer-events:none}
 </style>
 </head>
 <body>
@@ -865,16 +878,67 @@ async function startSolo(){
 function startStripMode(){
   const o=document.createElement('div');
   o.className='overlay';
+  const iconTexts = {ru:'Сменить иконку', uk:'Змінити іконку', en:'Change icon'};
   o.innerHTML=`
     <div class="modal">
       <div class="result-bar bar-win" style="margin-bottom:16px"></div>
       <h2>${t('stripMode')}</h2>
+      <div class="icon-picker-current" onclick="this.closest('.overlay').remove();showStripIconPicker()">
+        <img src="${getStripIconUrl()}" alt=""> ${iconTexts[lang]}
+      </div>
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:13px">${t('selectGame')}</p>
       <button class="btn success" style="width:100%;margin-bottom:8px" onclick="this.closest('.overlay').remove();newMulti(true)">${t('startBtn')}</button>
       <button class="btn primary" style="width:100%" onclick="this.closest('.overlay').remove();joinGame()">${t('joinBtn')}</button>
       <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
+}
+
+function getStripIcon(){
+  const saved = parseInt(localStorage.getItem('sb_strip_icon')) || 1;
+  return Math.max(1, Math.min(10, saved));
+}
+
+function getStripIconUrl(){
+  return '/static/strip-icon-' + getStripIcon() + '.svg';
+}
+
+function selectStripIcon(idx){
+  localStorage.setItem('sb_strip_icon', '' + idx);
+  document.querySelectorAll('.icon-picker-item').forEach(el => {
+    el.classList.toggle('active', parseInt(el.dataset.idx) === idx);
+  });
+}
+
+function showStripIconPicker(){
+  const existing = document.getElementById('stripIconPicker');
+  if(existing){ existing.remove(); return; }
+  const cur = getStripIcon();
+  let items = '';
+  for(let i = 1; i <= 10; i++){
+    const active = i === cur ? ' active' : '';
+    items += '<div class="icon-picker-item' + active + '" data-idx="' + i + '" onclick="selectStripIcon(' + i + ')">' +
+      '<img src="/static/strip-icon-' + i + '.svg" alt="' + i + '" loading="lazy">' +
+      '<span class="num">' + i + '</span></div>';
+  }
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.id = 'stripIconPicker';
+  const okTexts = {ru:'Готово', uk:'Готово', en:'Done'};
+  o.innerHTML = '<div class="modal" style="max-width:400px">' +
+    '<h2>' + ({ru:'Иконка режима', uk:'Іконка режиму', en:'Mode Icon'}[lang] || 'Icon') + '</h2>' +
+    '<p style="color:var(--text-muted);font-size:12px">' + ({ru:'Выбери иконку для раздела «На раздевание»', uk:'Обери іконку для розділу «На роздягання»', en:'Choose an icon for the Strip mode'}[lang] || 'Choose icon') + '</p>' +
+    '<div class="icon-picker-grid">' + items + '</div>' +
+    '<button class="btn glow" style="width:100%;margin-top:4px" onclick="this.closest(\'.overlay\').remove();updateStripIconUI()">' + okTexts[lang] + '</button>' +
+    '</div>';
+  document.body.appendChild(o);
+  document.querySelector('.modal').style.maxWidth = '400px';
+}
+
+function updateStripIconUI(){
+  const url = getStripIconUrl();
+  document.querySelectorAll('.mode-card.strip .icon').forEach(el => el.src = url);
+  document.querySelectorAll('.icon-picker-current img').forEach(el => el.src = url);
 }
 
 async function newMulti(strip=false){
@@ -1001,7 +1065,7 @@ function showSeaBattleMenu(){
         <div class="label">${t('vsFriend')}<small>Multiplayer</small></div>
       </div>
       <div class="mode-card strip" onclick="startStripMode()">
-        <img class="icon" src="/static/mode-strip.svg" alt="">
+        <img class="icon" src="${getStripIconUrl()}" alt="" onclick="event.stopPropagation();showStripIconPicker()">
         <div class="label">${t('stripMode')}<small>${t('stripDesc')||''}</small></div>
       </div>
     </div>
