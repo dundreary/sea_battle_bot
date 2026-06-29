@@ -9,28 +9,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --bg-primary: #080c18;
-  --bg-secondary: #0d1225;
-  --bg-card: rgba(15, 23, 52, 0.8);
+  --bg-primary: #0a1628;
+  --bg-secondary: #0d1f3c;
+  --bg-card: rgba(22, 45, 80, 0.8);
   --bg-glass: rgba(255, 255, 255, 0.04);
   --bg-glass-hover: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
-  --accent-cyan: #00e5ff;
+  --border-subtle: rgba(26, 58, 92, 0.5);
+  --border-hover: rgba(79, 195, 247, 0.2);
+  --accent-cyan: #4fc3f7;
   --accent-purple: #7c3aed;
   --accent-pink: #ec4899;
-  --accent-amber: #f59e0b;
-  --accent-green: #10b981;
-  --accent-red: #ef4444;
-  --accent-blue: #3b82f6;
-  --text-white: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text-dim: #475569;
-  --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.15);
+  --accent-amber: #ffd54f;
+  --accent-green: #2e7d32;
+  --accent-red: #c62828;
+  --accent-blue: #80deea;
+  --text-white: #e8edf3;
+  --text-secondary: #b0bec5;
+  --text-muted: #78909c;
+  --text-dim: #546e7a;
+  --glow-cyan: 0 0 20px rgba(79, 195, 247, 0.15);
   --glow-purple: 0 0 20px rgba(124, 58, 237, 0.15);
   --glow-pink: 0 0 20px rgba(236, 72, 153, 0.15);
-  --glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
+  --glow-green: 0 0 20px rgba(46, 125, 50, 0.15);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -38,55 +38,49 @@
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.theme-ocean { }
-.theme-neon {
-  --bg-primary: #0a0a1a;
-  --bg-secondary: #12122a;
-  --bg-card: rgba(30, 20, 50, 0.85);
-  --accent-cyan: #d946ef;
-  --accent-purple: #a855f7;
-  --accent-pink: #ec4899;
-  --accent-amber: #fbbf24;
-  --accent-green: #22d3ee;
-  --accent-blue: #8b5cf6;
-  --glow-cyan: 0 0 20px rgba(217, 70, 239, 0.2);
-  --glow-purple: 0 0 20px rgba(168, 85, 247, 0.2);
-  --glow-pink: 0 0 20px rgba(236, 72, 153, 0.2);
-  --glow-green: 0 0 20px rgba(34, 211, 238, 0.2);
+.theme-ocean {
+  --bg-primary: #0f1f30;
+  --bg-secondary: #162e48;
+  --bg-card: rgba(31, 61, 86, 0.85);
+  --accent-cyan: #4a7fa0;
+  --accent-purple: #6a9db8;
+  --accent-pink: #d4728a;
+  --accent-amber: #b89448;
+  --accent-green: #3d7d50;
+  --accent-red: #b04040;
+  --accent-blue: #6a9db8;
+  --text-white: #dce3ea;
+  --text-secondary: #acb5bc;
+  --text-muted: #6b7d8a;
+  --text-dim: #576672;
+  --glow-cyan: 0 0 20px rgba(74, 127, 160, 0.15);
+  --glow-purple: 0 0 20px rgba(106, 157, 184, 0.15);
+  --glow-pink: 0 0 20px rgba(212, 114, 138, 0.15);
+  --glow-green: 0 0 20px rgba(61, 125, 80, 0.15);
 }
-.theme-forest {
-  --bg-primary: #0a140e;
-  --bg-secondary: #0f1f15;
-  --bg-card: rgba(15, 35, 25, 0.85);
-  --accent-cyan: #34d399;
-  --accent-purple: #22c55e;
-  --accent-pink: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-green: #16a34a;
-  --accent-blue: #06b6d4;
-  --glow-cyan: 0 0 20px rgba(52, 211, 153, 0.2);
-  --glow-purple: 0 0 20px rgba(34, 197, 94, 0.2);
-  --glow-pink: 0 0 20px rgba(16, 185, 129, 0.2);
-  --glow-green: 0 0 20px rgba(22, 163, 74, 0.2);
-}
-.theme-sunset {
-  --bg-primary: #1a0e08;
-  --bg-secondary: #24140e;
-  --bg-card: rgba(50, 25, 15, 0.85);
-  --accent-cyan: #fb923c;
-  --accent-purple: #ef4444;
-  --accent-pink: #f97316;
-  --accent-amber: #fbbf24;
-  --accent-green: #34d399;
-  --accent-blue: #f59e0b;
-  --glow-cyan: 0 0 20px rgba(251, 146, 60, 0.2);
-  --glow-purple: 0 0 20px rgba(239, 68, 68, 0.2);
-  --glow-pink: 0 0 20px rgba(249, 115, 22, 0.2);
-  --glow-green: 0 0 20px rgba(52, 211, 153, 0.2);
+.theme-slate {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-card: rgba(51, 65, 85, 0.85);
+  --accent-cyan: #5a6a85;
+  --accent-purple: #8b9bc4;
+  --accent-pink: #d4728a;
+  --accent-amber: #e5a823;
+  --accent-green: #3ec470;
+  --accent-red: #dc3535;
+  --accent-blue: #8b9bc4;
+  --text-white: #dce3ec;
+  --text-secondary: #bec8d8;
+  --text-muted: #6e8098;
+  --text-dim: #5c6a80;
+  --glow-cyan: 0 0 20px rgba(90, 106, 133, 0.15);
+  --glow-purple: 0 0 20px rgba(139, 155, 196, 0.15);
+  --glow-pink: 0 0 20px rgba(212, 114, 138, 0.15);
+  --glow-green: 0 0 20px rgba(62, 196, 112, 0.15);
 }
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(0,229,255,0.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(124,58,237,0.03) 0%,transparent 60%),radial-gradient(ellipse at 50% 80%,rgba(236,72,153,0.02) 0%,transparent 60%)}
+body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white);min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;background-image:radial-gradient(ellipse at 20% 50%,rgba(79,195,247,0.03) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(124,58,237,0.03) 0%,transparent 60%),radial-gradient(ellipse at 50% 80%,rgba(236,72,153,0.02) 0%,transparent 60%)}
 
 /* ── Header ── */
 .header{padding:12px 16px;text-align:center;width:100%;position:sticky;top:0;z-index:50;background:rgba(8,12,24,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border-subtle)}
@@ -128,9 +122,9 @@ body{font-family:var(--font);background:var(--bg-primary);color:var(--text-white
 @keyframes hit-pop{0%{transform:scale(1)}30%{transform:scale(1.25)}100%{transform:scale(1)}}
 
 /* ── Buttons ── */
-.btn-row{display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:340px;margin-top:6px;animation:fadeUp .3s ease-out}
+.btn-row{display:flex;flex-wrap:wrap;gap:6px;width:100%;max-width:340px;margin-top:6px;animation:fadeUp .3s ease-out;justify-content:center}
 .btn-row.stack{flex-direction:column;gap:8px}
-.btn-row.stack .btn{padding:16px 12px;font-size:15px}
+.btn-row.stack .btn{width:100%;padding:16px 12px;font-size:15px}
 .btn{flex:1 1 0;min-width:0;padding:14px 20px;border:none;border-radius:var(--radius-md);font-size:14px;font-weight:600;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);text-align:center;letter-spacing:.01em;user-select:none;-webkit-tap-highlight-color:transparent;font-family:var(--font);position:relative;overflow:hidden}
 .btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,0.08) 100%);pointer-events:none}
 .btn:hover{transform:translateY(-2px)}
@@ -241,7 +235,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
 .theme-btn:hover{border-color:var(--border-hover);color:var(--text-white);background:var(--bg-glass-hover)}
 .theme-btn.active{background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));color:var(--bg-primary);border-color:transparent;font-weight:700}
 .theme-divider{width:1px;background:var(--border-subtle);height:24px;align-self:center}
-.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:11px;border-radius:100px}
+.theme-btn.snd-btn{min-width:40px;padding:8px 10px;font-size:13px;border-radius:100px}
 
 /* ── Yahtzee ── */
 .yz-dice{display:flex;gap:10px;justify-content:center;margin:12px 0;flex-wrap:wrap}
@@ -308,9 +302,7 @@ footer{position:fixed;bottom:0;left:0;right:0;padding:10px 16px 14px;background:
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">VIB</button>
     <div class="theme-divider"></div>
     <button class="theme-btn" onclick="setTheme('ocean')">Ocean</button>
-    <button class="theme-btn" onclick="setTheme('neon')">Neon</button>
-    <button class="theme-btn" onclick="setTheme('forest')">Forest</button>
-    <button class="theme-btn" onclick="setTheme('sunset')">Sunset</button>
+    <button class="theme-btn" onclick="setTheme('slate')">Slate</button>
   </div>
   <div class="btn-row" id="actions"></div>
 
@@ -854,12 +846,11 @@ function updateUI(){
     $('oppBoardWrap').style.display='none';
     $('actions').className = 'btn-row stack';
     $('actions').innerHTML=`
-      <div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px;margin:0 auto">
-        <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
-        ${!s.solo ? `<button class="btn primary" onclick="shareGame()">${t('inviteFriend')}</button>` : ''}
-        <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
-        <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
-      </div>`;
+      <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
+      ${!s.solo ? `<button class="btn primary" onclick="shareGame()">${t('inviteFriend')}</button>` : ''}
+      <button class="btn glow" onclick="confirmPlace()">${t('confirm')}</button>
+      <button class="btn danger" onclick="leaveGame()">${t('quit')}</button>
+    `;
     $('themeSelector').style.display='none';
     return;
   }
@@ -873,11 +864,11 @@ function updateUI(){
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<div style="display:flex;gap:6px;width:100%;max-width:340px;margin:0 auto;justify-content:center"><button class="btn danger" onclick="leaveGame()" style="flex:0 1 auto;min-width:140px">${t('surrender')}</button></div>`;
+    $('actions').innerHTML=`<div style="display:flex;justify-content:center"><button class="btn danger" onclick="leaveGame()" style="min-width:140px">${t('surrender')}</button></div>`;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<div style="display:flex;gap:6px;width:100%;max-width:340px;margin:0 auto;justify-content:center"><button class="btn outline" onclick="leaveGame()" style="flex:0 1 auto;min-width:140px">${t('quit')}</button></div>`;
+    $('actions').innerHTML=`<div style="display:flex;justify-content:center"><button class="btn outline" onclick="leaveGame()" style="min-width:140px">${t('quit')}</button></div>`;
   }
 }
 
