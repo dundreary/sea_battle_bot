@@ -290,8 +290,8 @@ def handle_api(path, body):
         if not game:
             return {"error": "game not found"}
         winner_id = game.opponent_id(uid)
-        if not winner_id or winner_id == 0:
-            return {"error": "no opponent"}
+        if game.solo or not winner_id or winner_id == 0:
+            return {"ok": True}
         user_lang = data.get("lang", "ru")
         captions = {
             'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',

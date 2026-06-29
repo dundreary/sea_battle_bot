@@ -973,8 +973,33 @@ async function handleShot(r,c){
 
 function showResult(icon,title,desc,strip){
   const o=document.createElement('div');
-  if(icon==='🏆')sfxWin();else sfxLose();
   o.className='overlay';
+  if(icon==='🏆')sfxWin();else sfxLose();
+  
+  if(strip && icon==='💔'){
+    // Strip loss: unified flow with photo upload required before rematch
+    o.innerHTML=`
+      <div class="modal" id="stripLossModal">
+        <div class="result-icon">💔</div>
+        <h2>${title}</h2>
+        <p>${desc}</p>
+        <div id="stripLossStep1">
+          <p style="margin:12px 0;color:var(--text-secondary)">${t('stripUploadDesc')}</p>
+          <button class="btn primary" style="margin:4px 0;width:100%" onclick="takeStripPhoto()">${t('stripTakePhoto')}</button>
+          <button class="btn outline" style="margin:4px 0;width:100%" onclick="chooseStripPhoto()">${t('stripChoosePhoto')}</button>
+        </div>
+        <div id="stripLossStep2" style="display:none">
+          <div id="stripPhotoPreview" style="max-width:100%;max-height:200px;border-radius:8px;margin:8px 0;overflow:hidden"></div>
+          <div id="stripUploadStatus" style="margin:8px 0;font-size:13px;color:var(--text-secondary)">📤 ${t('stripLoseTitle')}</div>
+          <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();doStripSolo()">🔄 ${t('playAgain')}</button>
+          <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(o);
+    return;
+  }
+  
+  // Normal flow (win or non-strip)
   const playAgainFn = strip ? 'doStripSolo()' : 'startSolo()';
   o.innerHTML=`
     <div class="modal">
@@ -985,28 +1010,9 @@ function showResult(icon,title,desc,strip){
       <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
-  
-  // If strip mode and player lost, show photo upload modal after a short delay
-  if(strip && icon==='💔'){
-    setTimeout(() => showStripPhotoUpload(), 500);
-  }
 }
 
-function showStripPhotoUpload(){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.id='stripPhotoModal';
-  o.innerHTML=`
-    <div class="modal">
-      <div class="result-icon">📸</div>
-      <h2>${t('stripUploadTitle')}</h2>
-      <p>${t('stripUploadDesc')}</p>
-      <button class="btn primary" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();takeStripPhoto()">${t('stripTakePhoto')}</button>
-      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();chooseStripPhoto()">${t('stripChoosePhoto')}</button>
-      <button class="btn outline quit-btn" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
-}
+// Strip photo flow integrated into showResult() for strip loss
 
 function takeStripPhoto(){
   // Use HTML input with capture=environment for camera access
@@ -1031,39 +1037,39 @@ function handleStripPhoto(file){
   const reader = new FileReader();
   reader.onload = (e) => {
     const photoData = e.target.result;
-    showStripPhotoResult(photoData);
+    // Transition strip loss modal from step 1 (photo upload) to step 2 (rematch)
+    const step1 = document.getElementById('stripLossStep1');
+    const step2 = document.getElementById('stripLossStep2');
+    const preview = document.getElementById('stripPhotoPreview');
+    if(step1 && step2 && preview){
+      step1.style.display = 'none';
+      const img = document.createElement('img');
+      img.src = photoData;
+      img.style.cssText = 'max-width:100%;max-height:200px;border-radius:8px;display:block';
+      preview.appendChild(img);
+      step2.style.display = 'block';
+    }
     uploadStripPhoto(photoData);
   };
   reader.readAsDataURL(file);
 }
 
 async function uploadStripPhoto(photoData){
+  const statusEl = document.getElementById('stripUploadStatus');
+  if(statusEl) statusEl.textContent = '📤 ...';
   const res = await api('/api/upload_photo', {
     uid: getUid(),
     code: gameCode,
     photo: photoData,
     lang: lang
   });
-  if(res && res.ok){
-    setStatus('📸 Фото отправлено сопернику!', 'battle');
-  } else {
-    setStatus('⚠️ Не удалось отправить фото', '');
+  if(statusEl){
+    if(res && res.ok){
+      statusEl.textContent = '✅ ' + {ru:'Отправлено',uk:'Надіслано',en:'Sent'}[lang];
+    } else {
+      statusEl.textContent = '⚠️ ' + {ru:'Ошибка',uk:'Помилка',en:'Error'}[lang];
+    }
   }
-}
-
-function showStripPhotoResult(photoData){
-  const o=document.createElement('div');
-  o.className='overlay';
-  o.id='stripPhotoResult';
-  window._lastStripPhoto = photoData;
-  o.innerHTML=`
-    <div class="modal" style="max-width:90vw">
-      <h2>${t('stripLoseTitle')}</h2>
-      <p>${t('stripLoseDesc')}</p>
-      <img src="${photoData}" alt="Strip photo" style="max-width:100%;max-height:300px;border-radius:12px;margin:12px 0;box-shadow:0 4px 16px rgba(0,0,0,0.3)">
-      <button class="btn outline" style="margin-top:8px;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
-    </div>`;
-  document.body.appendChild(o);
 }
 
 async function leaveGame(){
