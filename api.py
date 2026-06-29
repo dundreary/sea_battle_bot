@@ -208,7 +208,7 @@ def _handle_new_solo(data, uid, code):
         return {"error": "no uid"}
     strip = data.get("strip", False)
     game = new_solo(uid, strip=strip)
-    player_games[uid] = game.code
+    player_games[str(uid)] = game.code
     save()
     return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
@@ -218,7 +218,7 @@ def _handle_new_multi(data, uid, code):
         return {"error": "no uid"}
     strip = data.get("strip", False)
     game = new_multi(uid, strip=strip)
-    player_games[uid] = game.code
+    player_games[str(uid)] = game.code
     save()
     return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
 
@@ -229,7 +229,7 @@ def _handle_join(data, uid, code):
     game, status = join_game(uid, code)
     if not game:
         return {"ok": False, "error": status}
-    player_games[uid] = code
+    player_games[str(uid)] = code
     save()
     return {"ok": True, "state": as_dict(game, uid)}
 
@@ -316,7 +316,7 @@ def _handle_ana_new_solo(data, uid, code):
 def _handle_ana_new_multi(data, uid, code):
     sid, new_code, g = ana_new_multi()
     if uid:
-        ana_player_sessions[uid] = {'code': new_code, 'sid': sid}
+        ana_player_sessions[str(uid)] = {'code': new_code, 'sid': sid}
     save()
     return {"ok": True, "sid": sid, "code": new_code, "state": ana_state(sid)}
 
@@ -329,7 +329,7 @@ def _handle_ana_join(data, uid, code):
     if not result[0]:
         return {"ok": False, "error": result[1]}
     if uid and result[0]:
-        ana_player_sessions[uid] = {'code': c.upper(), 'sid': result[0]}
+        ana_player_sessions[str(uid)] = {'code': c.upper(), 'sid': result[0]}
     save()
     return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
 
@@ -367,8 +367,6 @@ def _handle_active_games(data, uid, code):
         return {"error": "no uid"}
     games_list = []
     sb_code = player_games.get(str(uid))
-    if sb_code is None:
-        sb_code = player_games.get(uid)
     if sb_code and sb_code in games:
         g = games[sb_code]
         games_list.append({
@@ -379,8 +377,6 @@ def _handle_active_games(data, uid, code):
             'my_turn': g.current_player() == uid,
         })
     ana_data = ana_player_sessions.get(str(uid))
-    if ana_data is None:
-        ana_data = ana_player_sessions.get(uid)
     if ana_data:
         sid = ana_data['sid']
         c = ana_data['code']

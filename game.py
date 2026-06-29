@@ -1,4 +1,5 @@
 import random
+import string
 import time
 
 SIZE = 10
@@ -209,7 +210,6 @@ class Game:
 
     @staticmethod
     def generate_code():
-        import string
         return "".join(random.choices(string.ascii_uppercase, k=6))
 
     def to_dict(self):

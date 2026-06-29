@@ -968,10 +968,10 @@ function showSeaBattleMenu(){
     <div style="text-align:center;margin-bottom:12px">
       <img src="/static/game-icon.svg" style="width:64px;height:64px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
     </div>
-    <button class="btn success" onclick="startSolo()"><img src="/static/bot-icon.svg" class="btn-icon">${t('vsBot')}</button>
-    <button class="btn outline strip-btn" onclick="showStripInfoOverlay()"><img src="/static/strip-icon.svg" class="btn-icon">${t('stripMode')}</button>
-    <button class="btn primary" onclick="chooseMultiMode()"><img src="/static/friend-icon.svg" class="btn-icon">${t('vsFriend')}</button>
-    <button class="btn outline" onclick="joinGame()"><img src="/static/join-icon.svg" class="btn-icon">${t('joinBtn')}</button>
+    <button class="btn success" onclick="startSolo()"><img src="/static/mode-bot.svg" class="btn-icon">${t('vsBot')}</button>
+    <button class="btn outline strip-btn" onclick="showStripInfoOverlay()"><img src="/static/mode-strip.svg" class="btn-icon">${t('stripMode')}</button>
+    <button class="btn primary" onclick="chooseMultiMode()"><img src="/static/mode-friend.svg" class="btn-icon">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="joinGame()"><img src="/static/mode-join.svg" class="btn-icon">${t('joinBtn')}</button>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
   fetchActiveGames();
