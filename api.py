@@ -683,6 +683,16 @@ def _handle_active_games(uid, data):
     return {"ok": True, "games": games_list}
 
 
+@_route("/api/leave")
+def _handle_leave(uid, data):
+    if not uid:
+        return {"error": "no uid"}
+    if uid in player_games:
+        del player_games[uid]
+    save_all()
+    return {"ok": True}
+
+
 @_route("/api/bot_info")
 def _handle_bot_info(uid, data):
     return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
