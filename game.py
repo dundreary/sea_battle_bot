@@ -261,6 +261,8 @@ class Game:
             game.bot_ai = BotAI()
         else:
             game.bot_ai = None
+        if game.solo and game.player2_id is None:
+            game.player2_id = 0
         return game
 
 def validate_ship_placement(cells, strip=False):
