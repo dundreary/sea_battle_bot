@@ -868,10 +868,55 @@ async function startSoloStrip(){
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   $('actions').innerHTML='';
+  if(window._stripPhotoData){
+    await uploadStripPhotoToGame(window._stripPhotoData);
+  }
   await refreshState();
 }
 
 function startStripMode(){
+  const o=document.createElement('div');
+  o.className='overlay';
+  o.id='stripPhotoOverlay';
+  o.innerHTML=`
+    <div class="modal">
+      <div class="result-bar bar-win" style="margin-bottom:16px"></div>
+      <h2>${t('stripMode')}</h2>
+      <p>${t('stripUploadDesc')}</p>
+      <button class="btn strip-btn" style="width:100%;margin-bottom:8px" onclick="takeStripPhotoBeforeGame(true)">${t('stripTakePhoto')}</button>
+      <button class="btn outline" style="width:100%;margin-bottom:8px" onclick="takeStripPhotoBeforeGame(false)">${t('stripChoosePhoto')}</button>
+      <button class="btn" style="width:100%;margin-bottom:8px" onclick="skipStripPhotoBeforeGame()">${t('stripSkip')}</button>
+      <button class="btn danger" style="margin-top:12px;width:100%" onclick="this.closest('.overlay').remove()">${t('quit')}</button>
+    </div>`;
+  document.body.appendChild(o);
+}
+
+function takeStripPhotoBeforeGame(capture){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  if(capture) input.capture = 'environment';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      window._stripPhotoData = ev.target.result;
+      document.getElementById('stripPhotoOverlay').remove();
+      showStripGameModes();
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function skipStripPhotoBeforeGame(){
+  window._stripPhotoData = null;
+  document.getElementById('stripPhotoOverlay').remove();
+  showStripGameModes();
+}
+
+function showStripGameModes(){
   const o=document.createElement('div');
   o.className='overlay';
   o.innerHTML=`
@@ -902,6 +947,9 @@ async function newMulti(strip=false){
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
+  if(strip && window._stripPhotoData){
+    await uploadStripPhotoToGame(window._stripPhotoData);
+  }
   await refreshState();
   pollGame();
 }
@@ -965,6 +1013,7 @@ function pollGame(){
 function showMainMenu(){
   showShipHints = true;
   gameCode=null;state=null;
+  window._stripPhotoData = null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(_stripPhotoPollTimer){clearInterval(_stripPhotoPollTimer);_stripPhotoPollTimer=null}
   localStorage.removeItem('sb_game');
@@ -1122,7 +1171,9 @@ function showResult(isWin,title,desc,strip){
   
   if(strip && !isWin){
     setTimeout(() => {
-      if(window._stripPhotoData){
+      if(state && state.strip_photo){
+        showStripPhotoInResult(state.strip_photo);
+      } else if(window._stripPhotoData){
         showStripPhotoInResult(window._stripPhotoData);
         uploadStripPhotoToGame(window._stripPhotoData);
       } else {
