@@ -303,7 +303,7 @@ const LANG = {
     anaOver: 'Игра окончена! Счёт: {}',
     anaPlayAgain: '🔄 Играть ещё',
     seaBattle: '⚓ Морской бой',
-    selectGame: 'Выбери игру',
+    selectGame: 'Выбери режим',
     anaLettersCode: 'Буквы: {}',
     anaAllWords: 'Все возможные слова: {}',
     anaBaseWord: 'Основное слово: {}',
@@ -382,7 +382,7 @@ const LANG = {
     anaOver: 'Гра закінчена! Рахунок: {}',
     anaPlayAgain: '🔄 Грати ще',
     seaBattle: '⚓ Морський бій',
-    selectGame: 'Обери гру',
+    selectGame: 'Обери режим',
     anaLettersCode: 'Букви: {}',
     anaAllWords: 'Всі можливі слова: {}',
     anaBaseWord: 'Основне слово: {}',
@@ -461,7 +461,7 @@ const LANG = {
     anaOver: 'Game over! Score: {}',
     anaPlayAgain: '🔄 Play again',
     seaBattle: '⚓ Sea Battle',
-    selectGame: 'Choose game',
+    selectGame: 'Select mode',
     anaLettersCode: 'Letters: {}',
     anaAllWords: 'All possible words: {}',
     anaBaseWord: 'Base word: {}',
@@ -959,16 +959,13 @@ function showSeaBattleMenu(){
   showShipHints = true;
   var lb=$('langBar');if(lb)lb.style.display='none';
   document.title = t('seaBattle');
-  setStatus(t('welcome'));
+  setStatus(t('selectGame'));
   $('gameInfo').textContent='';
   $('shipHint').innerHTML = '';
   $('header').classList.remove('in-game');
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div style="text-align:center;margin-bottom:12px">
-      <img src="/static/game-icon.svg" style="width:64px;height:64px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
-    </div>
     <div class="game-card" onclick="startSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
