@@ -8,7 +8,6 @@ from typing import Dict, List, Set, Optional, Any
 WORD_LIST: Optional[Set[str]] = None
 BASE_WORDS: Optional[List[str]] = None
 _SIG_CACHE: Dict[str, tuple] = {}
-_SIGS: Dict[str, tuple] = {}
 
 UKR_LETTERS = 'абвгдеєжзиіїйклмнопрстуфхцчшщьюя'
 UKR_INDEX = {ch: i for i, ch in enumerate(UKR_LETTERS)}
@@ -78,10 +77,6 @@ _load_words()
 # Common Ukrainian letter frequencies (approx) - more common = more subwords
 COMMON_LETTERS = set('аоеинтсрвлкмдпуяыьйгзбчйхжшющцфъё')
 
-def _score_base_word(letters):
-    """Heuristic: count common letters in the word. More common = more subwords."""
-    return sum(1 for ch in set(letters) if ch in COMMON_LETTERS)
-
 def _pick_base_word():
     """Pick a word with good word with many common letters (more subwords likely)."""
     # Score all candidates, pick from top 30%
@@ -142,18 +137,18 @@ def join(code):
 def guess(sid, word):
     g = games.get(sid)
     if not g or g['finished']:
-        return None, 'game_over'
+        return 'game_over', None
     word = word.strip().lower()
     if not word or not word.isalpha():
-        return None, 'invalid'
+        return 'invalid', None
     if len(word) < 3 or len(word) > 6:
-        return None, 'length'
+        return 'length', None
     if word in g['found']:
-        return None, 'duplicate'
+        return 'duplicate', None
     if word not in g['all_words']:
-        return None, 'not_a_word'
+        return 'not_a_word', None
     if not _can_form(word, g['letters']):
-        return None, 'invalid'
+        return 'invalid', None
     score = _scoring(len(word))
     g['found'].append(word)
     g['score'] += score

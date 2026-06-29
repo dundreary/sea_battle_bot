@@ -126,7 +126,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
  .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
 .btn-row.stack{flex-direction:column;gap:8px}
 .btn-row.stack .btn{padding:16px 12px;font-size:16px}
-.btn{flex:1 1 0;min-width:0;padding:12px 8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center}
+.btn{flex:1 1 0;min-width:0;padding:12px 8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn-icon{width:20px;height:20px;flex-shrink:0}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff}
   .btn.success{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff}
@@ -279,10 +280,10 @@ const LANG = {
     close: '🚪 Закрыть',
     withBot: '· с ботом',
     withFriend: '· с другом',
-    vsBot: '🤖 С ботом',
-    vsFriend: '👤 С другом',
+    vsBot: 'С ботом',
+    vsFriend: 'С другом',
     joinTitle: '🔗 Присоединиться',
-    joinBtn: '🔗 Ввести код',
+    joinBtn: 'Ввести код',
     joinPlaceholder: 'Введи код игры',
     joinError: '⚠️ Игра не найдена или уже полная',
     waitOpp: '⏳ Ожидаем соперника...',
@@ -312,11 +313,11 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вибрация',
     shipHint: '🚢 Корабли: {0}',
-    stripMode: '👗 На раздевание',
+    stripMode: 'На раздевание',
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
     stripDesc: 'Корабли могут быть любой формы!',
-    stripInfoDesc: 'Тебе нужно сделать или загрузить фото. Фотография будет отправлена сопернику только в случае твоего проигрыша.',
+    stripInfoDesc: 'Сделай фото. Оно отправится сопернику только если ты проиграешь. Фото должно быть четким и хорошо читаемым.',
     stripLoseTitle: '👗 Игра окончена!',
     stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
     stripUploadTitle: '📸 Загрузи фото',
@@ -358,10 +359,10 @@ const LANG = {
     close: '🚪 Закрити',
     withBot: '· з ботом',
     withFriend: '· з другом',
-    vsBot: '🤖 З ботом',
-    vsFriend: '👤 З другом',
+    vsBot: 'З ботом',
+    vsFriend: 'З другом',
     joinTitle: '🔗 Приєднатися',
-    joinBtn: '🔗 Ввести код',
+    joinBtn: 'Ввести код',
     joinPlaceholder: 'Введи код гри',
     joinError: '⚠️ Гру не знайдено або вже повна',
     waitOpp: '⏳ Чекаємо суперника...',
@@ -391,11 +392,11 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вібрація',
     shipHint: '🚢 Кораблі: {0}',
-    stripMode: '👗 На роздягання',
+    stripMode: 'На роздягання',
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
     stripDesc: 'Кораблі можуть бути будь-якої форми!',
-    stripInfoDesc: 'Тобі потрібно зробити або завантажити фото. Фотографія буде надіслана супернику тільки в разі твого програшу.',
+    stripInfoDesc: 'Зроби фото. Воно надішлеться супернику тільки якщо ти програєш. Фото має бути чітким і добре читаним.',
     stripLoseTitle: '👗 Гра закінчена!',
     stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
     stripUploadTitle: '📸 Завантаж фото',
@@ -437,10 +438,10 @@ const LANG = {
     close: '🚪 Close',
     withBot: '· vs bot',
     withFriend: '· vs friend',
-    vsBot: '🤖 vs Bot',
-    vsFriend: '👤 vs Friend',
+    vsBot: 'vs Bot',
+    vsFriend: 'vs Friend',
     joinTitle: '🔗 Join Game',
-    joinBtn: '🔗 Enter Code',
+    joinBtn: 'Enter Code',
     joinPlaceholder: 'Enter game code',
     joinError: '⚠️ Game not found or full',
     waitOpp: '⏳ Waiting for opponent...',
@@ -470,11 +471,11 @@ const LANG = {
     sound: 'Sound',
     vibration: 'Vibration',
     shipHint: '🚢 Ships: {0}',
-    stripMode: '👗 Strip Mode',
+    stripMode: 'Strip Mode',
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
     stripDesc: 'Ships can be any shape!',
-    stripInfoDesc: 'You need to take or upload a photo. The photo will only be sent to the opponent if you lose.',
+    stripInfoDesc: 'Take a photo. It will be sent to the opponent only if you lose. The photo must be clear and well-readable.',
     stripLoseTitle: '👗 Game Over!',
     stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
     stripUploadTitle: '📸 Upload Photo',
@@ -831,7 +832,7 @@ function showStripInfoOverlay(){
 }
 
 async function startStripCapture(){
-  showLoadingOverlay(STRIP_LOADING_MSGS[lang].camera);
+  showLoadingOverlay(STRIP_LOADING_MSGS[lang].process);
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -839,11 +840,9 @@ async function startStripCapture(){
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if(!file){hideLoadingOverlay();return}
-    showLoadingOverlay(STRIP_LOADING_MSGS[lang].process);
     const reader = new FileReader();
     reader.onload = async (ev) => {
       window._stripPhotoData = await compressImage(ev.target.result);
-      hideLoadingOverlay();
       doStripMulti();
     };
     reader.readAsDataURL(file);
@@ -852,8 +851,7 @@ async function startStripCapture(){
 }
 
 async function doStripMulti(){
-  if(!window._stripPhotoData){setStatus(t('error'));return}
-  showLoadingOverlay(STRIP_LOADING_MSGS[lang].create);
+  if(!window._stripPhotoData){hideLoadingOverlay();setStatus(t('error'));return}
   showShipHints = true;
   const res=await api('/api/new_multi',{uid:getUid(),strip:true});
   hideLoadingOverlay();
@@ -970,10 +968,10 @@ function showSeaBattleMenu(){
     <div style="text-align:center;margin-bottom:12px">
       <img src="/static/game-icon.svg" style="width:64px;height:64px;margin-bottom:8px;display:block;margin-left:auto;margin-right:auto">
     </div>
-    <button class="btn success" onclick="startSolo()">${t('vsBot')}</button>
-    <button class="btn outline strip-btn" onclick="showStripInfoOverlay()">${t('stripMode')}</button>
-    <button class="btn primary" onclick="chooseMultiMode()">${t('vsFriend')}</button>
-    <button class="btn outline" onclick="joinGame()">${t('joinBtn')}</button>
+    <button class="btn success" onclick="startSolo()"><img src="/static/bot-icon.svg" class="btn-icon">${t('vsBot')}</button>
+    <button class="btn outline strip-btn" onclick="showStripInfoOverlay()"><img src="/static/strip-icon.svg" class="btn-icon">${t('stripMode')}</button>
+    <button class="btn primary" onclick="chooseMultiMode()"><img src="/static/friend-icon.svg" class="btn-icon">${t('vsFriend')}</button>
+    <button class="btn outline" onclick="joinGame()"><img src="/static/join-icon.svg" class="btn-icon">${t('joinBtn')}</button>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
   fetchActiveGames();

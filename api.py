@@ -4,7 +4,7 @@ import logging
 import urllib.request
 from typing import Dict, Any
 
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from persist import save
 import config
@@ -62,9 +62,6 @@ player_games: Dict[int, str] = {}
 
 # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
 ana_player_sessions: Dict[int, Dict[str, Any]] = {}
-
-EMPTY = 0
-SHIP = 1
 
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
@@ -206,6 +203,235 @@ def join_game(uid, code):
     game.phase = "placing"
     return game, "ok"
 
+def _handle_new_solo(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    strip = data.get("strip", False)
+    game = new_solo(uid, strip=strip)
+    player_games[uid] = game.code
+    save()
+    return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+
+
+def _handle_new_multi(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    strip = data.get("strip", False)
+    game = new_multi(uid, strip=strip)
+    player_games[uid] = game.code
+    save()
+    return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+
+
+def _handle_join(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game, status = join_game(uid, code)
+    if not game:
+        return {"ok": False, "error": status}
+    player_games[uid] = code
+    save()
+    return {"ok": True, "state": as_dict(game, uid)}
+
+
+def _handle_state(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    state = get_state(uid, code)
+    if not state:
+        return {"error": "no game"}
+    return {"ok": True, "state": state}
+
+
+def _handle_shoot(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    r, c = data.get("r"), data.get("c")
+    if r is None or c is None:
+        return {"error": "no r/c"}
+    result = shoot(uid, code, r, c)
+    if result is None:
+        return {"error": "invalid shot"}
+    game = games.get(code)
+    state = as_dict(game, uid) if game else None
+    save()
+    return {"ok": True, "result": result, "state": state}
+
+
+def _handle_place_auto(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    place_auto(uid, code)
+    game = games.get(code)
+    state = as_dict(game, uid) if game else None
+    save()
+    return {"ok": True, "state": state}
+
+
+def _handle_confirm(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    started = confirm_placement(uid, code)
+    if started is None:
+        return {"ok": False, "error": "not_all_placed"}
+    game = games.get(code)
+    state = as_dict(game, uid) if game else None
+    save()
+    return {"ok": True, "started": started, "state": state}
+
+
+def _handle_upload_photo(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    photo = data.get("photo")
+    if not photo:
+        return {"error": "no photo"}
+    game = games.get(code)
+    if not game:
+        return {"error": "game not found"}
+    game.strip_photo = photo
+    save()
+    winner_id = game.opponent_id(uid)
+    if game.solo or not winner_id or winner_id == 0:
+        return {"ok": True}
+    user_lang = data.get("lang", "ru")
+    captions = {
+        'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
+        'uk': '👗 Твій друг програв у режимі «На роздягання»!',
+        'en': '👗 Your friend lost in Strip Mode!',
+    }
+    caption = captions.get(user_lang, captions['ru'])
+    ok = send_strip_photo_to_winner(winner_id, photo, caption)
+    if ok:
+        return {"ok": True}
+    return {"ok": False, "error": "send_failed"}
+
+
+def _handle_ana_new_solo(data, uid, code):
+    sid, g = ana_new()
+    save()
+    return {"ok": True, "sid": sid, "state": ana_state(sid)}
+
+
+def _handle_ana_new_multi(data, uid, code):
+    sid, new_code, g = ana_new_multi()
+    if uid:
+        ana_player_sessions[uid] = {'code': new_code, 'sid': sid}
+    save()
+    return {"ok": True, "sid": sid, "code": new_code, "state": ana_state(sid)}
+
+
+def _handle_ana_join(data, uid, code):
+    c = data.get("code", "")
+    if not c:
+        return {"error": "no code"}
+    result = ana_join(c)
+    if not result[0]:
+        return {"ok": False, "error": result[1]}
+    if uid and result[0]:
+        ana_player_sessions[uid] = {'code': c.upper(), 'sid': result[0]}
+    save()
+    return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
+
+
+def _handle_ana_guess(data, uid, code):
+    sid = data.get("sid", "")
+    word = data.get("word", "")
+    result = ana_guess(sid, word)
+    if result[0] != "ok":
+        return {"ok": False, "error": result[0]}
+    save()
+    return {"ok": True, "result": result[1], "state": ana_state(sid)}
+
+
+def _handle_ana_hint(data, uid, code):
+    sid = data.get("sid", "")
+    result = ana_hint(sid)
+    if not result:
+        return {"ok": False, "error": "no_hint"}
+    save()
+    return {"ok": True, "result": result, "state": ana_state(sid)}
+
+
+def _handle_ana_state(data, uid, code):
+    sid = data.get("sid", "")
+    st = ana_state(sid)
+    if not st:
+        return {"error": "not_found"}
+    save()
+    return {"ok": True, "state": st}
+
+
+def _handle_active_games(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    games_list = []
+    sb_code = player_games.get(str(uid))
+    if sb_code is None:
+        sb_code = player_games.get(uid)
+    if sb_code and sb_code in games:
+        g = games[sb_code]
+        games_list.append({
+            'type': 'sea_battle',
+            'code': sb_code,
+            'solo': g.solo,
+            'phase': g.phase,
+            'my_turn': g.current_player() == uid,
+        })
+    ana_data = ana_player_sessions.get(str(uid))
+    if ana_data is None:
+        ana_data = ana_player_sessions.get(uid)
+    if ana_data:
+        sid = ana_data['sid']
+        c = ana_data['code']
+        st = ana_state(sid)
+        if st:
+            games_list.append({
+                'type': 'anagram',
+                'code': c,
+                'finished': st.get('finished', False),
+                'score': st.get('score', 0),
+                'remaining': st.get('remaining', 0),
+            })
+    return {"ok": True, "games": games_list}
+
+
+def _handle_bot_info(data, uid, code):
+    return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
+
+
+def _handle_resolve_code(data, uid, code):
+    c = data.get("code", "").strip().upper()
+    if not c:
+        return {"error": "no code"}
+    if c in games:
+        return {"ok": True, "game": "sea_battle", "code": c}
+    if c in ana_rooms:
+        return {"ok": True, "game": "anagram", "code": c}
+    return {"ok": False, "error": "not_found"}
+
+
+_HANDLERS = {
+    "/api/new_solo": _handle_new_solo,
+    "/api/new_multi": _handle_new_multi,
+    "/api/join": _handle_join,
+    "/api/state": _handle_state,
+    "/api/shoot": _handle_shoot,
+    "/api/place_auto": _handle_place_auto,
+    "/api/confirm": _handle_confirm,
+    "/api/upload_photo": _handle_upload_photo,
+    "/api/ana_new_solo": _handle_ana_new_solo,
+    "/api/ana_new_multi": _handle_ana_new_multi,
+    "/api/ana_join": _handle_ana_join,
+    "/api/ana_guess": _handle_ana_guess,
+    "/api/ana_hint": _handle_ana_hint,
+    "/api/ana_state": _handle_ana_state,
+    "/api/active_games": _handle_active_games,
+    "/api/bot_info": _handle_bot_info,
+    "/api/resolve_code": _handle_resolve_code,
+}
+
+
 def handle_api(path, body):
     try:
         data = json.loads(body) if body else {}
@@ -214,199 +440,7 @@ def handle_api(path, body):
     uid = data.get("uid")
     code = data.get("code")
 
-    if path == "/api/new_solo":
-        if not uid:
-            return {"error": "no uid"}
-        strip = data.get("strip", False)
-        game = new_solo(uid, strip=strip)
-        player_games[uid] = game.code
-        save()
-        return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
-
-    if path == "/api/new_multi":
-        if not uid:
-            return {"error": "no uid"}
-        strip = data.get("strip", False)
-        game = new_multi(uid, strip=strip)
-        player_games[uid] = game.code
-        save()
-        return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
-
-    if path == "/api/join":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        game, status = join_game(uid, code)
-        if not game:
-            return {"ok": False, "error": status}
-        player_games[uid] = code
-        save()
-        return {"ok": True, "state": as_dict(game, uid)}
-
-    if path == "/api/state":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        state = get_state(uid, code)
-        if not state:
-            return {"error": "no game"}
-        return {"ok": True, "state": state}
-
-    if path == "/api/shoot":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        r, c = data.get("r"), data.get("c")
-        if r is None or c is None:
-            return {"error": "no r/c"}
-        result = shoot(uid, code, r, c)
-        if result is None:
-            return {"error": "invalid shot"}
-        game = games.get(code)
-        state = as_dict(game, uid) if game else None
-        save()
-        return {"ok": True, "result": result, "state": state}
-
-    if path == "/api/place_auto":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        place_auto(uid, code)
-        game = games.get(code)
-        state = as_dict(game, uid) if game else None
-        save()
-        return {"ok": True, "state": state}
-
-    if path == "/api/confirm":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        started = confirm_placement(uid, code)
-        if started is None:
-            return {"ok": False, "error": "not_all_placed"}
-        game = games.get(code)
-        state = as_dict(game, uid) if game else None
-        save()
-        return {"ok": True, "started": started, "state": state}
-
-    if path == "/api/upload_photo":
-        if not uid or not code:
-            return {"error": "no uid/code"}
-        photo = data.get("photo")
-        if not photo:
-            return {"error": "no photo"}
-        game = games.get(code)
-        if not game:
-            return {"error": "game not found"}
-        game.strip_photo = photo
-        save()
-        winner_id = game.opponent_id(uid)
-        if game.solo or not winner_id or winner_id == 0:
-            return {"ok": True}
-        user_lang = data.get("lang", "ru")
-        captions = {
-            'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-            'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-            'en': '👗 Your friend lost in Strip Mode!',
-        }
-        caption = captions.get(user_lang, captions['ru'])
-        ok = send_strip_photo_to_winner(winner_id, photo, caption)
-        if ok:
-            return {"ok": True}
-        return {"ok": False, "error": "send_failed"}
-
-    if path == "/api/ana_new_solo":
-        sid, g = ana_new()
-        save()
-        return {"ok": True, "sid": sid, "state": ana_state(sid)}
-
-    if path == "/api/ana_new_multi":
-        sid, code, g = ana_new_multi()
-        if uid:
-            ana_player_sessions[uid] = {'code': code, 'sid': sid}
-        save()
-        return {"ok": True, "sid": sid, "code": code, "state": ana_state(sid)}
-
-    if path == "/api/ana_join":
-        c = data.get("code", "")
-        if not c:
-            return {"error": "no code"}
-        result = ana_join(c)
-        if not result[0]:
-            return {"ok": False, "error": result[1]}
-        if uid and result[0]:
-            ana_player_sessions[uid] = {'code': c.upper(), 'sid': result[0]}
-            # Also update player_games for Sea Battle reconnection
-            # (this endpoint returns sid for both SB and Ana, map by convention)
-        save()
-        return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
-
-    if path == "/api/ana_guess":
-        sid = data.get("sid", "")
-        word = data.get("word", "")
-        result = ana_guess(sid, word)
-        if result[0] != "ok":
-            return {"ok": False, "error": result[0] if result[0] else result[1]}
-        save()
-        return {"ok": True, "result": result[1], "state": ana_state(sid)}
-
-    if path == "/api/ana_hint":
-        sid = data.get("sid", "")
-        result = ana_hint(sid)
-        if not result:
-            return {"ok": False, "error": "no_hint"}
-        save()
-        return {"ok": True, "result": result, "state": ana_state(sid)}
-
-    if path == "/api/ana_state":
-        sid = data.get("sid", "")
-        st = ana_state(sid)
-        if not st:
-            return {"error": "not_found"}
-        save()
-        return {"ok": True, "state": st}
-
-    if path == "/api/active_games":
-        if not uid:
-            return {"error": "no uid"}
-        games_list = []
-        # Sea Battle games
-        sb_code = player_games.get(str(uid))
-        if sb_code is None:
-            sb_code = player_games.get(uid)
-        if sb_code and sb_code in games:
-            g = games[sb_code]
-            games_list.append({
-                'type': 'sea_battle',
-                'code': sb_code,
-                'solo': g.solo,
-                'phase': g.phase,
-                'my_turn': g.current_player() == uid,
-            })
-        # Anagram games
-        ana_data = ana_player_sessions.get(str(uid))
-        if ana_data is None:
-            ana_data = ana_player_sessions.get(uid)
-        if ana_data:
-            sid = ana_data['sid']
-            code = ana_data['code']
-            st = ana_state(sid)
-            if st:
-                games_list.append({
-                    'type': 'anagram',
-                    'code': code,
-                    'finished': st.get('finished', False),
-                    'score': st.get('score', 0),
-                    'remaining': st.get('remaining', 0),
-                })
-        return {"ok": True, "games": games_list}
-
-    if path == "/api/bot_info":
-        return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
-
-    if path == "/api/resolve_code":
-        code = data.get("code", "").strip().upper()
-        if not code:
-            return {"error": "no code"}
-        if code in games:
-            return {"ok": True, "game": "sea_battle", "code": code}
-        if code in ana_rooms:
-            return {"ok": True, "game": "anagram", "code": code}
-        return {"ok": False, "error": "not_found"}
-
-    return {"error": "unknown path"}
+    handler = _HANDLERS.get(path)
+    if not handler:
+        return {"error": "unknown path"}
+    return handler(data, uid, code)
