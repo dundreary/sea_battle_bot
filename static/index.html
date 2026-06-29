@@ -949,6 +949,11 @@ function showMainMenu(){
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
+    <div class="game-card" onclick="showAnagram()" style="margin-bottom:8px">
+      <img src="/static/mode-dice.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:var(--accent-success)">${t('anaTitle')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
+    </div>
   `;
   fetchActiveGames();
 }
@@ -959,7 +964,7 @@ function showSeaBattleMenu(){
   showShipHints = true;
   var lb=$('langBar');if(lb)lb.style.display='none';
   document.title = t('seaBattle');
-  setStatus(t('selectGame'));
+  setStatus('');
   $('gameInfo').textContent='';
   $('shipHint').innerHTML = '';
   $('header').classList.remove('in-game');
