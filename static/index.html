@@ -715,6 +715,14 @@ function updateUI(){
   if(gameOver){
     if(s.all_sunk && s.strip && !s.strip_photo){
       setStatus('⏳ ' + {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang], 'battle');
+      if(!window._stripPhotoWaitTimer){
+        window._stripPhotoWaitTimer = setTimeout(() => {
+          window._stripPhotoWaitTimer = null;
+          if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+          localStorage.removeItem('sb_game');
+          showResult('🏆',t('win'),{ru:'Соперник не отправил фото',uk:'Суперник не надіслав фото',en:'Opponent did not send a photo'}[lang], true);
+        }, 60000);
+      }
       return;
     }
     if(pollTimer){clearInterval(pollTimer);pollTimer=null}
@@ -839,10 +847,22 @@ async function startStripCapture(){
   input.type = 'file';
   input.accept = 'image/*';
   input.capture = 'environment';
+  let cancelled = true;
+  const onFocus = () => {
+    window.removeEventListener('focus', onFocus);
+    if(cancelled){
+      hideLoadingOverlay();
+      showStripInfoOverlay();
+    }
+  };
+  window.addEventListener('focus', onFocus);
   input.onchange = async (e) => {
+    cancelled = false;
+    window.removeEventListener('focus', onFocus);
     const file = e.target.files[0];
     if(!file){hideLoadingOverlay();return}
     const reader = new FileReader();
+    reader.onerror = () => { hideLoadingOverlay(); setStatus(t('error')); };
     reader.onload = async (ev) => {
       window._stripPhotoData = await compressImage(ev.target.result);
       doStripMulti();
@@ -1058,18 +1078,19 @@ function showResult(icon,title,desc,strip){
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
-    (async () => {
-      try {
-        if(window._stripPhotoData){
-          await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
+    const st=$('stripStatus');
+    if(window._stripPhotoData){
+      (async () => {
+        try {
+          const res=await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
+          if(st) st.innerHTML = (res&&res.ok) ? '✅ ' + t('stripPhotoSent') : '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
+        } catch(e){
+          if(st) st.innerHTML = '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
         }
-        const st=$('stripStatus');
-        if(st) st.innerHTML = '✅ ' + t('stripPhotoSent');
-      } catch(e){
-        const st=$('stripStatus');
-        if(st) st.innerHTML = '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
-      }
-    })();
+      })();
+    } else {
+      if(st) st.innerHTML = '❌ ' + {ru:'Фото не загружено',uk:'Фото не завантажено',en:'No photo uploaded'}[lang];
+    }
     return;
   }
   
