@@ -43,6 +43,11 @@ def save():
         for k, v in api.checkers_player_games.items():
             ck_pg_serialized[str(k)] = v
 
+        # Serialize stratego_player_games
+        st_pg_serialized = {}
+        for k, v in api.stratego_player_games.items():
+            st_pg_serialized[str(k)] = v
+
         data = {
             'version': 1,
             'saved_at': time.time(),
@@ -53,6 +58,8 @@ def save():
             'anagram_rooms': anagram.rooms,
             'checkers_games': {},
             'checkers_player_games': ck_pg_serialized,
+            'stratego_games': {},
+            'stratego_player_games': st_pg_serialized,
         }
         for code, game in api.games.items():
             try:
@@ -64,6 +71,11 @@ def save():
                 data['checkers_games'][code] = game.to_dict()
             except Exception:
                 pass
+        for code, game in api.stratego_games.items():
+            try:
+                data['stratego_games'][code] = game.to_dict()
+            except Exception:
+                pass
         _write(data)
 
 
@@ -72,6 +84,7 @@ def load():
     import anagram
     from game import Game
     from checkers import CheckersGame
+    from stratego import StrategoGame
 
     data = _read()
     if not data:
@@ -150,6 +163,27 @@ def load():
                 code = v
                 if code in api.checkers_games:
                     api.checkers_player_games[uid] = code
+            except Exception:
+                pass
+
+        # --- Stratego games ---
+        api.stratego_games.clear()
+        for code, gdata in data.get('stratego_games', {}).items():
+            try:
+                game = StrategoGame.from_dict(gdata)
+                created = getattr(game, 'created_at', 0)
+                if now - created < MAX_AGE:
+                    api.stratego_games[code] = game
+            except Exception:
+                pass
+
+        api.stratego_player_games.clear()
+        for k, v in data.get('stratego_player_games', {}).items():
+            try:
+                uid = int(k)
+                code = v
+                if code in api.stratego_games:
+                    api.stratego_player_games[uid] = code
             except Exception:
                 pass
 

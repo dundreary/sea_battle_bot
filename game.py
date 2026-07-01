@@ -158,15 +158,16 @@ class Board:
         return board
 
 class Game:
-    def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False):
+    def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False, difficulty=2):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
         self.strip = strip
+        self.difficulty = difficulty
         self.board1 = Board()
         self.board2 = Board()
-        self.bot_ai = BotAI() if solo else None
+        self.bot_ai = BotAI(difficulty=difficulty) if solo else None
         self.turn = 1
         self.phase = "placing1"
         self.placing = {
@@ -219,6 +220,7 @@ class Game:
             'player2_id': self.player2_id,
             'solo': self.solo,
             'strip': self.strip,
+            'difficulty': self.difficulty,
             'strip_photo': self.strip_photo,
             'created_at': self.created_at,
             'board1': self.board1.to_dict(),
@@ -244,6 +246,7 @@ class Game:
         game.player2_id = data.get('player2_id')
         game.solo = data.get('solo', False)
         game.strip = data.get('strip', False)
+        game.difficulty = data.get('difficulty', 2)
         game.strip_photo = data.get('strip_photo', "")
         game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
@@ -261,7 +264,7 @@ class Game:
         if data.get('bot_ai'):
             game.bot_ai = BotAI.from_dict(data['bot_ai'])
         elif game.solo:
-            game.bot_ai = BotAI()
+            game.bot_ai = BotAI(difficulty=game.difficulty)
         else:
             game.bot_ai = None
         if game.solo and game.player2_id is None:
@@ -368,7 +371,8 @@ def auto_place_ships(board: Board) -> None:
             return
 
 class BotAI:
-    def __init__(self):
+    def __init__(self, difficulty=2):
+        self.difficulty = difficulty
         self.shots = set()
         self.hunt_queue = []
         self.ship_mode = False
@@ -378,7 +382,40 @@ class BotAI:
         self.hunt_queue = []
         self.ship_mode = False
 
-    def choose_shot(self, enemy_board):
+    def _probability_shot(self, enemy_board, strip=False):
+        ships_list = STRIP_SHIPS if strip else SHIPS
+        if strip:
+            return None
+        probs = [[0.0 for _ in range(SIZE)] for _ in range(SIZE)]
+        for length in ships_list:
+            for r in range(SIZE):
+                for c in range(SIZE - length + 1):
+                    cells = [(r, c + i) for i in range(length)]
+                    if all(enemy_board.grid[nr][nc] in (EMPTY, SHIP) for nr, nc in cells):
+                        for nr, nc in cells:
+                            probs[nr][nc] += 1.0
+            for r in range(SIZE - length + 1):
+                for c in range(SIZE):
+                    cells = [(r + i, c) for i in range(length)]
+                    if all(enemy_board.grid[nr][nc] in (EMPTY, SHIP) for nr, nc in cells):
+                        for nr, nc in cells:
+                            probs[nr][nc] += 1.0
+        best = -1.0
+        best_cell = None
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
+                    if probs[r][c] > best:
+                        best = probs[r][c]
+                        best_cell = (r, c)
+        return best_cell
+
+    def choose_shot(self, enemy_board, strip=False):
+        if self.difficulty >= 3 and not self.hunt_queue:
+            result = self._probability_shot(enemy_board, strip=strip)
+            if result:
+                return result
+
         try_hunt = list(self.hunt_queue)
         self.hunt_queue = []
         for r, c in try_hunt:
@@ -421,11 +458,12 @@ class BotAI:
             'shots': [list(s) for s in self.shots],
             'hunt_queue': [list(q) for q in self.hunt_queue],
             'ship_mode': self.ship_mode,
+            'difficulty': self.difficulty,
         }
 
     @staticmethod
     def from_dict(data):
-        ai = BotAI()
+        ai = BotAI(difficulty=data.get('difficulty', 2))
         ai.shots = set(tuple(s) for s in data['shots'])
         ai.hunt_queue = [tuple(q) for q in data['hunt_queue']]
         ai.ship_mode = data['ship_mode']

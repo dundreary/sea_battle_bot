@@ -190,11 +190,12 @@ def dict_to_board(d):
 
 
 class CheckersGame:
-    def __init__(self, code, player1_id, player2_id=None, solo=False):
+    def __init__(self, code, player1_id, player2_id=None, solo=False, difficulty=2):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
+        self.difficulty = difficulty
         self.board = initial_board()
         self.turn = WHITE
         self.phase = "playing"
@@ -254,6 +255,7 @@ class CheckersGame:
 
         return {
             "code": self.code,
+            "difficulty": self.difficulty,
             "phase": self.phase,
             "board": board_to_dict(self.board),
             "turn": self.turn,
@@ -280,6 +282,7 @@ class CheckersGame:
             "player1_id": self.player1_id,
             "player2_id": self.player2_id,
             "solo": self.solo,
+            "difficulty": self.difficulty,
             "board": board_to_dict(self.board),
             "turn": self.turn,
             "phase": self.phase,
@@ -295,6 +298,7 @@ class CheckersGame:
         game.player1_id = data["player1_id"]
         game.player2_id = data.get("player2_id")
         game.solo = data.get("solo", False)
+        game.difficulty = data.get("difficulty", 2)
         game.board = dict_to_board(data["board"])
         game.turn = data["turn"]
         game.phase = data.get("phase", "playing")
