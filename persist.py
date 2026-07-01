@@ -38,6 +38,11 @@ def save():
         for k, v in api.ana_player_sessions.items():
             aps_serialized[str(k)] = v
 
+        # Serialize checkers_player_games
+        ck_pg_serialized = {}
+        for k, v in api.checkers_player_games.items():
+            ck_pg_serialized[str(k)] = v
+
         data = {
             'version': 1,
             'saved_at': time.time(),
@@ -46,12 +51,19 @@ def save():
             'api_ana_player_sessions': aps_serialized,
             'anagram_games': anagram.games,
             'anagram_rooms': anagram.rooms,
+            'checkers_games': {},
+            'checkers_player_games': ck_pg_serialized,
         }
         for code, game in api.games.items():
             try:
                 data['api_games'][code] = game.to_dict()
             except Exception:
                 pass  # skip un-serializable games
+        for code, game in api.checkers_games.items():
+            try:
+                data['checkers_games'][code] = game.to_dict()
+            except Exception:
+                pass
         _write(data)
 
 
@@ -59,6 +71,7 @@ def load():
     import api
     import anagram
     from game import Game
+    from checkers import CheckersGame
 
     data = _read()
     if not data:
@@ -116,6 +129,27 @@ def load():
                 sid = v.get('sid')
                 if sid and sid in anagram.games:
                     api.ana_player_sessions[k] = v
+            except Exception:
+                pass
+
+        # --- Checkers games ---
+        api.checkers_games.clear()
+        for code, gdata in data.get('checkers_games', {}).items():
+            try:
+                game = CheckersGame.from_dict(gdata)
+                created = getattr(game, 'created_at', 0)
+                if now - created < MAX_AGE:
+                    api.checkers_games[code] = game
+            except Exception:
+                pass
+
+        api.checkers_player_games.clear()
+        for k, v in data.get('checkers_player_games', {}).items():
+            try:
+                uid = int(k)
+                code = v
+                if code in api.checkers_games:
+                    api.checkers_player_games[uid] = code
             except Exception:
                 pass
 

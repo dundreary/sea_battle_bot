@@ -6,6 +6,8 @@ from typing import Dict, Any
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, auto_place_ships, auto_place_strip_ships
 from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
+from checkers import CheckersGame, BLACK, get_legal_moves
+from checkers_ai import get_ai_move
 from persist import save
 import config
 
@@ -62,6 +64,10 @@ player_games: Dict[int, str] = {}
 
 # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
 ana_player_sessions: Dict[int, Dict[str, Any]] = {}
+
+# Checkers games
+checkers_games: Dict[str, CheckersGame] = {}
+checkers_player_games: Dict[int, str] = {}
 
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
@@ -389,6 +395,15 @@ def _handle_active_games(data, uid, code):
                 'score': st.get('score', 0),
                 'remaining': st.get('remaining', 0),
             })
+    ck_code = checkers_player_games.get(uid)
+    if ck_code and ck_code in checkers_games:
+        g = checkers_games[ck_code]
+        games_list.append({
+            'type': 'checkers',
+            'code': ck_code,
+            'phase': g.phase,
+            'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
+        })
     return {"ok": True, "games": games_list}
 
 
@@ -404,7 +419,121 @@ def _handle_resolve_code(data, uid, code):
         return {"ok": True, "game": "sea_battle", "code": c}
     if c in ana_rooms:
         return {"ok": True, "game": "anagram", "code": c}
+    if c in checkers_games:
+        return {"ok": True, "game": "checkers", "code": c}
     return {"ok": False, "error": "not_found"}
+
+
+# ---- Checkers handlers ----
+
+def _handle_checkers_new_solo(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    c = CheckersGame.generate_code()
+    while c in checkers_games:
+        c = CheckersGame.generate_code()
+    game = CheckersGame(c, uid, solo=True)
+    checkers_games[c] = game
+    checkers_player_games[uid] = c
+    save()
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
+
+
+def _handle_checkers_new_multi(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    c = CheckersGame.generate_code()
+    while c in checkers_games:
+        c = CheckersGame.generate_code()
+    game = CheckersGame(c, uid)
+    checkers_games[c] = game
+    checkers_player_games[uid] = c
+    save()
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
+
+
+def _handle_checkers_join(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = checkers_games.get(code)
+    if not game:
+        return {"ok": False, "error": "not_found"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    game.player2_id = uid
+    checkers_player_games[uid] = code
+    save()
+    return {"ok": True, "state": game.get_state(uid)}
+
+
+def _handle_checkers_state(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = checkers_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    return {"ok": True, "state": game.get_state(uid)}
+
+
+def _handle_checkers_move(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = checkers_games.get(code)
+    if not game or game.phase != "playing":
+        return {"error": "not_playing"}
+
+    color = game.player_color(uid)
+    if color is None or game.turn != color:
+        return {"error": "not_your_turn"}
+
+    start_r = data.get("start_r")
+    start_c = data.get("start_c")
+    end_r = data.get("end_r")
+    end_c = data.get("end_c")
+    if None in (start_r, start_c, end_r, end_c):
+        return {"error": "missing_coords"}
+
+    moves = get_legal_moves(game.board, color)
+    winning_move = None
+    for m in moves:
+        if m[0] == (start_r, start_c) and (end_r, end_c) == m[1][-1]:
+            winning_move = m
+            break
+
+    if not winning_move:
+        return {"error": "illegal_move"}
+
+    finished = game.make_move(winning_move)
+    bot_result = None
+
+    if game.solo and not finished and game.turn == BLACK:
+        ai_mv = get_ai_move(game.board, BLACK, difficulty=3)
+        if ai_mv:
+            finished = game.make_move(ai_mv)
+            bot_result = {"move": {"start": list(ai_mv[0]), "end": list(ai_mv[1][-1])}}
+
+    save()
+    return {
+        "ok": True,
+        "state": game.get_state(uid),
+        "finished": finished,
+        "bot_move": bot_result,
+    }
+
+
+def _handle_checkers_hint(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = checkers_games.get(code)
+    if not game or game.phase != "playing":
+        return {"error": "not_playing"}
+    color = game.player_color(uid)
+    if color is None or game.turn != color:
+        return {"error": "not_your_turn"}
+    move = get_ai_move(game.board, color, difficulty=3)
+    if not move:
+        return {"error": "no_move"}
+    return {"ok": True, "hint": {"start": list(move[0]), "end": list(move[1][-1])}}
 
 
 _HANDLERS = {
@@ -425,6 +554,12 @@ _HANDLERS = {
     "/api/active_games": _handle_active_games,
     "/api/bot_info": _handle_bot_info,
     "/api/resolve_code": _handle_resolve_code,
+    "/api/checkers_new_solo": _handle_checkers_new_solo,
+    "/api/checkers_new_multi": _handle_checkers_new_multi,
+    "/api/checkers_join": _handle_checkers_join,
+    "/api/checkers_state": _handle_checkers_state,
+    "/api/checkers_move": _handle_checkers_move,
+    "/api/checkers_hint": _handle_checkers_hint,
 }
 
 

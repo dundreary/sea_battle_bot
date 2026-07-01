@@ -197,6 +197,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .status:empty{display:none}
 .ship-hint:empty{display:none}
 
+.ck-board{display:grid;grid-template-columns:repeat(8,1fr);gap:0;width:100%;max-width:360px;aspect-ratio:1;background:#5C3A1E;border:3px solid #3E2510;border-radius:8px;overflow:hidden;margin:4px 0}
+.ck-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s;user-select:none}
+.ck-cell.light{background:#D4A96A}
+.ck-cell.dark{background:#8B5C2A}
+.ck-cell.selected{outline:3px solid #FFD700;outline-offset:-3px;z-index:1}
+.ck-cell.highlight-src{background:#42A5F5!important}
+.ck-cell.highlight-dest{background:#66BB6A!important}
+.ck-cell.highlight-capture{background:#EF5350!important}
+.ck-piece{width:70%;height:70%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:clamp(12px,3.5vw,20px);cursor:pointer;transition:transform .15s;position:relative}
+.ck-piece:active{transform:scale(.9)}
+.ck-piece.white{background:radial-gradient(circle at 35% 35%, #fff, #ddd);border:2px solid #bbb;color:#333}
+.ck-piece.black{background:radial-gradient(circle at 35% 35%, #555, #1a1a1a);border:2px solid #000;color:#fff}
+.ck-piece.king::after{content:'♛';position:absolute;font-size:120%;top:-2px}
+.ck-piece.white.king{color:#333}
+.ck-piece.black.king{color:#FFD700}
+.ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
+
 
 </style>
 </head>
@@ -246,6 +263,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <button class="btn outline" onclick="anaBackspace()">⌫</button>
     </div>
     <div class="ana-found" id="anaFound"></div>
+  </div>
+  <div id="ckArea" style="display:none">
+    <div class="ck-board" id="ckBoard"></div>
+    <div class="btn-row" id="ckActions" style="margin-top:8px"></div>
   </div>
 </div>
 <footer>🎮 Games</footer>
@@ -330,6 +351,7 @@ const LANG = {
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
     stripPlayAgain: '💪 Отыграться',
+    checkers: '♟ Шашки',
   },
   uk: {
     title: 'Морський бій',
@@ -409,6 +431,7 @@ const LANG = {
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
     stripPlayAgain: '💪 Відігратись',
+    checkers: '♟ Шашки',
   },
   en: {
     title: 'Sea Battle',
@@ -488,6 +511,7 @@ const LANG = {
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
     stripPlayAgain: '💪 Redeem',
+    checkers: '♟ Checkers',
   }
 };
 
@@ -948,11 +972,15 @@ function pollGame(){
 function showMainMenu(){
   showShipHints = true;
   gameCode=null;state=null;
+  ckCode=null;ckState=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
   localStorage.removeItem('sb_game');
+  localStorage.removeItem('ck_game');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
+  $('ckArea').style.display='none';
   $('shipHint').innerHTML = '';
   document.title = 'Sea Battle';
   $('gameInfo').textContent='';
@@ -971,6 +999,11 @@ function showMainMenu(){
     <div class="game-card" onclick="showAnagram()" style="margin-bottom:8px">
       <img src="/static/mode-dice.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-success)">${t('anaTitle')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
+    </div>
+    <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
+      <img src="/static/checkers-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:#D4A96A">${t('checkers')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
   `;
@@ -1316,6 +1349,242 @@ async function anaGetHint(){
   api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
 }
 
+// ---- Checkers ----
+let ckState=null, ckCode=null, ckSelected=null;
+
+const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
+
+function showCheckers(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('anaArea').style.display='none';
+  $('ckArea').style.display='none';
+  if($('legend'))$('legend').style.display='none';
+  $('shipHint').innerHTML='';
+  document.title='Checkers';
+  $('gameInfo').textContent='♟ Checkers';
+  setStatus('');
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <div class="game-card" onclick="ckStartSolo()" style="margin-bottom:8px">
+      <img src="/static/mode-bot.svg" class="card-icon">
+      <div class="name">${t('vsBot')}</div>
+      <div class="card-desc">${t('withBot')}</div>
+    </div>
+    <div class="game-card" onclick="ckNewMulti()" style="margin-bottom:8px">
+      <img src="/static/mode-friend.svg" class="card-icon">
+      <div class="name">${t('vsFriend')}</div>
+      <div class="card-desc">${t('withFriend')}</div>
+    </div>
+    <div class="game-card" onclick="ckJoinGame()" style="margin-bottom:8px">
+      <img src="/static/mode-join.svg" class="card-icon">
+      <div class="name">${t('joinTitle')}</div>
+      <div class="card-desc">${t('joinBtn')}</div>
+    </div>
+    <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
+  `;
+}
+
+function ckJoinGame(){
+  const code=prompt(t('joinPlaceholder'));
+  if(code)ckJoin(code);
+}
+
+async function ckStartSolo(){
+  const res=await api('/api/checkers_new_solo',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  ckCode=res.code;
+  localStorage.setItem('ck_game',ckCode);
+  ckShowGame(res.state);
+}
+
+async function ckNewMulti(){
+  const res=await api('/api/checkers_new_multi',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  ckCode=res.code;
+  localStorage.setItem('ck_game',ckCode);
+  ckShowGame(res.state);
+  ckPoll();
+}
+
+async function ckJoin(code){
+  const res=await api('/api/checkers_join',{uid:getUid(),code:code.toUpperCase()});
+  if(!res||!res.ok){setStatus(t('joinError'));return}
+  ckCode=code.toUpperCase();
+  localStorage.setItem('ck_game',ckCode);
+  ckShowGame(res.state);
+  ckPoll();
+}
+
+let ckPollTimer=null;
+function ckPoll(){
+  if(ckPollTimer)clearInterval(ckPollTimer);
+  ckPollTimer=setInterval(async()=>{
+    if(!ckCode){clearInterval(ckPollTimer);ckPollTimer=null;return}
+    await ckRefreshState();
+  },2000);
+}
+
+async function ckRefreshState(){
+  if(!ckCode)return;
+  const res=await api('/api/checkers_state',{uid:getUid(),code:ckCode});
+  if(!res||!res.ok){
+    localStorage.removeItem('ck_game');
+    ckCode=null;
+    showCheckers();
+    return;
+  }
+  ckShowGame(res.state);
+}
+
+function ckShowGame(st){
+  ckState=st;
+  ckSelected=null;
+  $('ckArea').style.display='block';
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('anaArea').style.display='none';
+  $('themeSelector').style.display='none';
+  $('shipHint').innerHTML='';
+  $('header').classList.add('in-game');
+  document.title='Checkers';
+  $('gameInfo').textContent=st.solo?'♟ vs Bot':'♟ Checkers';
+  ckRenderBoard(st);
+  if(st.phase==='finished'){
+    if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+    localStorage.removeItem('ck_game');
+    const icon=st.winner===1?'🏆':'💔';
+    const title=st.winner===1?t('win'):t('lose');
+    const desc=st.winner===1?'Checkers':'Checkers';
+    showResult(icon,title,desc,false);
+    $('actions').className='btn-row stack';
+    $('actions').innerHTML=`
+      <button class="btn success" onclick="ckStartSolo()">${t('playAgain')}</button>
+      <button class="btn outline" onclick="showCheckers()">${t('close')}</button>
+    `;
+    return;
+  }
+  if(st.my_turn){
+    setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
+    $('actions').className='btn-row';
+    const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('inviteFriend')}</button>`;
+    $('actions').innerHTML=`
+      ${inviteBtn}
+      <button class="btn outline" onclick="ckGetHint()">💡 Hint</button>
+      <button class="btn outline" onclick="leaveCkGame()">${t('quit')}</button>
+    `;
+  }else{
+    setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
+    $('actions').className='btn-row';
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveCkGame()">${t('quit')}</button>`;
+  }
+  if(!st.solo){
+    $('status').style.cursor='pointer';
+    $('status').title=t('copyCode');
+    $('status').onclick=()=>navigator.clipboard.writeText(st.code).then(()=>setStatus('✅ '+st.code,{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
+  }
+}
+
+function ckRenderBoard(st){
+  const board=$('ckBoard');
+  board.innerHTML='';
+  const grid=st.board;
+  const highlighted=new Set(st.highlighted_cells||[]);
+  const lastMove=st.last_move;
+  const lastCells=new Set();
+  const ckDests=ckComputeDests(st, ckSelected);
+  if(lastMove){
+    lastCells.add(lastMove[0][0]*8+lastMove[0][1]);
+    for(const s of lastMove[1])lastCells.add(s[0]*8+s[1]);
+  }
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const cell=document.createElement('div');
+      const isDark=(r+c)%2===1;
+      cell.className='ck-cell '+(isDark?'dark':'light');
+      const idx=r*8+c;
+      const piece=grid[idx];
+      if(ckSelected&&ckSelected[0]===r&&ckSelected[1]===c)cell.classList.add('selected');
+      if(isDark&&piece!==0){
+        const el=document.createElement('div');
+        const color=piece===1||piece===3?'white':'black';
+        const isKing=piece===3||piece===4;
+        el.className='ck-piece '+color+(isKing?' king':'');
+        if(lastCells.has(idx))el.classList.add('last-move');
+        cell.appendChild(el);
+      }
+      if(isDark&&st.my_turn&&highlighted.has(idx)){
+        cell.classList.add('highlight-src');
+        cell.style.cursor='pointer';
+        cell.onclick=()=>ckCellClick(r,c);
+      }
+      if(isDark&&ckDests&&ckDests.has(idx)){
+        cell.classList.add('highlight-dest');
+        cell.style.cursor='pointer';
+        cell.onclick=()=>ckCellClick(r,c);
+      }
+      board.appendChild(cell);
+    }
+  }
+}
+
+function ckComputeDests(st, sel){
+  if(!sel||!st||!st.valid_dests)return null;
+  const key=sel[0]*8+sel[1];
+  const arr=st.valid_dests[key];
+  return arr?new Set(arr):null;
+}
+
+async function ckCellClick(r,c){
+  if(!ckState||!ckState.my_turn)return;
+  if(ckSelected){
+    const sr=ckSelected[0],sc=ckSelected[1];
+    if(sr===r&&sc===c){ckSelected=null;ckRenderBoard(ckState);return}
+    const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:sr,start_c:sc,end_r:r,end_c:c});
+    if(!res||!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'' );ckSelected=null;ckRenderBoard(ckState);return}
+    sfxHit();
+    ckShowGame(res.state);
+    return;
+  }
+  const piece=ckState.board[r*8+c];
+  if(piece===0)return;
+  const color=piece===1||piece===3?1:2;
+  if(color!==ckState.turn)return;
+  ckSelected=[r,c];
+  ckRenderBoard(ckState);
+}
+
+async function ckGetHint(){
+  const res=await api('/api/checkers_hint',{uid:getUid(),code:ckCode});
+  if(!res||!res.ok){setStatus({ru:'Нет ходов',uk:'Немає ходів',en:'No moves'}[lang],'');return}
+  const h=res.hint;
+  ckSelected=[h.start[0],h.start[1]];
+  setStatus('💡 '+String.fromCharCode(65+h.end[1])+(8-h.end[0]),'');
+  ckRenderBoard(ckState);
+  // Highlight the hint destination
+  const cells=$('ckBoard').children;
+  const idx=h.end[0]*8+h.end[1];
+  if(cells[idx])cells[idx].classList.add('highlight-capture');
+}
+
+function leaveCkGame(){
+  if(!confirm(t('quitConfirm')))return;
+  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+  ckCode=null;ckState=null;
+  localStorage.removeItem('ck_game');
+  showCheckers();
+}
+
+function shareCkGame(){
+  if(!ckCode)return;
+  const url=`https://t.me/${botUsername||'...'}/app?startapp=${ckCode}`;
+  const texts={ru:'🎮 Играй со мной в Шашки!',uk:'🎮 Грай зі мною в Шашки!',en:'🎮 Play Checkers with me!'};
+  const text=texts[lang];
+  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+}
+
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
   if(!cont)return;
@@ -1334,6 +1603,10 @@ async function fetchActiveGames(){
     else if(g.type==='anagram'){
       var fin=g.finished?'<span class="badge">✅ '+t('anaOver').replace('{}',g.score)+'</span>':'<span class="badge playing">🔤 '+t('yourTurn')+'</span>';
       html+='<div class="active-game-row" onclick="resumeAna(\''+g.code+'\')"><div class="info"><span class="label">🔤 </span><span class="code">'+g.code+'</span></div>'+fin+'</div>';
+    }
+    else if(g.type==='checkers'){
+      var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
   }
   html+='</div>';
@@ -1362,12 +1635,28 @@ function resumeAna(code){
   }
 }
 
+function resumeCk(code){
+  ckCode=code;
+  localStorage.setItem('ck_game',code);
+  $('actions').innerHTML='';
+  ckRefreshState();
+  ckPoll();
+}
+
 function tryReconnect(){
   const saved=localStorage.getItem('sb_game');
   if(saved){
     gameCode=saved;
     refreshState();
     setTimeout(pollGame,1000);
+    fetchBotInfo();
+    return;
+  }
+  const ckSaved=localStorage.getItem('ck_game');
+  if(ckSaved){
+    ckCode=ckSaved;
+    ckRefreshState();
+    setTimeout(ckPoll,1000);
     fetchBotInfo();
     return;
   }
@@ -1397,6 +1686,18 @@ async function checkStartParam(){
       await refreshState();
       pollGame();
       return;
+    }
+    // Try Checkers
+    if(resolveRes.game === 'checkers'){
+      const ckRes = await api('/api/checkers_join', {uid: getUid(), code});
+      if(ckRes && ckRes.ok){
+        ckCode = code;
+        localStorage.setItem('ck_game', code);
+        $('actions').innerHTML = '';
+        ckShowGame(ckRes.state);
+        ckPoll();
+        return;
+      }
     }
     // Join failed – show error
     setStatus(t('joinError'), '');
