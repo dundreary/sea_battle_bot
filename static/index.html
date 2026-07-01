@@ -362,7 +362,7 @@ const LANG = {
     startBtn: '🎮 Почати гру',
     ownBoard: '🚢 ТВОЇ КОРАБЛІ',
     oppBoard: '🎯 ДОШКА СУПЕРНИКА',
-    legEmpty: 'пусто', legShip: 'корабель', legHit: 'попав', legMiss: 'повз', legSunk: 'потоплено',
+    legEmpty: 'порожньо', legShip: 'корабель', legHit: 'влучив', legMiss: 'повз', legSunk: 'потоплено',
     welcome: '🔱 Ласкаво просимо!',
     placing: '🚢 Розстановка — крути, поки не сподобається',
     reroll: '🔀 Переставити',
@@ -1518,7 +1518,7 @@ function ckRenderBoard(st){
   const board=$('ckBoard');
   board.innerHTML='';
   const grid=st.board;
-  const highlighted=new Set(st.highlighted_cells||[]);
+  const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>r*8+c));
   const lastMove=st.last_move;
   const lastCells=new Set();
   const ckDests=ckComputeDests(st, ckSelected);

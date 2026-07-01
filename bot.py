@@ -15,7 +15,7 @@ L10N = {
 def _(user, key):
     try:
         lc = (user.language_code or 'ru')[:2]
-        if lc.startswith('uk'):
+        if lc in ('uk', 'ua'):
             lc = 'uk'
         elif lc.startswith('en'):
             lc = 'en'
@@ -37,7 +37,7 @@ async def web_app_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = update.message.web_app_data.data.strip().upper()
     user = update.effective_user
     lc = (user.language_code or 'ru')[:2]
-    if lc.startswith('uk'):
+    if lc in ('uk', 'ua'):
         share = f"🎮 Морський бій\n\nКод гри: <b>{data}</b>\n\nВідкрийте гру та натисніть «🔗 Ввести код»"
     elif lc.startswith('en'):
         share = f"🎮 Sea Battle\n\nGame code: <b>{data}</b>\n\nOpen the game and tap «🔗 Enter Code»"
