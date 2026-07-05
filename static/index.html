@@ -298,6 +298,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="lang-btn" onclick="setLang('en')">EN</button>
   </div>
   <div class="sub" id="gameInfo">—</div>
+  <button class="btn primary" id="continueBtn" style="display:none;margin-top:8px;padding:8px 16px;font-size:13px" onclick="continueGame()"></button>
 </div>
 
 <div class="main" id="app">
@@ -1162,6 +1163,7 @@ function showMainMenu(){
   localStorage.removeItem('sb_game');
   localStorage.removeItem('pd_game');
   localStorage.removeItem('ck_game');
+  localStorage.removeItem('st_game');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
@@ -1199,6 +1201,7 @@ function showMainMenu(){
       <div class="card-desc">${t('startBtn')}</div>
     </div>
   `;
+  updateContinueButton();
   fetchActiveGames();
 }
 
@@ -1419,8 +1422,9 @@ function showPokerDice(){
   $('gameInfo').textContent=t('pdTitle');
   setStatus('');
   $('actions').className='btn-row stack';
+  var hasActiveGame = pdCode && localStorage.getItem('pd_game');
   var resumeHtml = '';
-  if(pdCode && localStorage.getItem('pd_game')){
+  if(hasActiveGame){
     resumeHtml = `<div class="active-game-row" onclick="resumePd('${pdCode}')">
       <div class="info"><span class="label">🎲 </span><span class="code">${pdCode}</span></div>
       <span class="badge playing">▶ ${t('continue')||'Продолжить'}</span>
@@ -1433,6 +1437,7 @@ function showPokerDice(){
       <div class="name">${t('pdSolo')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
+    ${!hasActiveGame ? `
     <div class="game-card" onclick="pdNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
       <div class="name">${t('pdFriend')}</div>
@@ -1443,6 +1448,7 @@ function showPokerDice(){
       <div class="name">${t('joinTitle')}</div>
       <div class="card-desc">${t('joinBtn')}</div>
     </div>
+    ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
 }
@@ -2565,9 +2571,7 @@ async function fetchActiveGames(){
   var html='<div class="active-games"><h3>▶ '+t('selectGame')+'</h3>';
   for(const g of res.games){
     if(g.type==='sea_battle'){
-      var label=g.solo?t('vsBot'):t('withFriend');
-      var badge=g.phase==='playing'?'<span class="badge playing">🎯 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+t('placing')+'</span>';
-      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
+      continue;
     }
     else if(g.type==='poker_dice'){
       var badge=g.my_turn?'<span class="badge playing">🎲 '+t('yourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
@@ -2647,6 +2651,28 @@ function tryReconnect(){
   showMenu();
   fetchActiveGames();
   fetchBotInfo().then(() => checkStartParam());
+}
+
+function continueGame(){
+  const saved=localStorage.getItem('sb_game');
+  if(saved){
+    gameCode=saved;
+    showShipHints = true;
+    $('actions').innerHTML='';
+    refreshState();
+    setTimeout(pollGame,500);
+  }
+}
+
+function updateContinueButton(){
+  const saved=localStorage.getItem('sb_game');
+  const btn=$('continueBtn');
+  if(saved && btn){
+    btn.textContent = t('continue');
+    btn.style.display='inline-flex';
+  }else if(btn){
+    btn.style.display='none';
+  }
 }
 
 async function checkStartParam(){
