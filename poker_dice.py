@@ -6,19 +6,19 @@ from typing import Dict, List, Optional, Any, Set
 CATEGORY_IDS = [
     'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
     'pair', 'two_pairs', 'three_of_kind', 'four_of_kind',
-    'full_house', 'straight', 'five_of_kind', 'chance',
+    'full_house', 'small_straight', 'large_straight', 'five_of_kind', 'chance',
 ]
 
 CATEGORY_NAMES = {
     'ru': ['1', '2', '3', '4', '5', '6',
            'Пара', 'Две пары', 'Тройка', 'Каре',
-           'Фулл-хаус', 'Стрит', 'Покер', 'Шанс'],
+           'Фулл-хаус', 'Малый стрит', 'Большой стрит', 'Покер', 'Шанс'],
     'en': ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes',
            'One Pair', 'Two Pairs', 'Three of a Kind', 'Four of a Kind',
-           'Full House', 'Straight', 'Five of a Kind', 'Chance'],
+           'Full House', 'Small Straight', 'Large Straight', 'Five of a Kind', 'Chance'],
     'uk': ['Очки', 'Двійки', 'Трійки', 'Четвірки', "П'ятірки", 'Шістки',
            'Пара', 'Дві пари', 'Трійка', 'Каре',
-           'Фулл-хаус', 'Стрит', 'Покер', 'Шанс'],
+           'Фулл-хаус', 'Малий стрит', 'Великий стрит', 'Покер', 'Шанс'],
 }
 
 BONUS_THRESHOLD = 63
@@ -55,13 +55,16 @@ def score_for_category(dice: List[int], category: str) -> int:
         return sum(dice) if sorted_counts and sorted_counts[0] >= 4 else 0
     if category == 'full_house':
         return 25 if sorted_counts[0] == 3 and len(sorted_counts) > 1 and sorted_counts[1] >= 2 else 0
-    if category == 'straight':
+    if category == 'small_straight':
         unique = sorted(set(dice))
-        if len(unique) == 5 and unique[-1] - unique[0] == 4:
-            return 40
         for i in range(len(unique) - 3):
             if unique[i + 3] - unique[i] == 3:
                 return 30
+        return 0
+    if category == 'large_straight':
+        unique = sorted(set(dice))
+        if len(unique) == 5 and unique[-1] - unique[0] == 4:
+            return 40
         return 0
     if category == 'five_of_kind':
         return 50 if sorted_counts and sorted_counts[0] == 5 else 0
