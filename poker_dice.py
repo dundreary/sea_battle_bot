@@ -3,6 +3,71 @@ import string
 from typing import Dict, List, Optional, Any, Set
 
 
+CATEGORY_IDS = [
+    'ones', 'twos', 'threes', 'fours', 'fives', 'sixes',
+    'pair', 'two_pairs', 'three_of_kind', 'four_of_kind',
+    'full_house', 'straight', 'five_of_kind', 'chance',
+]
+
+CATEGORY_NAMES = {
+    'ru': ['1', '2', '3', '4', '5', '6',
+           'Пара', 'Две пары', 'Тройка', 'Каре',
+           'Фулл-хаус', 'Стрит', 'Покер', 'Шанс'],
+    'en': ['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes',
+           'One Pair', 'Two Pairs', 'Three of a Kind', 'Four of a Kind',
+           'Full House', 'Straight', 'Five of a Kind', 'Chance'],
+    'uk': ['Очки', 'Двійки', 'Трійки', 'Четвірки', "П'ятірки", 'Шістки',
+           'Пара', 'Дві пари', 'Трійка', 'Каре',
+           'Фулл-хаус', 'Стрит', 'Покер', 'Шанс'],
+}
+
+BONUS_THRESHOLD = 63
+BONUS_SCORE = 35
+
+
+def score_for_category(dice: List[int], category: str) -> int:
+    counts = {}
+    for d in dice:
+        counts[d] = counts.get(d, 0) + 1
+    sorted_counts = sorted(counts.values(), reverse=True)
+
+    if category == 'ones':
+        return sum(d for d in dice if d == 1)
+    if category == 'twos':
+        return sum(d for d in dice if d == 2)
+    if category == 'threes':
+        return sum(d for d in dice if d == 3)
+    if category == 'fours':
+        return sum(d for d in dice if d == 4)
+    if category == 'fives':
+        return sum(d for d in dice if d == 5)
+    if category == 'sixes':
+        return sum(d for d in dice if d == 6)
+    if category == 'chance':
+        return sum(dice)
+    if category == 'pair':
+        return sum(dice) if sorted_counts and sorted_counts[0] >= 2 else 0
+    if category == 'two_pairs':
+        return sum(dice) if len(sorted_counts) >= 2 and sorted_counts[0] >= 2 and sorted_counts[1] >= 2 else 0
+    if category == 'three_of_kind':
+        return sum(dice) if sorted_counts and sorted_counts[0] >= 3 else 0
+    if category == 'four_of_kind':
+        return sum(dice) if sorted_counts and sorted_counts[0] >= 4 else 0
+    if category == 'full_house':
+        return 25 if sorted_counts[0] == 3 and len(sorted_counts) > 1 and sorted_counts[1] >= 2 else 0
+    if category == 'straight':
+        unique = sorted(set(dice))
+        if len(unique) == 5 and unique[-1] - unique[0] == 4:
+            return 40
+        for i in range(len(unique) - 3):
+            if unique[i + 3] - unique[i] == 3:
+                return 30
+        return 0
+    if category == 'five_of_kind':
+        return 50 if sorted_counts and sorted_counts[0] == 5 else 0
+    return 0
+
+
 def evaluate(dice: List[int]) -> Dict[str, Any]:
     counts = {}
     for d in dice:
@@ -32,21 +97,49 @@ def evaluate(dice: List[int]) -> Dict[str, Any]:
     return {'rank': rank, 'score': score, 'name': name}
 
 
+def _upper_sum(scorecard: Dict[str, Optional[int]]) -> int:
+    return sum(scorecard.get(c, 0) or 0 for c in ['ones', 'twos', 'threes', 'fours', 'fives', 'sixes'])
+
+
+def _total_score(scorecard: Dict[str, Optional[int]]) -> int:
+    total = sum(v for v in scorecard.values() if v is not None)
+    if _upper_sum(scorecard) >= BONUS_THRESHOLD:
+        total += BONUS_SCORE
+    return total
+
+
+def _remaining_categories(scorecard: Dict[str, Optional[int]]) -> List[str]:
+    return [c for c in CATEGORY_IDS if scorecard.get(c) is None]
+
+
 class PokerDiceGame:
-    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False, total_rounds: int = 5):
+    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
-        self.total_rounds = total_rounds
-        self.current_round = 1
-        self.players = {
-            1: {'dice': [], 'rolls': 3, 'scored': False, 'hand': None},
-            2: {'dice': [], 'rolls': 3, 'scored': False, 'hand': None},
-        }
-        self.round_history = []
-        self.turn = 1
         self.phase = 'playing'
+        self.turn = 1
+        self.players = {
+            1: self._fresh_player(),
+            2: self._fresh_player(),
+        }
+
+    def _fresh_player(self):
+        return {
+            'dice': [],
+            'rolls': 3,
+            'scored': False,
+            'hand': None,
+            'scorecard': {c: None for c in CATEGORY_IDS},
+        }
+
+    def _reset_player(self, pnum: int):
+        p = self.players[pnum]
+        p['dice'] = []
+        p['rolls'] = 3
+        p['scored'] = False
+        p['hand'] = None
 
     def player_num(self, uid: int) -> Optional[int]:
         if uid == self.player1_id:
@@ -60,7 +153,13 @@ class PokerDiceGame:
         if pnum is None or pnum != self.turn or self.phase != 'playing':
             return None
         p = self.players[pnum]
-        if p['scored'] or p['rolls'] <= 0:
+
+        if not _remaining_categories(p['scorecard']):
+            return None
+
+        if p['scored']:
+            self._reset_player(pnum)
+        elif p['rolls'] <= 0:
             return None
 
         keep: Set[int] = set(keep_indices or [])
@@ -75,124 +174,117 @@ class PokerDiceGame:
         p['dice'] = dice
         p['rolls'] -= 1
 
-        if p['rolls'] <= 0:
-            p['hand'] = evaluate(dice)
-            p['scored'] = True
-            self._after_score(pnum)
-
         return self.get_state(pnum)
 
-    def score(self, uid: int) -> Optional[Dict]:
+    def score(self, uid: int, category: str) -> Optional[Dict]:
         pnum = self.player_num(uid)
         if pnum is None or pnum != self.turn or self.phase != 'playing':
             return None
         p = self.players[pnum]
         if p['scored'] or not p['dice']:
             return None
+        if category not in CATEGORY_IDS:
+            return None
+        if p['scorecard'].get(category) is not None:
+            return None
+        if not _remaining_categories(p['scorecard']):
+            return None
 
+        p['scorecard'][category] = score_for_category(p['dice'], category)
         p['hand'] = evaluate(p['dice'])
         p['scored'] = True
-        self._after_score(pnum)
+
+        self._advance_turn(pnum)
+
         return self.get_state(pnum)
 
-    def _after_score(self, pnum: int):
-        other = 3 - pnum
-        if self.players[other]['scored']:
-            self._end_round()
-        else:
-            if self.solo and pnum == 1:
+    def _advance_turn(self, pnum: int):
+        p1_remaining = _remaining_categories(self.players[1]['scorecard'])
+        p2_remaining = _remaining_categories(self.players[2]['scorecard'])
+
+        if not p1_remaining and not p2_remaining:
+            self.phase = 'finished'
+            return
+
+        if self.solo:
+            if pnum == 1 and p2_remaining:
                 self.turn = 2
                 self._bot_play()
+            elif pnum == 2 and p1_remaining:
+                self.turn = 1
+                self._reset_player(1)
             else:
-                self.turn = other
-
-    def _end_round(self):
-        self.round_history.append({
-            'round': self.current_round,
-            'p1': dict(self.players[1]['hand']),
-            'p2': dict(self.players[2]['hand']),
-        })
-
-        if self.current_round >= self.total_rounds:
-            self.phase = 'finished'
+                self.phase = 'finished'
         else:
-            self.current_round += 1
-            self.players[1] = {'dice': [], 'rolls': 3, 'scored': False, 'hand': None}
-            self.players[2] = {'dice': [], 'rolls': 3, 'scored': False, 'hand': None}
-            self.turn = 1
+            next_pnum = 3 - pnum
+            next_rem = p1_remaining if next_pnum == 1 else p2_remaining
+            if next_rem:
+                self.turn = next_pnum
+                if self.players[next_pnum]['scored']:
+                    self._reset_player(next_pnum)
+            else:
+                curr_rem = p1_remaining if pnum == 1 else p2_remaining
+                if curr_rem:
+                    self.turn = pnum
+                    if self.players[pnum]['scored']:
+                        self._reset_player(pnum)
+                else:
+                    self.phase = 'finished'
 
     def _bot_play(self):
         p = self.players[2]
-        dice = [random.randint(1, 6) for _ in range(5)]
-        for r in range(3):
-            counts = {}
-            for d in dice:
-                counts[d] = counts.get(d, 0) + 1
-            if r < 2:
-                keep = set()
-                for i, d in enumerate(dice):
-                    if counts[d] >= 2:
-                        keep.add(i)
-                if not keep:
-                    keep = {i for i, d in enumerate(dice) if d == max(dice)}
-                for i in range(5):
-                    if i not in keep:
-                        dice[i] = random.randint(1, 6)
-        p['dice'] = dice
-        p['hand'] = evaluate(dice)
-        p['scored'] = True
-        self._after_score(2)
+        if not _remaining_categories(p['scorecard']):
+            self._advance_turn(2)
+            return
 
-    def _get_total(self, pnum: int) -> int:
-        return sum(r[f'p{pnum}']['score'] for r in self.round_history)
+        p['dice'] = [random.randint(1, 6) for _ in range(5)]
+        p['rolls'] = 0
+
+        remaining = _remaining_categories(p['scorecard'])
+        best_cat = remaining[0]
+        best_score = -1
+        for cat in remaining:
+            s = score_for_category(p['dice'], cat)
+            if s > best_score:
+                best_score = s
+                best_cat = cat
+
+        p['scorecard'][best_cat] = best_score
+        p['hand'] = evaluate(p['dice'])
+        p['scored'] = True
+
+        self._advance_turn(2)
 
     def _get_winner(self):
         if self.phase != 'finished':
             return None
-        total1 = self._get_total(1)
-        total2 = self._get_total(2)
+        total1 = _total_score(self.players[1]['scorecard'])
+        total2 = _total_score(self.players[2]['scorecard'])
         if total1 > total2:
             return self.player1_id
         if total2 > total1:
             return self.player2_id if self.player2_id else 0
         return -1
 
-    def _get_history_for_player(self, pnum: int) -> List[Dict]:
-        history = []
-        for r in self.round_history:
-            my_key = f'p{pnum}'
-            opp_key = f'p{3-pnum}'
-            my_hand = r[my_key]
-            opp_hand = r[opp_key]
-            entry = {
-                'round': r['round'],
-                'my_score': my_hand['score'],
-                'my_hand': my_hand['name'],
-                'my_rank': my_hand['rank'],
-                'opp_score': opp_hand['score'],
-                'opp_hand': opp_hand['name'],
-                'opp_rank': opp_hand['rank'],
-            }
-            if my_hand['rank'] < opp_hand['rank']:
-                entry['result'] = 'win'
-            elif my_hand['rank'] > opp_hand['rank']:
-                entry['result'] = 'lose'
-            elif my_hand['score'] > opp_hand['score']:
-                entry['result'] = 'win'
-            elif my_hand['score'] < opp_hand['score']:
-                entry['result'] = 'lose'
-            else:
-                entry['result'] = 'draw'
-            history.append(entry)
-        return history
-
     def get_state(self, pnum: int) -> Dict[str, Any]:
         p = self.players[pnum]
         opp = self.players[3 - pnum]
 
         winner = self._get_winner()
-        total_my = self._get_total(pnum)
-        total_opp = self._get_total(3 - pnum)
+        my_total = _total_score(p['scorecard'])
+        opp_total = _total_score(opp['scorecard'])
+        my_upper = _upper_sum(p['scorecard'])
+
+        my_sc = {}
+        for c in CATEGORY_IDS:
+            val = p['scorecard'].get(c)
+            if val is not None:
+                my_sc[c] = val
+        opp_sc = {}
+        for c in CATEGORY_IDS:
+            val = opp['scorecard'].get(c)
+            if val is not None:
+                opp_sc[c] = val
 
         return {
             'code': self.code,
@@ -213,11 +305,19 @@ class PokerDiceGame:
             'opponent_hand_name': opp['hand']['name'] if opp['hand'] else None,
             'winner': winner,
             'you_id': self.player1_id if pnum == 1 else self.player2_id,
-            'current_round': self.current_round,
-            'total_rounds': self.total_rounds,
-            'round_history': self._get_history_for_player(pnum),
-            'total_score': total_my,
-            'opponent_total_score': total_opp,
+            'scorecard': my_sc,
+            'opponent_scorecard': opp_sc,
+            'scorecard_all': {c: p['scorecard'][c] for c in CATEGORY_IDS},
+            'opponent_scorecard_all': {c: opp['scorecard'][c] for c in CATEGORY_IDS},
+            'total_score': my_total,
+            'opponent_total_score': opp_total,
+            'upper_sum': my_upper,
+            'bonus': my_upper >= BONUS_THRESHOLD,
+            'opponent_upper_sum': _upper_sum(opp['scorecard']),
+            'opponent_bonus': _upper_sum(opp['scorecard']) >= BONUS_THRESHOLD,
+            'categories_left': _remaining_categories(p['scorecard']),
+            'opponent_categories_left': _remaining_categories(opp['scorecard']),
+            'max_categories': len(CATEGORY_IDS),
         }
 
     @staticmethod

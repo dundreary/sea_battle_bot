@@ -439,7 +439,8 @@ def _handle_pd_score(data, uid, code):
     game = pd_games.get(code)
     if not game:
         return {"error": "not_found"}
-    st = game.score(uid)
+    category = data.get("category", "")
+    st = game.score(uid, category)
     if st is None:
         return {"error": "invalid_score"}
     save()

@@ -198,6 +198,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-die.v6{background:linear-gradient(135deg,#6a1b9a,#8e24aa)}
 #pdScores{font-size:15px;color:var(--accent-primary-light)}
 .pd-round{text-align:center;font-size:13px;color:var(--accent-primary);font-weight:700;margin:4px 0}
+.pd-scorecard{width:100%;max-width:340px;margin:8px 0;border-collapse:collapse;font-size:13px}
+.pd-scorecard th{padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
+.pd-scorecard th.cat-name{color:var(--accent-primary-light);text-align:left}
+.pd-scorecard th.cat-score{color:var(--text-muted);text-align:center;width:40px}
+.pd-scorecard td{padding:3px 6px;border-bottom:1px solid var(--border-color);text-align:center}
+.pd-scorecard td.cat-name{text-align:left;color:var(--text-secondary)}
+.pd-scorecard td.cat-score{color:var(--accent-primary);font-weight:600}
+.pd-scorecard tr.used td.cat-name{color:var(--text-muted)}
+.pd-scorecard tr.used td.cat-score{color:var(--text-tertiary)}
+.pd-scorecard tr.available{cursor:pointer}
+.pd-scorecard tr.available:hover{background:var(--bg-board-alt)}
+.pd-scorecard tr.available td.cat-name{color:#fff}
+.pd-scorecard tr.section-divider td{border-bottom:2px solid var(--accent-primary);padding:0}
+.pd-scorecard tr.bonus-row td{color:var(--color-warning);font-weight:600;font-size:12px}
+.pd-scorecard tr.total-row td{font-weight:700;color:#fff;border-top:2px solid var(--accent-primary);font-size:14px;padding:6px}
+.pd-scorecard tr.total-row.win td{color:#66BB6A}
+.pd-scorecard tr.total-row.lose td{color:#EF5350}
 .pd-scoreboard{width:100%;max-width:340px;margin:8px 0;border-collapse:collapse;font-size:12px}
 .pd-scoreboard th{color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
 .pd-scoreboard td{text-align:center;padding:4px 6px;border-bottom:1px solid var(--border-color);color:var(--text-secondary)}
@@ -310,6 +327,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <span id="pdScores"></span>
       <span id="pdRollsLeft"></span>
     </div>
+    <div id="pdScorecardContainer"></div>
     <div class="pd-dice" id="pdDice"></div>
     <div class="btn-row" id="pdActions" style="margin-top:8px"></div>
     <div class="pd-result" id="pdResult"></div>
@@ -440,6 +458,14 @@ const LANG = {
     pdKeep: 'Закрепить',
     pdRound: 'Раунд {}',
     pdResultShort: 'Рез.',
+    pdScorecard: 'Табло',
+    pdScoreBtn: 'Очки',
+    pdOpp: 'Сопер.',
+    pdBonus: 'Бонус',
+    pdTotal: 'Итого',
+    pdChooseCat: 'Выбери категорию',
+    pdCategoriesLeft: 'Осталось',
+    pdMe: 'Я',
   },
   uk: {
     title: 'Морський бій',
@@ -553,6 +579,14 @@ const LANG = {
     pdKeep: 'Закріпити',
     pdRound: 'Раунд {}',
     pdResultShort: 'Рез.',
+    pdScorecard: 'Табло',
+    pdScoreBtn: 'Очки',
+    pdOpp: 'Супер.',
+    pdBonus: 'Бонус',
+    pdTotal: 'Разом',
+    pdChooseCat: 'Обери категорію',
+    pdCategoriesLeft: 'Залишилось',
+    pdMe: 'Я',
   },
   en: {
     title: 'Sea Battle',
@@ -666,6 +700,14 @@ const LANG = {
     pdKeep: 'Keep',
     pdRound: 'Round {}',
     pdResultShort: 'Res.',
+    pdScorecard: 'Scorecard',
+    pdScoreBtn: 'Score',
+    pdOpp: 'Opp.',
+    pdBonus: 'Bonus',
+    pdTotal: 'Total',
+    pdChooseCat: 'Choose category',
+    pdCategoriesLeft: 'Left',
+    pdMe: 'Me',
   }
 };
 
@@ -1344,8 +1386,22 @@ function showSeaBattle(){ showSeaBattleMenu(); }
 
 // ---- Poker Dice ----
 let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null;
-const PD_DICE_SYMBOLS = ['1','2','3','4','5','6'];
-const PD_HAND_EMOJIS = ['🎯','🔥','🏠','📏','🔱','✌️','👆','💨'];
+
+const PD_DICE_FACES = ['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
+const PD_CATEGORIES = ['ones','twos','threes','fours','fives','sixes','pair','two_pairs','three_of_kind','four_of_kind','full_house','straight','five_of_kind','chance'];
+const PD_CAT_NAMES = {
+  ru: ['1','2','3','4','5','6','Пара','Две пары','Тройка','Каре','Фулл-хаус','Стрит','Покер','Шанс'],
+  en: ['Ones','Twos','Threes','Fours','Fives','Sixes','One Pair','Two Pairs','Three of a Kind','Four of a Kind','Full House','Straight','Five of a Kind','Chance'],
+  uk: ['Очки','Двійки','Трійки','Четвірки',"П'ятірки",'Шістки','Пара','Дві пари','Трійка','Каре','Фулл-хаус','Стрит','Покер','Шанс'],
+};
+const PD_CAT_SHORT = {
+  ru: ['1','2','3','4','5','6','Пара','2пар','Тройка','Каре','Фулл','Стрит','Покер','Шанс'],
+  en: ['1','2','3','4','5','6','Pair','2Pair','3Kind','4Kind','F.H.','Strt','5Kind','Chnc'],
+  uk: ['1','2','3','4','5','6','Пара','2пар','3одн','4одн','Ф.-х','Стрит','5одн','Шанс'],
+};
+
+function catName(id){ const i=PD_CATEGORIES.indexOf(id); return PD_CAT_NAMES[lang]?.[i]||id; }
+function catShort(id){ const i=PD_CATEGORIES.indexOf(id); return PD_CAT_SHORT[lang]?.[i]||id; }
 
 function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -1389,6 +1445,7 @@ async function pdStartSolo(){
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
   localStorage.setItem('pd_game',pdCode);
+  pdKept = new Set();
   pdShowGame(res.state);
 }
 
@@ -1397,6 +1454,7 @@ async function pdNewMulti(){
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
   localStorage.setItem('pd_game',pdCode);
+  pdKept = new Set();
   pdShowGame(res.state);
   pdPoll();
 }
@@ -1406,6 +1464,7 @@ async function pdJoin(code){
   if(!res||!res.ok){setStatus(t('joinError'));return}
   pdCode=code.toUpperCase();
   localStorage.setItem('pd_game',pdCode);
+  pdKept = new Set();
   pdShowGame(res.state);
   pdPoll();
 }
@@ -1454,61 +1513,115 @@ function pdShowGame(st){
     return;
   }
 
-  // Render round info
-  const roundEl = document.getElementById('pdRound') || (()=>{
-    const el = document.createElement('div');
-    el.id = 'pdRound';
-    el.className = 'pd-round';
-    $('pdInfo').before(el);
-    return el;
-  })();
-  roundEl.textContent = `${t('pdRound')} ${st.current_round}/${st.total_rounds}`;
+  // Clear kept dice when it's a fresh turn (empty dice)
+  if(!st.dice || st.dice.length === 0 || st.scored){
+    pdKept = new Set();
+  }
 
-  // Render scoreboard history
-  pdRenderHistory(st);
-
-  // Render dice
-  pdKept = new Set();
+  pdRenderScorecard(st);
   pdRenderDice(st);
   pdRenderActions(st);
   pdRenderInfo(st);
 }
 
-function pdRenderHistory(st){
-  const cont = document.getElementById('pdScoreboard');
-  if(cont) cont.remove();
-  if(!st.round_history || st.round_history.length === 0) return;
+function pdRenderScorecard(st){
+  const cont = $('pdScorecardContainer');
+  cont.innerHTML = '';
+
+  const categoriesLeft = st.categories_left || [];
+  const totalCats = st.max_categories || 14;
+  const filledCount = totalCats - categoriesLeft.length;
+
   const table = document.createElement('table');
-  table.id = 'pdScoreboard';
-  table.className = 'pd-scoreboard';
-  let html = '<tr><th>#</th><th>🎲 '+{ru:'Мои очки',uk:'Мої очки',en:'My pts'}[lang]+'</th><th>🎯 '+{ru:'Очки соперника',uk:'Очки суперника',en:'Opp pts'}[lang]+'</th><th>'+t('pdResultShort')+'</th></tr>';
-  for(const r of st.round_history){
-    const cls = r.result === 'win' ? 'r-win' : r.result === 'lose' ? 'r-lose' : 'r-draw';
-    const icon = r.result === 'win' ? '🏆' : r.result === 'lose' ? '💔' : '➖';
-    html += `<tr class="${cls}"><td>${r.round}</td><td>${r.my_score}</td><td>${r.opp_score}</td><td>${icon}</td></tr>`;
-  }
-  html += `<tr class="total-row ${st.total_score > st.opponent_total_score ? 'win' : st.total_score < st.opponent_total_score ? 'lose' : ''}"><td>Σ</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td><td>${st.total_score > st.opponent_total_score ? '🏆' : st.total_score < st.opponent_total_score ? '💔' : '➖'}</td></tr>`;
+  table.className = 'pd-scorecard';
+  table.id = 'pdScorecardEl';
+
+  let html = `<tr><th class="cat-name">📋 ${t('pdScorecard')||'Табло'} (${filledCount}/${totalCats})</th><th class="cat-score">${t('pdScoreBtn')||'Очки'}</th><th class="cat-score" style="color:var(--text-hint)">${t('pdOpp')||'Сопер.'}</th></tr>`;
+
+  const sc = st.scorecard || {};
+  const oppSc = st.opponent_scorecard || {};
+  const scAll = st.scorecard_all || {};
+  const oppScAll = st.opponent_scorecard_all || {};
+
+  const renderCat = (catId) => {
+    const i = PD_CATEGORIES.indexOf(catId);
+    const isUpper = i < 6;
+    const myVal = scAll[catId];
+    const oppVal = oppScAll[catId];
+    const canScore = categoriesLeft.includes(catId) && st.my_turn && !st.scored && st.dice && st.dice.length > 0;
+    const cls = canScore ? 'available' : (myVal !== null ? 'used' : '');
+    const myDisplay = myVal !== null ? myVal : (canScore ? '-' : '');
+    const oppDisplay = oppVal !== null ? oppVal : (oppVal === null ? '' : oppVal);
+
+    html += `<tr class="${cls}" data-cat="${catId}">`;
+    html += `<td class="cat-name">${isUpper ? (i+1)+' ⚀' : '🎲'} ${catName(catId)}</td>`;
+    html += `<td class="cat-score">${myDisplay}</td>`;
+    html += `<td class="cat-score" style="color:var(--text-hint)">${oppDisplay}</td>`;
+    html += `</tr>`;
+  };
+
+  // Upper section
+  for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
+
+  // Bonus row
+  const bonus = st.bonus;
+  const upperSum = st.upper_sum || 0;
+  html += `<tr class="bonus-row"><td>🎁 ${t('pdBonus')||'Бонус'} (≥63=+35)</td><td>${bonus ? '+35' : upperSum+'/63'}</td><td style="color:var(--text-hint)">${st.opponent_bonus ? '+35' : (st.opponent_upper_sum||0)+'/63'}</td></tr>`;
+
+  // Divider
+  html += `<tr class="section-divider"><td colspan="3"></td></tr>`;
+
+  // Lower section
+  for(let i = 6; i < PD_CATEGORIES.length; i++) renderCat(PD_CATEGORIES[i]);
+
+  // Total row
+  const totalCls = st.total_score > st.opponent_total_score ? 'total-row win' : st.total_score < st.opponent_total_score ? 'total-row lose' : 'total-row';
+  html += `<tr class="${totalCls}"><td>Σ ${t('pdTotal')||'Итого'}</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td></tr>`;
+
   table.innerHTML = html;
-  $('pdDice').after(table);
+  cont.appendChild(table);
+
+  // Attach click handlers for available categories
+  table.querySelectorAll('tr.available').forEach(row => {
+    row.addEventListener('click', () => {
+      const cat = row.dataset.cat;
+      if(cat) pdDoScore(cat);
+    });
+  });
 }
 
 function pdRenderDice(st){
   const cont=$('pdDice');
   cont.innerHTML='';
   const dice=st.dice||[];
-  for(let i=0;i<5;i++){
+
+  // Build array of {value, index} then sort: kept first
+  const items = dice.map((v, i) => ({value: v, index: i}));
+  items.sort((a, b) => {
+    const aKept = pdKept.has(a.index) ? 0 : 1;
+    const bKept = pdKept.has(b.index) ? 0 : 1;
+    if(aKept !== bKept) return aKept - bKept;
+    return a.index - b.index;
+  });
+
+  for(const item of items){
     const die=document.createElement('div');
     die.className='pd-die';
-    if(dice[i]){
-      die.textContent=PD_DICE_SYMBOLS[dice[i]-1];
-      die.classList.add('v'+dice[i]);
+    const isKept = pdKept.has(item.index);
+    if(item.value){
+      die.textContent=PD_DICE_FACES[item.value-1];
+      die.classList.add('v'+item.value);
+      die.dataset.val = item.value;
     }else{
-      die.textContent='?';
+      die.textContent='⚀';
       die.style.opacity='.3';
+      die.dataset.val = '0';
     }
-    die.dataset.idx=i;
+    die.dataset.idx=item.index;
+    die.dataset.origIdx=item.index;
+    if(isKept) die.classList.add('kept');
     if(st.my_turn && !st.scored && st.rolls_left>0){
-      die.onclick=()=>pdToggleKeep(i);
+      die.onclick=()=>pdToggleKeep(item.index);
     }else{
       die.classList.add('roll-finished');
     }
@@ -1521,7 +1634,8 @@ function pdToggleKeep(idx){
   else pdKept.add(idx);
   const dice=$('pdDice').children;
   for(let i=0;i<dice.length;i++){
-    if(pdKept.has(i)) dice[i].classList.add('kept');
+    const origIdx = parseInt(dice[i].dataset.origIdx);
+    if(pdKept.has(origIdx)) dice[i].classList.add('kept');
     else dice[i].classList.remove('kept');
   }
 }
@@ -1533,17 +1647,20 @@ function pdRenderActions(st){
     return;
   }
   if(st.rolls_left>0){
-    const keep=Array.from(pdKept);
     $('actions').innerHTML=`
       <button class="btn success" onclick="pdDoRoll()">${t('pdRoll')} (${st.rolls_left})</button>
-      <button class="btn outline" onclick="pdDoScore()">${t('pdScore')}</button>
       <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
     `;
   }else{
     $('actions').innerHTML=`
-      <button class="btn primary" onclick="pdDoScore()">${t('pdScore')}</button>
-      <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
+      <button class="btn primary" onclick="leavePdGame()">${t('quit')}</button>
     `;
+  }
+  if(st.rolls_left<3 && st.dice && st.dice.length>0){
+    const catLeft = st.categories_left || [];
+    if(catLeft.length > 0){
+      $('actions').innerHTML += `<div style="width:100%;text-align:center;padding:4px 0;font-size:12px;color:var(--text-muted)">⬇ ${t('pdChooseCat')||'Выбери категорию в таблице'}</div>`;
+    }
   }
 }
 
@@ -1559,35 +1676,26 @@ function pdRenderInfo(st){
     pdRenderResult(st);
     return;
   }
-  const roundStr = t('pdRound').replace('{}', st.current_round + '/' + st.total_rounds);
 
-  // Mid-round: player scored but round not yet over
+  const catLeft = st.categories_left || [];
+  const catStr = t('pdCategoriesLeft') || 'Осталось:';
+  const progressStr = `📋 ${catStr} ${catLeft.length}/${st.max_categories}`;
+
   if(st.scored){
-    const handEmoji = (rank) => rank !== null && rank !== undefined ? PD_HAND_EMOJIS[rank] || '' : '';
-    let html = '';
     if(st.hand_name){
-      html += `<div class="pd-result">
-        <div style="font-size:13px;color:var(--text-muted)">${t('pdYourHand')}:</div>
-        <div class="hand-name">${handEmoji(st.hand_rank)} ${st.hand_name}</div>
-        <div class="hand-score">${st.hand_score} pts</div>
+      $('pdResult').innerHTML = `<div class="pd-result" style="margin:0;padding:4px">
+        <div class="hand-name" style="font-size:14px">${st.hand_name} = ${st.hand_score} pts</div>
       </div>`;
     }
-    if(st.opponent_scored && st.opponent_hand_name){
-      html += `<div class="pd-opponent">
-        <div style="font-size:13px;color:var(--text-muted)">${t('pdOppHand')}:</div>
-        <div class="hand-name">${handEmoji(st.opponent_hand_rank)} ${st.opponent_hand_name}</div>
-        <div class="hand-score">${st.opponent_hand_score} pts</div>
-      </div>`;
-    }
-    $('pdResult').innerHTML = html;
-    setStatus(roundStr + ' — ' + t('pdWaiting'), '');
+    setStatus(progressStr + ' — ' + t('pdWaiting'), '');
     return;
   }
 
   if(st.my_turn){
-    setStatus(roundStr + ' — ' + t('pdRollsLeft').replace('{}',st.rolls_left),'battle');
+    const rollsLeftStr = st.rolls_left > 0 ? ' · ' + t('pdRollsLeft').replace('{}',st.rolls_left) : ' · ' + (t('pdChooseCat')||'Выбери категорию');
+    setStatus(progressStr + rollsLeftStr,'battle');
   }else{
-    setStatus(roundStr + ' — ' + t('pdWaiting'),'');
+    setStatus(progressStr + ' — ' + t('pdWaiting'),'');
   }
 }
 
@@ -1599,49 +1707,59 @@ async function pdDoRoll(){
   pdShowGame(res.state);
 }
 
-async function pdDoScore(){
-  if(!pdState)return;
-  const res=await api('/api/pd_score',{uid:getUid(),code:pdCode});
+async function pdDoScore(category){
+  if(!pdState || !category) return;
+  const keep=Array.from(pdKept);
+  const res=await api('/api/pd_score',{uid:getUid(),code:pdCode,category:category,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
+  pdKept = new Set();
   pdShowGame(res.state);
 }
 
 function pdRenderResult(st){
   const div=$('pdResult');
-  const oldTable = document.getElementById('pdScoreboard');
-  if(oldTable) oldTable.remove();
-  const oldRound = document.getElementById('pdRound');
-  if(oldRound) oldRound.remove();
+  const oldTable = document.getElementById('pdScorecardContainer');
+  if(oldTable) oldTable.innerHTML = '';
 
-  // Build round history + totals table
   let html = '';
-  if(st.round_history && st.round_history.length > 0){
-    html += '<table class="pd-scoreboard" style="margin:8px auto">';
-    html += '<tr><th>#</th><th>🎲 '+{ru:'Мои очки',uk:'Мої очки',en:'My pts'}[lang]+'</th><th>🎯 '+{ru:'Очки соперника',uk:'Очки суперника',en:'Opp pts'}[lang]+'</th><th>'+t('pdResultShort')+'</th></tr>';
-    for(const r of st.round_history){
-      const cls = r.result === 'win' ? 'r-win' : r.result === 'lose' ? 'r-lose' : 'r-draw';
-      const icon = r.result === 'win' ? '🏆' : r.result === 'lose' ? '💔' : '➖';
-      html += `<tr class="${cls}"><td>${r.round}</td><td>${r.my_score}</td><td>${r.opp_score}</td><td>${icon}</td></tr>`;
-    }
-    const totalCls = st.total_score > st.opponent_total_score ? 'total-row win' : st.total_score < st.opponent_total_score ? 'total-row lose' : 'total-row';
-    html += `<tr class="${totalCls}"><td>Σ</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td><td>${st.total_score > st.opponent_total_score ? '🏆' : st.total_score < st.opponent_total_score ? '💔' : '➖'}</td></tr>`;
-    html += '</table>';
-  }
 
-  const handEmoji=(rank)=>rank!==null && rank!==undefined ? PD_HAND_EMOJIS[rank]||'' : '';
+  // Scorecard final table
+  html += '<table class="pd-scorecard" style="margin:8px auto">';
+  html += `<tr><th class="cat-name"></th><th class="cat-score">🎲 ${t('pdMe')||'Я'}</th><th class="cat-score">🎯 ${t('pdOpp')||'Сопер.'}</th></tr>`;
+
+  const sc = st.scorecard_all || {};
+  const oppSc = st.opponent_scorecard_all || {};
+
+  const renderCat = (catId) => {
+    const i = PD_CATEGORIES.indexOf(catId);
+    const isUpper = i < 6;
+    const myVal = sc[catId];
+    const oppVal = oppSc[catId];
+    html += `<tr><td class="cat-name">${isUpper ? (i+1)+' ⚀' : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
+  };
+
+  for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
+  const bonus = st.bonus;
+  html += `<tr class="bonus-row"><td>🎁 ${t('pdBonus')||'Бонус'} (≥63)</td><td>${bonus ? '+35' : '0'}</td><td style="color:var(--text-hint)">${st.opponent_bonus ? '+35' : '0'}</td></tr>`;
+  html += `<tr class="section-divider"><td colspan="3"></td></tr>`;
+  for(let i = 6; i < PD_CATEGORIES.length; i++) renderCat(PD_CATEGORIES[i]);
+
+  const totalCls = st.total_score > st.opponent_total_score ? 'total-row win' : st.total_score < st.opponent_total_score ? 'total-row lose' : 'total-row';
+  html += `<tr class="${totalCls}"><td>Σ ${t('pdTotal')||'Итого'}</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td></tr>`;
+  html += '</table>';
 
   if(st.hand_name){
-    html+=`<div class="pd-result">
+    html+=`<div class="pd-result" style="margin:4px auto;max-width:340px">
       <div style="font-size:13px;color:var(--text-muted)">${t('pdYourHand')}:</div>
-      <div class="hand-name">${handEmoji(st.hand_rank)} ${st.hand_name}</div>
+      <div class="hand-name">${st.hand_name}</div>
       <div class="hand-score">${st.hand_score} pts</div>
     </div>`;
   }
 
   if(st.opponent_scored && st.opponent_hand_name){
-    html+=`<div class="pd-opponent">
+    html+=`<div class="pd-opponent" style="margin:4px auto;max-width:340px">
       <div style="font-size:13px;color:var(--text-muted)">${t('pdOppHand')}:</div>
-      <div class="hand-name">${handEmoji(st.opponent_hand_rank)} ${st.opponent_hand_name}</div>
+      <div class="hand-name">${st.opponent_hand_name}</div>
       <div class="hand-score">${st.opponent_hand_score} pts</div>
     </div>`;
   }
@@ -1656,8 +1774,6 @@ function pdRenderResult(st){
     sfxLose();
   }else if(st.winner===-1){
     setStatus(t('pdDraw'),'');
-  }else if(st.winner===null || st.winner===undefined){
-    // game not finished or winner not determined yet
   }
 
   const soloBtnText = st.solo ? t('pdPlayAgain') : t('close');
@@ -1688,6 +1804,7 @@ function sharePdGame(){
 function resumePd(code){
   pdCode=code;
   localStorage.setItem('pd_game',code);
+  pdKept = new Set();
   $('actions').innerHTML='';
   pdRefreshState();
   pdPoll();
