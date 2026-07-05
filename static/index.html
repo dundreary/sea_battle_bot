@@ -1581,6 +1581,9 @@ function pdRenderScorecard(st){
   // Upper section
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
 
+  // Dice row
+  html += `<tr class="dice-row"><td class="cat-name" colspan="3" style="text-align:center;padding:8px 0">${PD_DICE_FACES.join(' ')}</td></tr>`;
+
   // Bonus row
   const bonus = st.bonus;
   const upperSum = st.upper_sum || 0;
@@ -2568,12 +2571,14 @@ async function fetchActiveGames(){
     cont.innerHTML='';
     return;
   }
+  const myPdCode = localStorage.getItem('pd_game');
   var html='<div class="active-games"><h3>▶ '+t('selectGame')+'</h3>';
   for(const g of res.games){
     if(g.type==='sea_battle'){
       continue;
     }
     else if(g.type==='poker_dice'){
+      if(g.code === myPdCode) continue;
       var badge=g.my_turn?'<span class="badge playing">🎲 '+t('yourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
       html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
