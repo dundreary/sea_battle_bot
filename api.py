@@ -447,6 +447,19 @@ def _handle_pd_score(data, uid, code):
     return {"ok": True, "state": st}
 
 
+def _handle_pd_surrender(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = pd_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    save()
+    return {"ok": True, "state": st}
+
+
 def _handle_pd_state(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
@@ -805,6 +818,7 @@ _HANDLERS = {
     "/api/pd_roll": _handle_pd_roll,
     "/api/pd_score": _handle_pd_score,
     "/api/pd_state": _handle_pd_state,
+    "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
     "/api/resolve_code": _handle_resolve_code,
     "/api/checkers_new_solo": _handle_checkers_new_solo,

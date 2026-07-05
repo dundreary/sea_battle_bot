@@ -464,6 +464,7 @@ const LANG = {
     pdChooseCat: 'Выбери категорию',
     pdCategoriesLeft: 'Осталось',
     pdMe: 'Я',
+    continue: '▶ Продолжить',
   },
   uk: {
     title: 'Морський бій',
@@ -585,6 +586,7 @@ const LANG = {
     pdChooseCat: 'Обери категорію',
     pdCategoriesLeft: 'Залишилось',
     pdMe: 'Я',
+    continue: '▶ Продовжити',
   },
   en: {
     title: 'Sea Battle',
@@ -706,6 +708,7 @@ const LANG = {
     pdChooseCat: 'Choose category',
     pdCategoriesLeft: 'Left',
     pdMe: 'Me',
+    continue: '▶ Continue',
   }
 };
 
@@ -1420,7 +1423,15 @@ function showPokerDice(){
   $('gameInfo').textContent=t('pdTitle');
   setStatus('');
   $('actions').className='btn-row stack';
+  var resumeHtml = '';
+  if(pdCode && localStorage.getItem('pd_game')){
+    resumeHtml = `<div class="active-game-row" onclick="resumePd('${pdCode}')">
+      <div class="info"><span class="label">🎲 </span><span class="code">${pdCode}</span></div>
+      <span class="badge playing">▶ ${t('continue')||'Продолжить'}</span>
+    </div>`;
+  }
   $('actions').innerHTML=`
+    ${resumeHtml}
     <div class="game-card" onclick="pdStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('pdSolo')}</div>
@@ -1625,13 +1636,7 @@ function pdRenderDice(st){
     cont.appendChild(die);
   }
 
-  if(st.my_turn && !st.scored && st.rolls_left>0){
-    const btn=document.createElement('button');
-    btn.className='pd-roll-btn';
-    btn.innerHTML=`🎲<span class="count">${st.rolls_left}</span>`;
-    btn.onclick=()=>pdDoRoll();
-    cont.appendChild(btn);
-  }
+
 }
 
 function pdToggleKeep(idx){
@@ -1646,16 +1651,30 @@ function pdToggleKeep(idx){
 }
 
 function pdRenderActions(st){
-  $('actions').innerHTML='';
-  if(!st.my_turn || st.scored){
-    $('actions').innerHTML=`<button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>`;
-    return;
+  $('actions').innerHTML = '';
+  $('actions').className = 'btn-row';
+  const el = $('pdActions');
+  el.className = 'btn-row stack';
+  let html = '';
+
+  if(st.my_turn && !st.scored){
+    if(st.rolls_left > 0){
+      html += `<button class="btn success" onclick="pdDoRoll()" style="width:100%">🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
+      html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('quit')}</button>`;
+    } else {
+      html += `<button class="btn outline" onclick="leavePdGame()" style="width:100%">${t('quit')}</button>`;
+    }
+    html += `<button class="btn outline quit-btn" onclick="pdSurrender()" style="width:100%">🏳️ ${t('surrender')}</button>`;
+  } else {
+    html += `<button class="btn outline" onclick="leavePdGame()" style="width:100%">${t('quit')}</button>`;
   }
-  $('actions').innerHTML=`<button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>`;
-  if(st.rolls_left<3 && st.dice && st.dice.length>0){
+
+  el.innerHTML = html;
+
+  if(st.my_turn && !st.scored && st.rolls_left < 3 && st.dice && st.dice.length > 0){
     const catLeft = st.categories_left || [];
     if(catLeft.length > 0){
-      $('actions').innerHTML += `<div style="width:100%;text-align:center;padding:4px 0;font-size:12px;color:var(--text-muted)">⬇ ${t('pdChooseCat')||'Выбери категорию в таблице'}</div>`;
+      el.innerHTML += `<div style="width:100%;text-align:center;padding:4px 0;font-size:12px;color:var(--text-muted)">⬇ ${t('pdChooseCat')||'Выбери категорию в таблице'}</div>`;
     }
   }
 }
@@ -1781,11 +1800,16 @@ function pdRenderResult(st){
 }
 
 function leavePdGame(){
-  if(!confirm(t('quitConfirm')))return;
   if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
-  pdCode=null;pdState=null;
-  localStorage.removeItem('pd_game');
+  if(pdCode) localStorage.setItem('pd_game', pdCode);
   showPokerDice();
+}
+
+async function pdSurrender(){
+  if(!confirm({ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang])) return;
+  const res=await api('/api/pd_surrender',{uid:getUid(),code:pdCode});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  pdShowGame(res.state);
 }
 
 function sharePdGame(){

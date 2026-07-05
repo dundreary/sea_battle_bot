@@ -123,6 +123,7 @@ class PokerDiceGame:
         self.solo = solo
         self.phase = 'playing'
         self.turn = 1
+        self.surrendered = None
         self.players = {
             1: self._fresh_player(),
             2: self._fresh_player(),
@@ -261,6 +262,10 @@ class PokerDiceGame:
     def _get_winner(self):
         if self.phase != 'finished':
             return None
+        if self.surrendered:
+            if self.surrendered == 1:
+                return self.player2_id if self.player2_id else 0
+            return self.player1_id
         total1 = _total_score(self.players[1]['scorecard'])
         total2 = _total_score(self.players[2]['scorecard'])
         if total1 > total2:
@@ -322,6 +327,17 @@ class PokerDiceGame:
             'opponent_categories_left': _remaining_categories(opp['scorecard']),
             'max_categories': len(CATEGORY_IDS),
         }
+
+    def surrender(self, uid: int) -> Optional[Dict]:
+        pnum = self.player_num(uid)
+        if pnum is None or self.phase != 'playing':
+            return None
+        p = self.players[pnum]
+        for cat in _remaining_categories(p['scorecard']):
+            p['scorecard'][cat] = 0
+        self.surrendered = pnum
+        self.phase = 'finished'
+        return self.get_state(pnum)
 
     @staticmethod
     def generate_code() -> str:
