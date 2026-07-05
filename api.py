@@ -389,7 +389,7 @@ def _handle_pd_new_solo(data, uid, code):
     pd_games[c] = game
     pd_player_games[str(uid)] = c
     save()
-    return {"ok": True, "code": c, "state": game._state_for(1)}
+    return {"ok": True, "code": c, "state": game.get_state(1)}
 
 
 def _handle_pd_new_multi(data, uid, code):
@@ -402,7 +402,7 @@ def _handle_pd_new_multi(data, uid, code):
     pd_games[c] = game
     pd_player_games[str(uid)] = c
     save()
-    return {"ok": True, "code": c, "state": game._state_for(1)}
+    return {"ok": True, "code": c, "state": game.get_state(1)}
 
 
 def _handle_pd_join(data, uid, code):
@@ -416,7 +416,7 @@ def _handle_pd_join(data, uid, code):
     game.player2_id = uid
     pd_player_games[str(uid)] = code
     save()
-    return {"ok": True, "state": game._state_for(2)}
+    return {"ok": True, "state": game.get_state(2)}
 
 
 def _handle_pd_roll(data, uid, code):
@@ -455,7 +455,7 @@ def _handle_pd_state(data, uid, code):
     pnum = game.player_num(uid)
     if pnum is None:
         return {"error": "not_in_game"}
-    return {"ok": True, "state": game._state_for(pnum)}
+    return {"ok": True, "state": game.get_state(pnum)}
 
 
 def _handle_active_games(data, uid, code):
@@ -477,7 +477,7 @@ def _handle_active_games(data, uid, code):
         g = pd_games[pd_code]
         pnum = g.player_num(uid)
         if pnum:
-            st = g._state_for(pnum)
+            st = g.get_state(pnum)
             games_list.append({
                 'type': 'poker_dice',
                 'code': pd_code,

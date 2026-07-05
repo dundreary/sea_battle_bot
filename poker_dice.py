@@ -77,7 +77,7 @@ class PokerDiceGame:
             p['scored'] = True
             self._after_score(pnum)
 
-        return self._state_for(pnum)
+        return self.get_state(pnum)
 
     def score(self, uid: int) -> Optional[Dict]:
         pnum = self.player_num(uid)
@@ -90,7 +90,7 @@ class PokerDiceGame:
         p['hand'] = evaluate(p['dice'])
         p['scored'] = True
         self._after_score(pnum)
-        return self._state_for(pnum)
+        return self.get_state(pnum)
 
     def _after_score(self, pnum: int):
         if self.solo:
@@ -128,26 +128,28 @@ class PokerDiceGame:
         p['scored'] = True
         self.phase = 'finished'
 
-    def _state_for(self, pnum: int) -> Dict[str, Any]:
+    def _get_winner(self):
+        if self.phase != 'finished':
+            return None
+        h1 = self.players[1]['hand']
+        h2 = self.players[2]['hand']
+        if not h1 or not h2:
+            return None
+        if h1['rank'] < h2['rank']:
+            return self.player1_id
+        if h2['rank'] < h1['rank']:
+            return self.player2_id if self.player2_id else 0
+        if h1['score'] > h2['score']:
+            return self.player1_id
+        if h2['score'] > h1['score']:
+            return self.player2_id if self.player2_id else 0
+        return -1  # draw
+
+    def get_state(self, pnum: int) -> Dict[str, Any]:
         p = self.players[pnum]
         opp = self.players[3 - pnum]
 
-        winner = None
-        if self.phase == 'finished':
-            h1 = self.players[1]['hand']
-            h2 = self.players[2]['hand']
-            if h1 and h2:
-                if h1['rank'] < h2['rank']:
-                    winner = self.player1_id
-                elif h2['rank'] < h1['rank']:
-                    winner = self.player2_id if self.player2_id else 0
-                else:
-                    if h1['score'] > h2['score']:
-                        winner = self.player1_id
-                    elif h2['score'] > h1['score']:
-                        winner = self.player2_id if self.player2_id else 0
-                    else:
-                        winner = -1  # draw
+        winner = self._get_winner()
 
         return {
             'code': self.code,
