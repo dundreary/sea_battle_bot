@@ -1809,11 +1809,10 @@ async function pdSurrender(){
 
 function sharePdGame(){
   if(!pdCode)return;
-  const url=`https://t.me/${botUsername||'...'}/app?startapp=${pdCode}`;
-  const texts={ru:'🎮 Играй со мной в Покер в кости!',uk:'🎮 Грай зі мною в Покер у кості!',en:'🎮 Play Poker Dice with me!'};
+  const texts={ru:'🎮 Играй со мной в Покер в кости! Код: '+pdCode,uk:'🎮 Грай зі мною в Покер у кості! Код: '+pdCode,en:'🎮 Play Poker Dice with me! Code: '+pdCode};
   const text=texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+  copyToClipboard(pdCode,{ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(pdCode)}&text=${encodeURIComponent(text)}`)}catch(e){}
 }
 
 function resumePd(code){
