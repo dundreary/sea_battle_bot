@@ -185,11 +185,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ana-base-word.show .revealed{display:inline}
 
 .pd-dice{display:flex;gap:8px;justify-content:center;margin:8px 0;flex-wrap:wrap}
-.pd-die{width:76px;height:76px;background:linear-gradient(135deg,#424242,#616161);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:42px;cursor:pointer;transition:.12s;border:3px solid transparent;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.pd-die{width:80px;height:80px;background:linear-gradient(135deg,#424242,#616161);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:800;cursor:pointer;transition:.12s;border:3px solid transparent;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .pd-die:hover{transform:scale(1.08)}
 .pd-die.kept{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));border-color:#ffd700;box-shadow:0 0 12px rgba(255,215,0,.4)}
 .pd-die:active{transform:scale(.88)}
 .pd-die.roll-finished{opacity:.6;cursor:default}
+.pd-die.v1{background:linear-gradient(135deg,#c62828,#e53935)}
+.pd-die.v2{background:linear-gradient(135deg,#ef6c00,#fb8c00)}
+.pd-die.v3{background:linear-gradient(135deg,#f9a825,#fbc02d);color:#1a1a1a}
+.pd-die.v4{background:linear-gradient(135deg,#2e7d32,#43a047)}
+.pd-die.v5{background:linear-gradient(135deg,#1565c0,#1e88e5)}
+.pd-die.v6{background:linear-gradient(135deg,#6a1b9a,#8e24aa)}
+#pdScores{font-size:15px;color:var(--accent-primary-light)}
 .pd-round{text-align:center;font-size:13px;color:var(--accent-primary);font-weight:700;margin:4px 0}
 .pd-scoreboard{width:100%;max-width:340px;margin:8px 0;border-collapse:collapse;font-size:12px}
 .pd-scoreboard th{color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
@@ -300,6 +307,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="btn-row" id="actions"></div>
   <div id="pdArea" style="display:none">
     <div class="pd-info" id="pdInfo">
+      <span id="pdScores"></span>
       <span id="pdRollsLeft"></span>
     </div>
     <div class="pd-dice" id="pdDice"></div>
@@ -1336,7 +1344,7 @@ function showSeaBattle(){ showSeaBattleMenu(); }
 
 // ---- Poker Dice ----
 let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null;
-const PD_DICE_SYMBOLS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const PD_DICE_SYMBOLS = ['1','2','3','4','5','6'];
 const PD_HAND_EMOJIS = ['🎯','🔥','🏠','📏','🔱','✌️','👆','💨'];
 
 function showPokerDice(){
@@ -1473,7 +1481,7 @@ function pdRenderHistory(st){
   const table = document.createElement('table');
   table.id = 'pdScoreboard';
   table.className = 'pd-scoreboard';
-  let html = '<tr><th>#</th><th>'+t('pdYourHand')+'</th><th>'+t('pdOppHand')+'</th><th>'+t('pdResultShort')+'</th></tr>';
+  let html = '<tr><th>#</th><th>🎲 '+{ru:'Мои очки',uk:'Мої очки',en:'My pts'}[lang]+'</th><th>🎯 '+{ru:'Очки соперника',uk:'Очки суперника',en:'Opp pts'}[lang]+'</th><th>'+t('pdResultShort')+'</th></tr>';
   for(const r of st.round_history){
     const cls = r.result === 'win' ? 'r-win' : r.result === 'lose' ? 'r-lose' : 'r-draw';
     const icon = r.result === 'win' ? '🏆' : r.result === 'lose' ? '💔' : '➖';
@@ -1493,6 +1501,7 @@ function pdRenderDice(st){
     die.className='pd-die';
     if(dice[i]){
       die.textContent=PD_DICE_SYMBOLS[dice[i]-1];
+      die.classList.add('v'+dice[i]);
     }else{
       die.textContent='?';
       die.style.opacity='.3';
@@ -1539,6 +1548,13 @@ function pdRenderActions(st){
 }
 
 function pdRenderInfo(st){
+  const scoresEl = $('pdScores');
+  if(scoresEl){
+    const myTotal = st.total_score || 0;
+    const oppTotal = st.opponent_total_score || 0;
+    scoresEl.innerHTML = '<b>🎲 ' + myTotal + '</b> : <b>' + oppTotal + '</b> 🎯';
+  }
+
   if(st.phase === 'finished'){
     pdRenderResult(st);
     return;
@@ -1601,7 +1617,7 @@ function pdRenderResult(st){
   let html = '';
   if(st.round_history && st.round_history.length > 0){
     html += '<table class="pd-scoreboard" style="margin:8px auto">';
-    html += '<tr><th>#</th><th>'+t('pdYourHand')+'</th><th>'+t('pdOppHand')+'</th><th>'+t('pdResultShort')+'</th></tr>';
+    html += '<tr><th>#</th><th>🎲 '+{ru:'Мои очки',uk:'Мої очки',en:'My pts'}[lang]+'</th><th>🎯 '+{ru:'Очки соперника',uk:'Очки суперника',en:'Opp pts'}[lang]+'</th><th>'+t('pdResultShort')+'</th></tr>';
     for(const r of st.round_history){
       const cls = r.result === 'win' ? 'r-win' : r.result === 'lose' ? 'r-lose' : 'r-draw';
       const icon = r.result === 'win' ? '🏆' : r.result === 'lose' ? '💔' : '➖';
