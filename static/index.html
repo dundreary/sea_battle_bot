@@ -1486,11 +1486,27 @@ const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
 
 let ckDifficulty = 2;
 
-function toggleCkDifficulty(){
-  ckDifficulty = ckDifficulty === 2 ? 3 : 2;
-  const el = $('ckDiffToggle');
-  if(el) el.textContent = ckDifficulty === 3 ? '🔥 Hard' : '🎯 Medium';
-  sfxClick();
+function showCkBotDifficulty(){
+  showShipHints = true;
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  document.title = t('checkers');
+  setStatus(t('selectDifficulty'));
+  $('gameInfo').textContent=t('checkers');
+  $('shipHint').innerHTML = '';
+  $('header').classList.remove('in-game');
+  $('app').insertBefore($('status'), $('app').firstChild);
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="ckStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn primary" onclick="ckStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="ckStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn outline quit-btn" onclick="showCheckers()" style="margin-top:8px">${t('quit')}</button>
+  `;
+}
+
+function ckStartWithDifficulty(diff){
+  ckDifficulty = diff;
+  ckStartSolo();
 }
 
 function showCheckers(){
@@ -1506,12 +1522,11 @@ function showCheckers(){
   setStatus('');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div class="game-card" onclick="ckStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" onclick="showCkBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
-    <button class="btn outline" id="ckDiffToggle" onclick="toggleCkDifficulty()" style="margin-bottom:8px;width:100%">${ckDifficulty === 3 ? '🔥 Hard' : '🎯 Medium'}</button>
     <div class="game-card" onclick="ckNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
       <div class="name">${t('vsFriend')}</div>
@@ -1729,11 +1744,27 @@ function shareCkGame(){
 let stState=null, stCode=null, stSelected=null, stPaletteType=null;
 let stDifficulty = 2;
 
-function toggleStDifficulty(){
-  stDifficulty = stDifficulty === 2 ? 3 : 2;
-  const el = $('stDiffToggle');
-  if(el) el.textContent = stDifficulty === 3 ? '🔥 Hard' : '🎯 Medium';
-  sfxClick();
+function showStBotDifficulty(){
+  showShipHints = true;
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  document.title = t('stratego');
+  setStatus(t('selectDifficulty'));
+  $('gameInfo').textContent=t('stratego');
+  $('shipHint').innerHTML = '';
+  $('header').classList.remove('in-game');
+  $('app').insertBefore($('status'), $('app').firstChild);
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="stStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn primary" onclick="stStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="stStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn outline quit-btn" onclick="showStratego()" style="margin-top:8px">${t('quit')}</button>
+  `;
+}
+
+function stStartWithDifficulty(diff){
+  stDifficulty = diff;
+  stStartSolo();
 }
 
 const ST_PIECE_NAMES={1:'F',2:'S',3:'s',4:'M',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'11',12:'B'};
@@ -1756,12 +1787,11 @@ function showStratego(){
   setStatus('');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div class="game-card" onclick="stStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" onclick="showStBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
-    <button class="btn outline" id="stDiffToggle" onclick="toggleStDifficulty()" style="margin-bottom:8px;width:100%">${stDifficulty === 3 ? '🔥 Hard' : '🎯 Medium'}</button>
     <div class="game-card" onclick="stNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
       <div class="name">${t('vsFriend')}</div>
