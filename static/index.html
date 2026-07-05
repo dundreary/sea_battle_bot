@@ -1100,11 +1100,28 @@ function showMenu(){ showMainMenu(); }
 
 let gameDifficulty = 2;
 
-function toggleDifficulty(){
-  gameDifficulty = gameDifficulty === 2 ? 3 : 2;
-  const el = $('diffToggle');
-  if(el) el.textContent = gameDifficulty === 3 ? '🔥 Hard' : '🎯 Medium';
-  sfxClick();
+function showBotDifficulty(){
+  showShipHints = true;
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  document.title = t('seaBattle');
+  setStatus(t('selectDifficulty'));
+  $('gameInfo').textContent='';
+  $('shipHint').innerHTML = '';
+  $('header').classList.remove('in-game');
+  $('app').insertBefore($('status'), $('app').firstChild);
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="startSoloWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn primary" onclick="startSoloWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="startSoloWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn outline quit-btn" onclick="showSeaBattleMenu()" style="margin-top:8px">${t('quit')}</button>
+  `;
+  fetchActiveGames();
+}
+
+function startSoloWithDifficulty(diff){
+  gameDifficulty = diff;
+  startSolo();
 }
 
 function showSeaBattleMenu(){
@@ -1118,7 +1135,7 @@ function showSeaBattleMenu(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div class="game-card" onclick="startSolo()" style="margin-bottom:8px">
+    <div class="game-card" onclick="showBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
@@ -1128,7 +1145,6 @@ function showSeaBattleMenu(){
       <div class="name">${t('vsFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <button class="btn outline" id="diffToggle" onclick="toggleDifficulty()" style="margin-bottom:8px;width:100%">${gameDifficulty === 3 ? '🔥 Hard' : '🎯 Medium'}</button>
     <div class="game-card" onclick="showStripInfoOverlay()" style="margin-bottom:8px">
       <img src="/static/mode-shirt.svg" class="card-icon">
       <div class="name">${t('stripMode')}</div>
