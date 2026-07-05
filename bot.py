@@ -7,9 +7,9 @@ import config
 logger = logging.getLogger(__name__)
 
 L10N = {
-    'ru': {'text': '🎮 <b>Добро пожаловать!</b>\n\nДоступны игры:\n⚓ Морской бой\n♟ Шашки\n♟ Стратего\n🔤 Анаграмма\n\nНажми кнопку ниже, чтобы открыть 🎯', 'btn': '🎮 Открыть игры'},
-    'uk': {'text': '🎮 <b>Ласкаво просимо!</b>\n\nДоступні ігри:\n⚓ Морський бій\n♟ Шашки\n♟ Стратего\n🔤 Анаграма\n\nНатисни кнопку нижче, щоб відкрити 🎯', 'btn': '🎮 Відкрити ігри'},
-    'en': {'text': '🎮 <b>Welcome!</b>\n\nAvailable games:\n⚓ Sea Battle\n♟ Checkers\n♟ Stratego\n🔤 Anagram\n\nTap the button below to open 🎯', 'btn': '🎮 Open Games'},
+    'ru': {'text': '🎮 <b>Добро пожаловать!</b>\n\nДоступны игры:\n⚓ Морской бой\n♟ Шашки\n♟ Стратего\n🎲 Покер в кости\n\nНажми кнопку ниже, чтобы открыть 🎯', 'btn': '🎮 Открыть игры'},
+    'uk': {'text': '🎮 <b>Ласкаво просимо!</b>\n\nДоступні ігри:\n⚓ Морський бій\n♟ Шашки\n♟ Стратего\n🎲 Покер у кості\n\nНатисни кнопку нижче, щоб відкрити 🎯', 'btn': '🎮 Відкрити ігри'},
+    'en': {'text': '🎮 <b>Welcome!</b>\n\nAvailable games:\n⚓ Sea Battle\n♟ Checkers\n♟ Stratego\n🎲 Poker Dice\n\nTap the button below to open 🎯', 'btn': '🎮 Open Games'},
 }
 
 def _lang_code(user):

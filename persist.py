@@ -25,47 +25,41 @@ def _read():
 
 def save():
     import api
-    import anagram
 
     with _lock:
-        # Serialize player_games keys as strings (JSON-compatible)
         pg_serialized = {}
         for k, v in api.player_games.items():
             pg_serialized[str(k)] = v
 
-        # Serialize ana_player_sessions
-        aps_serialized = {}
-        for k, v in api.ana_player_sessions.items():
-            aps_serialized[str(k)] = v
-
-        # Serialize checkers_player_games
         ck_pg_serialized = {}
         for k, v in api.checkers_player_games.items():
             ck_pg_serialized[str(k)] = v
 
-        # Serialize stratego_player_games
         st_pg_serialized = {}
         for k, v in api.stratego_player_games.items():
             st_pg_serialized[str(k)] = v
+
+        pd_pg_serialized = {}
+        for k, v in api.pd_player_games.items():
+            pd_pg_serialized[str(k)] = v
 
         data = {
             'version': 1,
             'saved_at': time.time(),
             'api_games': {},
             'api_player_games': pg_serialized,
-            'api_ana_player_sessions': aps_serialized,
-            'anagram_games': anagram.games,
-            'anagram_rooms': anagram.rooms,
             'checkers_games': {},
             'checkers_player_games': ck_pg_serialized,
             'stratego_games': {},
             'stratego_player_games': st_pg_serialized,
+            'poker_dice_games': {},
+            'poker_dice_player_games': pd_pg_serialized,
         }
         for code, game in api.games.items():
             try:
                 data['api_games'][code] = game.to_dict()
             except Exception:
-                pass  # skip un-serializable games
+                pass
         for code, game in api.checkers_games.items():
             try:
                 data['checkers_games'][code] = game.to_dict()
@@ -76,15 +70,20 @@ def save():
                 data['stratego_games'][code] = game.to_dict()
             except Exception:
                 pass
+        for code, game in api.pd_games.items():
+            try:
+                data['poker_dice_games'][code] = {'code': game.code, 'player1_id': game.player1_id, 'player2_id': game.player2_id, 'solo': game.solo}
+            except Exception:
+                pass
         _write(data)
 
 
 def load():
     import api
-    import anagram
     from game import Game
     from checkers import CheckersGame
     from stratego import StrategoGame
+    from poker_dice import PokerDiceGame
 
     data = _read()
     if not data:
@@ -108,42 +107,10 @@ def load():
         api.player_games.clear()
         api.player_games.update(data.get('api_player_games', {}))
 
-        # Remove player_games entries that point to expired/missing games
         valid = set(api.games.keys())
         for uid, code in list(api.player_games.items()):
             if code not in valid:
                 del api.player_games[uid]
-
-        # --- Anagram games ---
-        anagram.games.clear()
-        for sid, gdata in data.get('anagram_games', {}).items():
-            try:
-                started = gdata.get('started_at', 0)
-                if now - started < MAX_AGE:
-                    anagram.games[sid] = gdata
-            except Exception:
-                pass
-
-        anagram.rooms.clear()
-        for code, rdata in data.get('anagram_rooms', {}).items():
-            try:
-                p1 = rdata.get('p1_sid')
-                p2 = rdata.get('p2_sid')
-                # Keep room if at least one player's session still exists
-                if (p1 and p1 in anagram.games) or (p2 and p2 in anagram.games):
-                    anagram.rooms[code] = rdata
-            except Exception:
-                pass
-
-        # Restore ana_player_sessions (after anagram games loaded)
-        api.ana_player_sessions.clear()
-        for k, v in data.get('api_ana_player_sessions', {}).items():
-            try:
-                sid = v.get('sid')
-                if sid and sid in anagram.games:
-                    api.ana_player_sessions[k] = v
-            except Exception:
-                pass
 
         # --- Checkers games ---
         api.checkers_games.clear()
@@ -158,7 +125,6 @@ def load():
 
         api.checkers_player_games.clear()
         api.checkers_player_games.update(data.get('checkers_player_games', {}))
-        # Remove entries pointing to expired/missing games
         valid_ck = set(api.checkers_games.keys())
         for uid, code in list(api.checkers_player_games.items()):
             if code not in valid_ck:
@@ -177,10 +143,25 @@ def load():
 
         api.stratego_player_games.clear()
         api.stratego_player_games.update(data.get('stratego_player_games', {}))
-        # Remove entries pointing to expired/missing games
         valid_st = set(api.stratego_games.keys())
         for uid, code in list(api.stratego_player_games.items()):
             if code not in valid_st:
                 del api.stratego_player_games[uid]
+
+        # --- Poker Dice games ---
+        api.pd_games.clear()
+        for code, gdata in data.get('poker_dice_games', {}).items():
+            try:
+                game = PokerDiceGame(code, gdata['player1_id'], gdata.get('player2_id'), gdata.get('solo', False))
+                api.pd_games[code] = game
+            except Exception:
+                pass
+
+        api.pd_player_games.clear()
+        api.pd_player_games.update(data.get('poker_dice_player_games', {}))
+        valid_pd = set(api.pd_games.keys())
+        for uid, code in list(api.pd_player_games.items()):
+            if code not in valid_pd:
+                del api.pd_player_games[uid]
 
 

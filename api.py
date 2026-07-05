@@ -5,7 +5,8 @@ import urllib.request
 from typing import Dict, Any
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, auto_place_ships, auto_place_strip_ships
-from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
+# from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
+from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, get_legal_moves
 from checkers_ai import get_ai_move
 from stratego import StrategoGame, PLAYER1, PLAYER2, ai_get_move, ai_apply_move, get_piece_title, PIECE_NAMES, can_move, cell_type, cell_owner, is_water, PIECE_RANK
@@ -63,8 +64,8 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
 games: Dict[str, Game] = {}
 player_games: Dict[str, str] = {}
 
-# Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
-ana_player_sessions: Dict[str, Dict[str, Any]] = {}
+# # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
+# ana_player_sessions: Dict[str, Dict[str, Any]] = {}
 
 # Checkers games
 checkers_games: Dict[str, CheckersGame] = {}
@@ -320,59 +321,141 @@ def _handle_upload_photo(data, uid, code):
     return {"ok": False, "error": "send_failed"}
 
 
-def _handle_ana_new_solo(data, uid, code):
-    sid, g = ana_new()
+# def _handle_ana_new_solo(data, uid, code):
+#     sid, g = ana_new()
+#     save()
+#     return {"ok": True, "sid": sid, "state": ana_state(sid)}
+#
+#
+# def _handle_ana_new_multi(data, uid, code):
+#     sid, new_code, g = ana_new_multi()
+#     if uid:
+#         ana_player_sessions[str(uid)] = {'code': new_code, 'sid': sid}
+#     save()
+#     return {"ok": True, "sid": sid, "code": new_code, "state": ana_state(sid)}
+#
+#
+# def _handle_ana_join(data, uid, code):
+#     c = data.get("code", "")
+#     if not c:
+#         return {"error": "no code"}
+#     result = ana_join(c)
+#     if not result[0]:
+#         return {"ok": False, "error": result[1]}
+#     if uid and result[0]:
+#         ana_player_sessions[str(uid)] = {'code': c.upper(), 'sid': result[0]}
+#     save()
+#     return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
+#
+#
+# def _handle_ana_guess(data, uid, code):
+#     sid = data.get("sid", "")
+#     word = data.get("word", "")
+#     result = ana_guess(sid, word)
+#     if result[0] != "ok":
+#         return {"ok": False, "error": result[0]}
+#     save()
+#     return {"ok": True, "result": result[1], "state": ana_state(sid)}
+#
+#
+# def _handle_ana_hint(data, uid, code):
+#     sid = data.get("sid", "")
+#     result = ana_hint(sid)
+#     if not result:
+#         return {"ok": False, "error": "no_hint"}
+#     save()
+#     return {"ok": True, "result": result, "state": ana_state(sid)}
+#
+#
+# def _handle_ana_state(data, uid, code):
+#     sid = data.get("sid", "")
+#     st = ana_state(sid)
+#     if not st:
+#         return {"error": "not_found"}
+#     save()
+#     return {"ok": True, "state": st}
+
+
+# ---- Poker Dice handlers ----
+
+def _handle_pd_new_solo(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    c = PDGame.generate_code()
+    while c in pd_games:
+        c = PDGame.generate_code()
+    game = PDGame(c, uid, solo=True)
+    game.player2_id = 0
+    pd_games[c] = game
+    pd_player_games[str(uid)] = c
     save()
-    return {"ok": True, "sid": sid, "state": ana_state(sid)}
+    return {"ok": True, "code": c, "state": game._state_for(1)}
 
 
-def _handle_ana_new_multi(data, uid, code):
-    sid, new_code, g = ana_new_multi()
-    if uid:
-        ana_player_sessions[str(uid)] = {'code': new_code, 'sid': sid}
+def _handle_pd_new_multi(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    c = PDGame.generate_code()
+    while c in pd_games:
+        c = PDGame.generate_code()
+    game = PDGame(c, uid)
+    pd_games[c] = game
+    pd_player_games[str(uid)] = c
     save()
-    return {"ok": True, "sid": sid, "code": new_code, "state": ana_state(sid)}
+    return {"ok": True, "code": c, "state": game._state_for(1)}
 
 
-def _handle_ana_join(data, uid, code):
-    c = data.get("code", "")
-    if not c:
-        return {"error": "no code"}
-    result = ana_join(c)
-    if not result[0]:
-        return {"ok": False, "error": result[1]}
-    if uid and result[0]:
-        ana_player_sessions[str(uid)] = {'code': c.upper(), 'sid': result[0]}
+def _handle_pd_join(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = pd_games.get(code)
+    if not game:
+        return {"ok": False, "error": "not_found"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    game.player2_id = uid
+    pd_player_games[str(uid)] = code
     save()
-    return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
+    return {"ok": True, "state": game._state_for(2)}
 
 
-def _handle_ana_guess(data, uid, code):
-    sid = data.get("sid", "")
-    word = data.get("word", "")
-    result = ana_guess(sid, word)
-    if result[0] != "ok":
-        return {"ok": False, "error": result[0]}
-    save()
-    return {"ok": True, "result": result[1], "state": ana_state(sid)}
-
-
-def _handle_ana_hint(data, uid, code):
-    sid = data.get("sid", "")
-    result = ana_hint(sid)
-    if not result:
-        return {"ok": False, "error": "no_hint"}
-    save()
-    return {"ok": True, "result": result, "state": ana_state(sid)}
-
-
-def _handle_ana_state(data, uid, code):
-    sid = data.get("sid", "")
-    st = ana_state(sid)
-    if not st:
+def _handle_pd_roll(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = pd_games.get(code)
+    if not game:
         return {"error": "not_found"}
+    keep = data.get("keep", [])
+    st = game.roll(uid, keep)
+    if st is None:
+        return {"error": "invalid_roll"}
     save()
     return {"ok": True, "state": st}
+
+
+def _handle_pd_score(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = pd_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    st = game.score(uid)
+    if st is None:
+        return {"error": "invalid_score"}
+    save()
+    return {"ok": True, "state": st}
+
+
+def _handle_pd_state(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = pd_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    pnum = game.player_num(uid)
+    if pnum is None:
+        return {"error": "not_in_game"}
+    return {"ok": True, "state": game._state_for(pnum)}
 
 
 def _handle_active_games(data, uid, code):
@@ -389,18 +472,17 @@ def _handle_active_games(data, uid, code):
             'phase': g.phase,
             'my_turn': g.current_player() == uid,
         })
-    ana_data = ana_player_sessions.get(str(uid))
-    if ana_data:
-        sid = ana_data['sid']
-        c = ana_data['code']
-        st = ana_state(sid)
-        if st:
+    pd_code = pd_player_games.get(str(uid))
+    if pd_code and pd_code in pd_games:
+        g = pd_games[pd_code]
+        pnum = g.player_num(uid)
+        if pnum:
+            st = g._state_for(pnum)
             games_list.append({
-                'type': 'anagram',
-                'code': c,
-                'finished': st.get('finished', False),
-                'score': st.get('score', 0),
-                'remaining': st.get('remaining', 0),
+                'type': 'poker_dice',
+                'code': pd_code,
+                'phase': g.phase,
+                'my_turn': g.turn == pnum,
             })
     ck_code = checkers_player_games.get(str(uid))
     if ck_code and ck_code in checkers_games:
@@ -433,8 +515,8 @@ def _handle_resolve_code(data, uid, code):
         return {"error": "no code"}
     if c in games:
         return {"ok": True, "game": "sea_battle", "code": c}
-    if c in ana_rooms:
-        return {"ok": True, "game": "anagram", "code": c}
+    if c in pd_games:
+        return {"ok": True, "game": "poker_dice", "code": c}
     if c in checkers_games:
         return {"ok": True, "game": "checkers", "code": c}
     if c in stratego_games:
@@ -715,13 +797,13 @@ _HANDLERS = {
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
     "/api/upload_photo": _handle_upload_photo,
-    "/api/ana_new_solo": _handle_ana_new_solo,
-    "/api/ana_new_multi": _handle_ana_new_multi,
-    "/api/ana_join": _handle_ana_join,
-    "/api/ana_guess": _handle_ana_guess,
-    "/api/ana_hint": _handle_ana_hint,
-    "/api/ana_state": _handle_ana_state,
     "/api/active_games": _handle_active_games,
+    "/api/pd_new_solo": _handle_pd_new_solo,
+    "/api/pd_new_multi": _handle_pd_new_multi,
+    "/api/pd_join": _handle_pd_join,
+    "/api/pd_roll": _handle_pd_roll,
+    "/api/pd_score": _handle_pd_score,
+    "/api/pd_state": _handle_pd_state,
     "/api/bot_info": _handle_bot_info,
     "/api/resolve_code": _handle_resolve_code,
     "/api/checkers_new_solo": _handle_checkers_new_solo,

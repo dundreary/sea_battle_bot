@@ -184,6 +184,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ana-base-word .revealed{color:var(--accent-primary);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:2px;display:none}
 .ana-base-word.show .revealed{display:inline}
 
+.pd-dice{display:flex;gap:8px;justify-content:center;margin:8px 0;flex-wrap:wrap}
+.pd-die{width:58px;height:58px;background:linear-gradient(135deg,#424242,#616161);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;transition:.12s;border:2px solid transparent;user-select:none}
+.pd-die:hover{transform:scale(1.05)}
+.pd-die.kept{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));border-color:#fff}
+.pd-die:active{transform:scale(.88)}
+.pd-info{display:flex;justify-content:space-between;width:100%;max-width:340px;font-size:14px;padding:4px 0;margin:4px 0}
+.pd-result{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
+.pd-result .hand-name{font-size:18px;font-weight:700;color:var(--accent-primary)}
+.pd-result .hand-score{font-size:14px;color:var(--text-secondary)}
+.pd-opponent{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
+.pd-opponent .hand-name{font-size:18px;font-weight:700;color:var(--color-hit)}
+.pd-opponent .hand-score{font-size:14px;color:var(--text-secondary)}
+
+
 
 .theme-selector{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-wrap:wrap;width:100%;max-width:340px;margin:8px 0}
 .theme-btn{padding:10px 16px;border:2px solid var(--border-color);background:transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:.15s}
@@ -273,21 +287,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
   </div>
   <div class="btn-row" id="actions"></div>
-  <div id="anaArea" style="display:none">
-    <div class="ana-info">
-      <span class="timer" id="anaTimer">60</span>
-      <span class="score" id="anaScore">0</span>
+  <div id="pdArea" style="display:none">
+    <div class="pd-info" id="pdInfo">
+      <span id="pdRollsLeft"></span>
     </div>
-    <div class="ana-base-word" id="anaBaseWord" onclick="anaToggleBaseWord()">
-      <span id="anaBaseWordLabel"></span>
-    </div>
-    <div class="ana-letters" id="anaLetters"></div>
-    <div class="ana-word-display" id="anaWordDisplay"></div>
-    <div class="ana-submit-row">
-      <button class="btn primary" onclick="anaSubmitWord()">OK</button>
-      <button class="btn outline" onclick="anaBackspace()">⌫</button>
-    </div>
-    <div class="ana-found" id="anaFound"></div>
+    <div class="pd-dice" id="pdDice"></div>
+    <div class="btn-row" id="pdActions" style="margin-top:8px"></div>
+    <div class="pd-result" id="pdResult"></div>
   </div>
   <div id="ckArea" style="display:none">
     <div class="ck-board" id="ckBoard"></div>
@@ -398,7 +404,21 @@ const LANG = {
     stMedium: 'Средне',
     stHard: 'Сложно',
     selectDifficulty: 'Выбери сложность',
-    anaClickToReveal: '(нажми, чтобы открыть)',
+    pdTitle: '🎲 Покер в кости',
+    pdSolo: '🕹️ Соло',
+    pdFriend: '👤 С другом',
+    pdRoll: '🎲 Бросить',
+    pdScore: '📊 Закончить',
+    pdWaiting: '⏳ Ожидаем соперника...',
+    pdYourHand: 'Твоя рука',
+    pdOppHand: 'Рука соперника',
+    pdWin: '🏆 Ты победил!',
+    pdLose: '💔 Ты проиграл',
+    pdDraw: '🤝 Ничья',
+    pdPlayAgain: '🔄 Играть ещё',
+    pdRollsLeft: 'Бросков: {}',
+    pdResult: 'Результат: {}',
+    pdKeep: 'Закрепить',
   },
   uk: {
     title: 'Морський бій',
@@ -495,7 +515,21 @@ const LANG = {
     stMedium: 'Середньо',
     stHard: 'Складно',
     selectDifficulty: 'Обери складність',
-    anaClickToReveal: '(натисни, щоб відкрити)',
+    pdTitle: '🎲 Покер у кості',
+    pdSolo: '🕹️ Соло',
+    pdFriend: '👤 З другом',
+    pdRoll: '🎲 Кинути',
+    pdScore: '📊 Закінчити',
+    pdWaiting: '⏳ Чекаємо суперника...',
+    pdYourHand: 'Твоя рука',
+    pdOppHand: 'Рука суперника',
+    pdWin: '🏆 Ти переміг!',
+    pdLose: '💔 Ти програв',
+    pdDraw: '🤝 Нічия',
+    pdPlayAgain: '🔄 Грати ще',
+    pdRollsLeft: 'Кидків: {}',
+    pdResult: 'Результат: {}',
+    pdKeep: 'Закріпити',
   },
   en: {
     title: 'Sea Battle',
@@ -592,14 +626,27 @@ const LANG = {
     stMedium: 'Medium',
     stHard: 'Hard',
     selectDifficulty: 'Choose difficulty',
-    anaClickToReveal: '(tap to reveal)',
+    pdTitle: '🎲 Poker Dice',
+    pdSolo: '🕹️ Solo',
+    pdFriend: '👤 With Friend',
+    pdRoll: '🎲 Roll',
+    pdScore: '📊 Score',
+    pdWaiting: '⏳ Waiting for opponent...',
+    pdYourHand: 'Your Hand',
+    pdOppHand: 'Opponent\'s Hand',
+    pdWin: '🏆 You Win!',
+    pdLose: '💔 You Lose',
+    pdDraw: '🤝 Draw',
+    pdPlayAgain: '🔄 Play again',
+    pdRollsLeft: 'Rolls: {}',
+    pdResult: 'Result: {}',
+    pdKeep: 'Keep',
   }
 };
 
 const API = window.location.origin;
 let state = null, uid = null, gameCode = null, lang = 'ru';
 let botUsername = '';
-let anaLobbyCode = '';
 
 function $(id){return document.getElementById(id)}
 
@@ -1007,16 +1054,6 @@ function shareGame(){
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
 }
 
-function shareAnaGame(){
-  const code = localStorage.getItem('ana_code') || anaLobbyCode;
-  if(!code) return;
-  const url = `https://t.me/${botUsername || '...'}/app?startapp=${code}`;
-  const texts = {ru:'🎮 Играй со мной в Анаграмму!',uk:'🎮 Грай зі мною в Анаграму!',en:'🎮 Play Anagram with me!'};
-  const text = texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
-}
-
 function copyToClipboard(text, msg){
   if(navigator.clipboard){
     navigator.clipboard.writeText(text).then(()=>{
@@ -1053,15 +1090,20 @@ function pollGame(){
 function showMainMenu(){
   showShipHints = true;
   gameCode=null;state=null;
+  pdCode=null;pdState=null;
   ckCode=null;ckState=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
   if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
   localStorage.removeItem('sb_game');
+  localStorage.removeItem('pd_game');
   localStorage.removeItem('ck_game');
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
+  $('pdArea').style.display='none';
   $('ckArea').style.display='none';
+  $('stArea').style.display='none';
   $('shipHint').innerHTML = '';
   document.title = t('seaBattle');
   $('gameInfo').textContent='';
@@ -1077,9 +1119,9 @@ function showMainMenu(){
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
-    <div class="game-card" onclick="showAnagram()" style="margin-bottom:8px">
+    <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
       <img src="/static/mode-dice.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-success)">${t('anaTitle')}</div>
+      <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
     <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
@@ -1275,208 +1317,271 @@ async function leaveGame(){
 
 function showSeaBattle(){ showSeaBattleMenu(); }
 
-let anaSid=null, anaTimer=null, anaLetters=[], anaUsed=new Set(), anaCurrentWord=[];
+// ---- Poker Dice ----
+let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null;
+const PD_DICE_SYMBOLS = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+const PD_HAND_EMOJIS = ['🎯','🔥','🏠','📏','🔱','✌️','👆','💨'];
 
-function showAnagram(){
+function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
+  $('ckArea').style.display='none';
+  $('stArea').style.display='none';
   if($('legend'))$('legend').style.display='none';
-  $('shipHint').innerHTML = '';
-  document.title = t('anaTitle');
+  $('shipHint').innerHTML='';
+  document.title=t('pdTitle');
+  $('gameInfo').textContent=t('pdTitle');
+  setStatus('');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <button class="btn success" onclick="anaStartSolo()">${t('anaSolo')}</button>
-    <button class="btn primary" onclick="anaNewMulti()">${t('anaFriend')}</button>
-    <button class="btn outline" onclick="anaJoinGame()">${t('joinBtn')}</button>
-    <button class="btn outline" onclick="showMenu()">${t('close')}</button>
+    <div class="game-card" onclick="pdStartSolo()" style="margin-bottom:8px">
+      <img src="/static/mode-bot.svg" class="card-icon">
+      <div class="name">${t('pdSolo')}</div>
+      <div class="card-desc">${t('withBot')}</div>
+    </div>
+    <div class="game-card" onclick="pdNewMulti()" style="margin-bottom:8px">
+      <img src="/static/mode-friend.svg" class="card-icon">
+      <div class="name">${t('pdFriend')}</div>
+      <div class="card-desc">${t('withFriend')}</div>
+    </div>
+    <div class="game-card" onclick="pdJoinGame()" style="margin-bottom:8px">
+      <img src="/static/mode-join.svg" class="card-icon">
+      <div class="name">${t('joinTitle')}</div>
+      <div class="card-desc">${t('joinBtn')}</div>
+    </div>
+    <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
-  setStatus('');
-  $('gameInfo').textContent=t('anaTitle');
 }
 
-function anaJoinGame(){
+function pdJoinGame(){
   const code=prompt(t('joinPlaceholder'));
-  if(code)anaJoin(code);
+  if(code) pdJoin(code);
 }
 
-async function anaStartSolo(){
-  const res=await api('/api/ana_new_solo',{uid:getUid()});
+async function pdStartSolo(){
+  const res=await api('/api/pd_new_solo',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
-  anaSid=res.sid;
-  localStorage.setItem('ana_sid', anaSid);
-  $('actions').innerHTML='';
-  anaShowGame(res.state);
+  pdCode=res.code;
+  localStorage.setItem('pd_game',pdCode);
+  pdShowGame(res.state);
 }
 
-async function anaNewMulti(){
-  const res=await api('/api/ana_new_multi',{uid:getUid()});
+async function pdNewMulti(){
+  const res=await api('/api/pd_new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
-  anaSid=res.sid;
-  anaLobbyCode=res.code;
-  localStorage.setItem('ana_sid', anaSid);
-  localStorage.setItem('ana_code', res.code);
-  setStatus('', '');
-  anaShowGame(res.state);
+  pdCode=res.code;
+  localStorage.setItem('pd_game',pdCode);
+  pdShowGame(res.state);
+  pdPoll();
 }
 
-async function anaJoin(code){
-  const res=await api('/api/ana_join',{uid:getUid(),code:code.toUpperCase()});
+async function pdJoin(code){
+  const res=await api('/api/pd_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
-  anaSid=res.sid;
-  anaLobbyCode=code.toUpperCase();
-  localStorage.setItem('ana_sid', anaSid);
-  localStorage.setItem('ana_code', code.toUpperCase());
-  $('actions').innerHTML='';
-  anaShowGame(res.state);
+  pdCode=code.toUpperCase();
+  localStorage.setItem('pd_game',pdCode);
+  pdShowGame(res.state);
+  pdPoll();
 }
 
-function anaShowGame(st){
-  $('anaArea').style.display='block';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  if($('legend'))$('legend').style.display='none';
-  $('themeSelector').style.display='none';
-  $('app').insertBefore($('status'), $('app').firstChild);
-  anaLetters = st.letters.toUpperCase().split('');
-  anaUsed = new Set();
-  anaCurrentWord = [];
-  anaRender(st);
-  if(anaTimer)clearInterval(anaTimer);
-  anaTimer=setInterval(()=>anaTick(),1000);
+function pdPoll(){
+  if(pdPollTimer)clearInterval(pdPollTimer);
+  pdPollTimer=setInterval(async()=>{
+    if(!pdCode){clearInterval(pdPollTimer);pdPollTimer=null;return}
+    await pdRefreshState();
+  },2000);
 }
 
-function anaTick(){
-  if(!anaSid)return;
-  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
-    if(!res||!res.ok){clearInterval(anaTimer);anaTimer=null;return}
-    if(res.state.remaining<=10&&res.state.remaining>0)sfxTick();
-    anaRender(res.state);
-    if(res.state.finished){
-      clearInterval(anaTimer);anaTimer=null;
-      sfxWin();
-      $('actions').innerHTML=`
-        <button class="btn success" onclick="anaStartSolo()">${t('anaPlayAgain')}</button>
-        <button class="btn outline" onclick="showMenu()">${t('close')}</button>
-      `;
-    }
-  });
-}
-
-function anaTileClick(idx){
-  if(idx<0||idx>=anaLetters.length||anaUsed.has(idx))return;
-  anaUsed.add(idx);
-  anaCurrentWord.push({letter:anaLetters[idx], idx});
-  anaRenderWord();
-}
-
-function anaWordClick(idx){
-  if(idx<0||idx>=anaCurrentWord.length)return;
-  const {idx:origIdx} = anaCurrentWord[idx];
-  anaUsed.delete(origIdx);
-  anaCurrentWord.splice(idx,1);
-  anaRenderWord();
-}
-
-function anaClearWord(){
-  anaUsed = new Set();
-  anaCurrentWord = [];
-  anaRenderWord();
-}
-
-function anaBackspace(){
-  if(!anaCurrentWord.length)return;
-  const {idx:origIdx} = anaCurrentWord.pop();
-  anaUsed.delete(origIdx);
-  anaRenderWord();
-}
-
-function anaRenderWord(){
-  $('anaLetters').innerHTML=anaLetters.map((l,i)=>`<div class="ana-tile${anaUsed.has(i)?' used':''}" onclick="anaTileClick(${i})">${l}</div>`).join('');
-  $('anaWordDisplay').innerHTML=anaCurrentWord.length
-    ? anaCurrentWord.map((o,i)=>`<div class="ana-tile" onclick="anaWordClick(${i})">${o.letter}</div>`).join('')
-    : '<span style="color:#546e7a;font-size:13px">'+t('anaPlaceholder')+'</span>';
-}
-
-let anaBaseWordRevealed = false;
-
-function anaToggleBaseWord(){
-  anaBaseWordRevealed = !anaBaseWordRevealed;
-  const el = $('anaBaseWordLabel');
-  const word = el.dataset.word;
-  if(word){
-    el.textContent = anaBaseWordRevealed
-      ? t('anaBaseWord').replace('{}', word)
-      : t('anaBaseWord').replace('{}', t('anaClickToReveal'));
-  }
-}
-
-function anaRender(st){
-  $('anaTimer').textContent=st.remaining;
-  $('anaScore').textContent=st.score;
-  if(st.base_word){
-    const label = $('anaBaseWordLabel');
-    label.dataset.word = st.base_word;
-    anaBaseWordRevealed = false;
-    label.textContent = t('anaBaseWord').replace('{}', t('anaClickToReveal'));
-  }
-  if(!st.finished && st.letters.toUpperCase().split('').join('') !== anaLetters.join('')){
-    anaLetters = st.letters.toUpperCase().split('');
-    anaUsed = new Set();
-    anaCurrentWord = [];
-  }
-  anaRenderWord();
-  const found=st.found||[];
-  $('anaFound').innerHTML=found.length
-    ? '<div style="color:#78909c;font-size:12px;margin-bottom:4px">'+t('anaFound').replace('{}',found.length)+'</div>'+found.map(w=>`<div class="ana-word">${w}<span>+${100*Math.max(0,(w.length-2))**2}</span></div>`).join('')
-    : '';
-  if(!st.finished){
-    let ah = `
-      <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
-      <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
-    `;
-    if(!st.solo){
-      ah = `
-        <button class="btn primary" onclick="shareAnaGame()">📤 ${t('inviteFriend')}</button>
-        <button class="btn outline ana-hint" onclick="anaGetHint()">${t('anaHint')}</button>
-        <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
-      `;
-    }
-    $('actions').innerHTML = ah;
-  }else{
-    setStatus(t('anaOver').replace('{}',st.score),'battle');
-    if(st.total_words){
-      $('anaFound').innerHTML+='<div style="color:#78909c;font-size:12px;margin:8px 0">'+t('anaAllWords').replace('{}',st.total_words)+'</div>';
-    }
-  }
-}
-
-async function anaSubmitWord(){
-  const word = anaCurrentWord.map(o=>o.letter).join('').toLowerCase();
-  anaUsed = new Set();
-  anaCurrentWord = [];
-  anaRenderWord();
-  if(word.length<3){setStatus('⚠️ min 3 letters','');return}
-  const res=await api('/api/ana_guess',{uid:getUid(),sid:anaSid,word});
-  if(!res)return;
-  if(!res.ok){
-    const err=res.error;
-    if(err==='duplicate')setStatus('⚠️ '+word+' already found','');
-    else if(err==='not_a_word')setStatus('⚠️ '+word+' not a word','');
-    else if(err==='length')setStatus('⚠️ 3-6 letters','');
-    else setStatus('⚠️ Error','');
+async function pdRefreshState(){
+  if(!pdCode)return;
+  const res=await api('/api/pd_state',{uid:getUid(),code:pdCode});
+  if(!res||!res.ok){
+    localStorage.removeItem('pd_game');
+    pdCode=null;
+    showPokerDice();
     return;
   }
-  setStatus('✅ '+word+' +'+res.result.score,'');
-  sfxChime();
-  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
+  pdShowGame(res.state);
 }
 
-async function anaGetHint(){
-  const res=await api('/api/ana_hint',{uid:getUid(),sid:anaSid});
-  if(!res||!res.ok){setStatus('⚠️ No more hints','');return}
-  setStatus('💡 '+res.result.word+' (-200)','');
-  api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(r=>{if(r&&r.ok)anaRender(r.state)});
+function pdShowGame(st){
+  pdState = st;
+  $('pdArea').style.display='';
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('themeSelector').style.display='none';
+  $('shipHint').innerHTML='';
+  $('header').classList.add('in-game');
+  document.title=t('pdTitle');
+  $('gameInfo').textContent=t('pdTitle');
+
+  $('pdDice').innerHTML='';
+  $('pdResult').innerHTML='';
+
+  if(st.phase==='finished'){
+    if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
+    localStorage.removeItem('pd_game');
+    pdRenderResult(st);
+    return;
+  }
+
+  // Render dice
+  pdKept = new Set();
+  pdRenderDice(st);
+  pdRenderActions(st);
+  pdRenderInfo(st);
+}
+
+function pdRenderDice(st){
+  const cont=$('pdDice');
+  cont.innerHTML='';
+  const dice=st.dice||[];
+  for(let i=0;i<5;i++){
+    const die=document.createElement('div');
+    die.className='pd-die';
+    if(dice[i]){
+      die.textContent=PD_DICE_SYMBOLS[dice[i]-1];
+    }else{
+      die.textContent='?';
+      die.style.opacity='.3';
+    }
+    die.dataset.idx=i;
+    if(st.my_turn && !st.scored && st.rolls_left>0){
+      die.onclick=()=>pdToggleKeep(i);
+    }
+    cont.appendChild(die);
+  }
+}
+
+function pdToggleKeep(idx){
+  if(pdKept.has(idx)) pdKept.delete(idx);
+  else pdKept.add(idx);
+  const dice=$('pdDice').children;
+  for(let i=0;i<dice.length;i++){
+    if(pdKept.has(i)) dice[i].classList.add('kept');
+    else dice[i].classList.remove('kept');
+  }
+}
+
+function pdRenderActions(st){
+  $('pdActions').innerHTML='';
+  if(!st.my_turn || st.scored){
+    $('pdActions').innerHTML=`<button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>`;
+    return;
+  }
+  if(st.rolls_left>0){
+    const keep=Array.from(pdKept);
+    $('pdActions').innerHTML=`
+      <button class="btn success" onclick="pdDoRoll()">${t('pdRoll')} (${st.rolls_left})</button>
+      <button class="btn outline" onclick="pdDoScore()">${t('pdScore')}</button>
+      <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
+    `;
+  }else{
+    $('pdActions').innerHTML=`
+      <button class="btn primary" onclick="pdDoScore()">${t('pdScore')}</button>
+      <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
+    `;
+  }
+}
+
+function pdRenderInfo(st){
+  if(st.scored || st.phase==='finished'){
+    pdRenderResult(st);
+    return;
+  }
+  if(st.my_turn){
+    setStatus(t('pdRollsLeft').replace('{}',st.rolls_left),'battle');
+  }else{
+    setStatus(t('pdWaiting'),'');
+  }
+}
+
+async function pdDoRoll(){
+  if(!pdState)return;
+  const keep=Array.from(pdKept);
+  const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  pdShowGame(res.state);
+}
+
+async function pdDoScore(){
+  if(!pdState)return;
+  const res=await api('/api/pd_score',{uid:getUid(),code:pdCode});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  pdShowGame(res.state);
+}
+
+function pdRenderResult(st){
+  const div=$('pdResult');
+  let html='';
+
+  const handEmoji=(rank)=>rank!==null && rank!==undefined ? PD_HAND_EMOJIS[rank]||'' : '';
+
+  // My result
+  if(st.hand_name){
+    html+=`<div class="pd-result">
+      <div style="font-size:13px;color:var(--text-muted)">${t('pdYourHand')}:</div>
+      <div class="hand-name">${handEmoji(st.hand_rank)} ${st.hand_name}</div>
+      <div class="hand-score">${st.hand_score} pts</div>
+    </div>`;
+  }
+
+  // Opponent result
+  if(st.opponent_scored && st.opponent_hand_name){
+    html+=`<div class="pd-opponent">
+      <div style="font-size:13px;color:var(--text-muted)">${t('pdOppHand')}:</div>
+      <div class="hand-name">${handEmoji(st.opponent_hand_rank)} ${st.opponent_hand_name}</div>
+      <div class="hand-score">${st.opponent_hand_score} pts</div>
+    </div>`;
+  }
+
+  div.innerHTML=html;
+
+  // Show actions based on winner
+  if(st.winner===st.you_id){
+    setStatus(t('pdWin'),'battle');
+    sfxWin();
+  }else if(st.winner===0 || (st.solo && st.winner===0)){
+    setStatus(t('pdLose'),'');
+    sfxLose();
+  }else if(st.winner===-1){
+    setStatus(t('pdDraw'),'');
+  }else if(st.winner===null || st.winner===undefined){
+    // game not finished or winner not determined yet
+  }
+
+  const soloBtnText = st.solo ? t('pdPlayAgain') : t('close');
+  const soloBtnFn = st.solo ? 'pdStartSolo()' : 'showPokerDice()';
+  $('pdActions').innerHTML=`
+    <button class="btn success" onclick="${soloBtnFn}">${soloBtnText}</button>
+    <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
+  `;
+}
+
+function leavePdGame(){
+  if(!confirm(t('quitConfirm')))return;
+  if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
+  pdCode=null;pdState=null;
+  localStorage.removeItem('pd_game');
+  showPokerDice();
+}
+
+function sharePdGame(){
+  if(!pdCode)return;
+  const url=`https://t.me/${botUsername||'...'}/app?startapp=${pdCode}`;
+  const texts={ru:'🎮 Играй со мной в Покер в кости!',uk:'🎮 Грай зі мною в Покер у кості!',en:'🎮 Play Poker Dice with me!'};
+  const text=texts[lang];
+  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+}
+
+function resumePd(code){
+  pdCode=code;
+  localStorage.setItem('pd_game',code);
+  $('actions').innerHTML='';
+  pdRefreshState();
+  pdPoll();
 }
 
 // ---- Checkers ----
@@ -1513,7 +1618,7 @@ function showCheckers(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
-  $('anaArea').style.display='none';
+  $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
@@ -1599,7 +1704,7 @@ function ckShowGame(st){
   $('ckArea').style.display='';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
-  $('anaArea').style.display='none';
+  $('pdArea').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
@@ -1777,7 +1882,7 @@ function showStratego(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
-  $('anaArea').style.display='none';
+  $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('stArea').style.display='none';
   if($('legend'))$('legend').style.display='none';
@@ -1865,7 +1970,7 @@ function stShowGame(st){
   $('stArea').style.display='';
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
-  $('anaArea').style.display='none';
+  $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML='';
@@ -2224,9 +2329,9 @@ async function fetchActiveGames(){
       var badge=g.phase==='playing'?'<span class="badge playing">🎯 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+t('placing')+'</span>';
       html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span> <span class="label">'+label+'</span></div>'+badge+'</div>';
     }
-    else if(g.type==='anagram'){
-      var fin=g.finished?'<span class="badge">✅ '+t('anaOver').replace('{}',g.score)+'</span>':'<span class="badge playing">🔤 '+t('yourTurn')+'</span>';
-      html+='<div class="active-game-row" onclick="resumeAna(\''+g.code+'\')"><div class="info"><span class="label">🔤 </span><span class="code">'+g.code+'</span></div>'+fin+'</div>';
+    else if(g.type==='poker_dice'){
+      var badge=g.my_turn?'<span class="badge playing">🎲 '+t('yourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
     else if(g.type==='checkers'){
       var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
@@ -2248,19 +2353,6 @@ function resumeSB(code){
   $('actions').innerHTML='';
   refreshState();
   setTimeout(pollGame,500);
-}
-
-function resumeAna(code){
-  var sid=localStorage.getItem('ana_sid');
-  if(sid){
-    anaSid=sid;
-    $('actions').innerHTML='';
-    api('/api/ana_state',{uid:getUid(),sid:anaSid}).then(res=>{
-      if(res&&res.ok){anaShowGame(res.state)}else{anaJoin(code)}
-    });
-  }else{
-    anaJoin(code);
-  }
 }
 
 function resumeSt(code){
@@ -2285,6 +2377,14 @@ function tryReconnect(){
     gameCode=saved;
     refreshState();
     setTimeout(pollGame,1000);
+    fetchBotInfo();
+    return;
+  }
+  const pdSaved=localStorage.getItem('pd_game');
+  if(pdSaved){
+    pdCode=pdSaved;
+    pdRefreshState();
+    setTimeout(pdPoll,1000);
     fetchBotInfo();
     return;
   }
@@ -2331,16 +2431,15 @@ async function checkStartParam(){
       pollGame();
       return;
     }
-    // Try Anagram
-    if(resolveRes.game === 'anagram'){
-      const anaRes = await api('/api/ana_join', {uid: getUid(), code});
-      if(anaRes && anaRes.ok){
-        anaSid = anaRes.sid;
-        anaLobbyCode = code;
-        localStorage.setItem('ana_sid', anaRes.sid);
-        localStorage.setItem('ana_code', code);
+    // Try Poker Dice
+    if(resolveRes.game === 'poker_dice'){
+      const pdRes = await api('/api/pd_join', {uid: getUid(), code});
+      if(pdRes && pdRes.ok){
+        pdCode = code;
+        localStorage.setItem('pd_game', code);
         $('actions').innerHTML = '';
-        anaShowGame(anaRes.state);
+        pdShowGame(pdRes.state);
+        pdPoll();
         return;
       }
     }
