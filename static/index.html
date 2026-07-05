@@ -1416,6 +1416,9 @@ function pdShowGame(st){
   document.title=t('pdTitle');
   $('gameInfo').textContent=t('pdTitle');
 
+  $('actions').innerHTML = '';
+  $('actions').className = 'btn-row';
+  $('pdActions').innerHTML = '';
   $('pdDice').innerHTML='';
   $('pdResult').innerHTML='';
 
@@ -1465,20 +1468,20 @@ function pdToggleKeep(idx){
 }
 
 function pdRenderActions(st){
-  $('pdActions').innerHTML='';
+  $('actions').innerHTML='';
   if(!st.my_turn || st.scored){
-    $('pdActions').innerHTML=`<button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>`;
+    $('actions').innerHTML=`<button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>`;
     return;
   }
   if(st.rolls_left>0){
     const keep=Array.from(pdKept);
-    $('pdActions').innerHTML=`
+    $('actions').innerHTML=`
       <button class="btn success" onclick="pdDoRoll()">${t('pdRoll')} (${st.rolls_left})</button>
       <button class="btn outline" onclick="pdDoScore()">${t('pdScore')}</button>
       <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
     `;
   }else{
-    $('pdActions').innerHTML=`
+    $('actions').innerHTML=`
       <button class="btn primary" onclick="pdDoScore()">${t('pdScore')}</button>
       <button class="btn outline" onclick="leavePdGame()">${t('quit')}</button>
     `;
@@ -1553,7 +1556,7 @@ function pdRenderResult(st){
 
   const soloBtnText = st.solo ? t('pdPlayAgain') : t('close');
   const soloBtnFn = st.solo ? 'pdStartSolo()' : 'showPokerDice()';
-  $('pdActions').innerHTML=`
+  $('actions').innerHTML=`
     <button class="btn success" onclick="${soloBtnFn}">${soloBtnText}</button>
     <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
   `;
