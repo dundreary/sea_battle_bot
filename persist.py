@@ -157,14 +157,12 @@ def load():
                 pass
 
         api.checkers_player_games.clear()
-        for k, v in data.get('checkers_player_games', {}).items():
-            try:
-                uid = int(k)
-                code = v
-                if code in api.checkers_games:
-                    api.checkers_player_games[uid] = code
-            except Exception:
-                pass
+        api.checkers_player_games.update(data.get('checkers_player_games', {}))
+        # Remove entries pointing to expired/missing games
+        valid_ck = set(api.checkers_games.keys())
+        for uid, code in list(api.checkers_player_games.items()):
+            if code not in valid_ck:
+                del api.checkers_player_games[uid]
 
         # --- Stratego games ---
         api.stratego_games.clear()
@@ -178,13 +176,11 @@ def load():
                 pass
 
         api.stratego_player_games.clear()
-        for k, v in data.get('stratego_player_games', {}).items():
-            try:
-                uid = int(k)
-                code = v
-                if code in api.stratego_games:
-                    api.stratego_player_games[uid] = code
-            except Exception:
-                pass
+        api.stratego_player_games.update(data.get('stratego_player_games', {}))
+        # Remove entries pointing to expired/missing games
+        valid_st = set(api.stratego_games.keys())
+        for uid, code in list(api.stratego_player_games.items()):
+            if code not in valid_st:
+                del api.stratego_player_games[uid]
 
 

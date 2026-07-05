@@ -61,18 +61,18 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
         return False
 
 games: Dict[str, Game] = {}
-player_games: Dict[int, str] = {}
+player_games: Dict[str, str] = {}
 
 # Track uid -> {code, sid} for Anagram multiplayer rejoin + active games listing
-ana_player_sessions: Dict[int, Dict[str, Any]] = {}
+ana_player_sessions: Dict[str, Dict[str, Any]] = {}
 
 # Checkers games
 checkers_games: Dict[str, CheckersGame] = {}
-checkers_player_games: Dict[int, str] = {}
+checkers_player_games: Dict[str, str] = {}
 
 # Stratego games
 stratego_games: Dict[str, StrategoGame] = {}
-stratego_player_games: Dict[int, str] = {}
+stratego_player_games: Dict[str, str] = {}
 
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
@@ -402,7 +402,7 @@ def _handle_active_games(data, uid, code):
                 'score': st.get('score', 0),
                 'remaining': st.get('remaining', 0),
             })
-    ck_code = checkers_player_games.get(uid)
+    ck_code = checkers_player_games.get(str(uid))
     if ck_code and ck_code in checkers_games:
         g = checkers_games[ck_code]
         games_list.append({
@@ -411,7 +411,7 @@ def _handle_active_games(data, uid, code):
             'phase': g.phase,
             'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
         })
-    st_code = stratego_player_games.get(uid)
+    st_code = stratego_player_games.get(str(uid))
     if st_code and st_code in stratego_games:
         g = stratego_games[st_code]
         games_list.append({
@@ -453,7 +453,7 @@ def _handle_checkers_new_solo(data, uid, code):
         c = CheckersGame.generate_code()
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
     checkers_games[c] = game
-    checkers_player_games[uid] = c
+    checkers_player_games[str(uid)] = c
     save()
     return {"ok": True, "code": c, "state": game.get_state(uid)}
 
@@ -466,7 +466,7 @@ def _handle_checkers_new_multi(data, uid, code):
         c = CheckersGame.generate_code()
     game = CheckersGame(c, uid)
     checkers_games[c] = game
-    checkers_player_games[uid] = c
+    checkers_player_games[str(uid)] = c
     save()
     return {"ok": True, "code": c, "state": game.get_state(uid)}
 
@@ -480,7 +480,7 @@ def _handle_checkers_join(data, uid, code):
     if game.player2_id is not None:
         return {"ok": False, "error": "full"}
     game.player2_id = uid
-    checkers_player_games[uid] = code
+    checkers_player_games[str(uid)] = code
     save()
     return {"ok": True, "state": game.get_state(uid)}
 
@@ -570,7 +570,7 @@ def _handle_stratego_new_solo(data, uid, code):
     game.player2_id = 0
     game.phase = 'setup_p1'
     stratego_games[c] = game
-    stratego_player_games[uid] = c
+    stratego_player_games[str(uid)] = c
     save()
     return {"ok": True, "code": c, "state": game.get_state(uid)}
 
@@ -583,7 +583,7 @@ def _handle_stratego_new_multi(data, uid, code):
         c = StrategoGame.generate_code()
     game = StrategoGame(c, uid)
     stratego_games[c] = game
-    stratego_player_games[uid] = c
+    stratego_player_games[str(uid)] = c
     save()
     return {"ok": True, "code": c, "state": game.get_state(uid)}
 
@@ -597,7 +597,7 @@ def _handle_stratego_join(data, uid, code):
     if game.player2_id is not None:
         return {"ok": False, "error": "full"}
     game.player2_id = uid
-    stratego_player_games[uid] = code
+    stratego_player_games[str(uid)] = code
     save()
     return {"ok": True, "state": game.get_state(uid)}
 

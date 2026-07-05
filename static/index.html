@@ -2008,7 +2008,7 @@ function stRenderBoard(st){
     const val=grid[idx];
     const absVal=val>0?val:(val<0&&val!==-99?-val:0);
     if(absVal>0){
-      if(!ST_MOVABLE[absVal]&&ST_MOVABLE[absVal]!==undefined&&!ST_MOVABLE[absVal]){
+      if(ST_MOVABLE[absVal]===false){
         moves=null;
       }else{
         moves=stComputeMoves(st,stSelected[0],stSelected[1]);
@@ -2071,7 +2071,7 @@ function stRenderBoard(st){
       }
       var stClickable=(val>0||(val<0&&val!==-99));
       var stPieceType=stClickable?(val>0?val:-val):0;
-      if(myTurn&&stClickable&&(!ST_MOVABLE[stPieceType]&&ST_MOVABLE[stPieceType]!==undefined?!ST_MOVABLE[stPieceType]:true)){
+      if(myTurn&&stClickable&&ST_MOVABLE[stPieceType]!==false){
         cell.style.cursor='pointer';
         cell.onclick=()=>stCellClick(r,c);
       }
@@ -2102,7 +2102,7 @@ function stComputeMoves(st, r, c){
   if(val===0||val===99)return null;
   if(val===-99)return null;
   const absVal=val>0?val:-val;
-  if(!ST_MOVABLE[absVal]&&ST_MOVABLE[absVal]!==undefined&&!ST_MOVABLE[absVal])return null;
+  if(ST_MOVABLE[absVal]===false)return null;
   const moves=new Set();
   if(absVal===3){
     for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
@@ -2157,7 +2157,7 @@ async function stCellClick(r,c){
   if(val===0||val===99)return;
   if(val===-99)return;
   const absVal=val>0?val:-val;
-  if(!ST_MOVABLE[absVal]&&ST_MOVABLE[absVal]!==undefined&&!ST_MOVABLE[absVal])return;
+  if(ST_MOVABLE[absVal]===false)return;
   stSelected=[r,c];
   stRenderBoard(stState);
 }
@@ -2300,6 +2300,19 @@ async function checkStartParam(){
       await refreshState();
       pollGame();
       return;
+    }
+    // Try Anagram
+    if(resolveRes.game === 'anagram'){
+      const anaRes = await api('/api/ana_join', {uid: getUid(), code});
+      if(anaRes && anaRes.ok){
+        anaSid = anaRes.sid;
+        anaLobbyCode = code;
+        localStorage.setItem('ana_sid', anaRes.sid);
+        localStorage.setItem('ana_code', code);
+        $('actions').innerHTML = '';
+        anaShowGame(anaRes.state);
+        return;
+      }
     }
     // Try Checkers
     if(resolveRes.game === 'checkers'){

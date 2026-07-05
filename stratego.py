@@ -543,6 +543,8 @@ def ai_get_move(game, difficulty=None):
                 if v < 0 and v != LAKE:
                     own_types[(rr, cc)] = cell_type(v)
 
+    best_overall = None
+    best_overall_score = -999
     for r, c in pieces:
         moves = get_moves(board, r, c)
         if not moves:
@@ -550,8 +552,6 @@ def ai_get_move(game, difficulty=None):
         own_val = board[encode(r, c)]
         own_type = cell_type(own_val)
         random.shuffle(moves)
-        best = None
-        best_score = -999
         for nr, nc in moves:
             tval = board[encode(nr, nc)]
             if tval == EMPTY:
@@ -581,11 +581,11 @@ def ai_get_move(game, difficulty=None):
                         score = -50
                     else:
                         score = -200
-            if score > best_score:
-                best_score = score
-                best = (nr, nc)
-        if best:
-            return (r, c, best[0], best[1])
+            if score > best_overall_score:
+                best_overall_score = score
+                best_overall = (r, c, nr, nc)
+    if best_overall:
+        return best_overall
     return None
 
 
