@@ -1114,11 +1114,8 @@ async function newMulti(strip=false){
 
 function shareGame(){
   if(!gameCode) return;
-  const url=`https://t.me/${botUsername||'...'}/app?startapp=${gameCode}`;
-  const texts={ru:'🎮 Сыграем в Морской бой!',uk:'🎮 Зіграємо в Морський бій!',en:'🎮 Play Sea Battle with me!'};
-  const text=texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+  copyToClipboard(gameCode, {ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
 }
 
 function copyToClipboard(text, msg){
