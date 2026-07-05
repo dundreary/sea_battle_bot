@@ -1443,7 +1443,6 @@ function showPokerDice(){
       <div class="name">${t('joinTitle')}</div>
       <div class="card-desc">${t('joinBtn')}</div>
     </div>
-    <button class="btn primary" onclick="pdNewMulti()" style="margin-bottom:8px;width:100%">${t('pdFriend')}</button>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
 }
@@ -1792,6 +1791,8 @@ function pdRenderResult(st){
     <button class="btn success" onclick="${soloBtnFn}">${soloBtnText}</button>
     <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
   `;
+  // Clear saved game on finish so it doesn't show in menu
+  if(pdCode) localStorage.removeItem('pd_game');
 }
 
 function leavePdGame(){
@@ -1804,6 +1805,7 @@ async function pdSurrender(){
   if(!confirm({ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang])) return;
   const res=await api('/api/pd_surrender',{uid:getUid(),code:pdCode});
   if(!res||!res.ok){setStatus(t('error'));return}
+  localStorage.removeItem('pd_game');
   pdShowGame(res.state);
 }
 
