@@ -33,15 +33,18 @@ def evaluate(dice: List[int]) -> Dict[str, Any]:
 
 
 class PokerDiceGame:
-    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False):
+    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False, total_rounds: int = 5):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
+        self.total_rounds = total_rounds
+        self.current_round = 1
         self.players = {
             1: {'dice': [], 'rolls': 3, 'scored': False, 'hand': None},
             2: {'dice': [], 'rolls': 3, 'scored': False, 'hand': None},
         }
+        self.round_history = []
         self.turn = 1
         self.phase = 'playing'
 
@@ -93,18 +96,30 @@ class PokerDiceGame:
         return self.get_state(pnum)
 
     def _after_score(self, pnum: int):
-        if self.solo:
-            if pnum == 1:
+        other = 3 - pnum
+        if self.players[other]['scored']:
+            self._end_round()
+        else:
+            if self.solo and pnum == 1:
                 self.turn = 2
                 self._bot_play()
             else:
-                self.phase = 'finished'
-        else:
-            other = 3 - pnum
-            if self.players[other]['scored']:
-                self.phase = 'finished'
-            else:
                 self.turn = other
+
+    def _end_round(self):
+        self.round_history.append({
+            'round': self.current_round,
+            'p1': dict(self.players[1]['hand']),
+            'p2': dict(self.players[2]['hand']),
+        })
+
+        if self.current_round >= self.total_rounds:
+            self.phase = 'finished'
+        else:
+            self.current_round += 1
+            self.players[1] = {'dice': [], 'rolls': 3, 'scored': False, 'hand': None}
+            self.players[2] = {'dice': [], 'rolls': 3, 'scored': False, 'hand': None}
+            self.turn = 1
 
     def _bot_play(self):
         p = self.players[2]
@@ -126,30 +141,58 @@ class PokerDiceGame:
         p['dice'] = dice
         p['hand'] = evaluate(dice)
         p['scored'] = True
-        self.phase = 'finished'
+        self._after_score(2)
+
+    def _get_total(self, pnum: int) -> int:
+        return sum(r[f'p{pnum}']['score'] for r in self.round_history)
 
     def _get_winner(self):
         if self.phase != 'finished':
             return None
-        h1 = self.players[1]['hand']
-        h2 = self.players[2]['hand']
-        if not h1 or not h2:
-            return None
-        if h1['rank'] < h2['rank']:
+        total1 = self._get_total(1)
+        total2 = self._get_total(2)
+        if total1 > total2:
             return self.player1_id
-        if h2['rank'] < h1['rank']:
+        if total2 > total1:
             return self.player2_id if self.player2_id else 0
-        if h1['score'] > h2['score']:
-            return self.player1_id
-        if h2['score'] > h1['score']:
-            return self.player2_id if self.player2_id else 0
-        return -1  # draw
+        return -1
+
+    def _get_history_for_player(self, pnum: int) -> List[Dict]:
+        history = []
+        for r in self.round_history:
+            my_key = f'p{pnum}'
+            opp_key = f'p{3-pnum}'
+            my_hand = r[my_key]
+            opp_hand = r[opp_key]
+            entry = {
+                'round': r['round'],
+                'my_score': my_hand['score'],
+                'my_hand': my_hand['name'],
+                'my_rank': my_hand['rank'],
+                'opp_score': opp_hand['score'],
+                'opp_hand': opp_hand['name'],
+                'opp_rank': opp_hand['rank'],
+            }
+            if my_hand['rank'] < opp_hand['rank']:
+                entry['result'] = 'win'
+            elif my_hand['rank'] > opp_hand['rank']:
+                entry['result'] = 'lose'
+            elif my_hand['score'] > opp_hand['score']:
+                entry['result'] = 'win'
+            elif my_hand['score'] < opp_hand['score']:
+                entry['result'] = 'lose'
+            else:
+                entry['result'] = 'draw'
+            history.append(entry)
+        return history
 
     def get_state(self, pnum: int) -> Dict[str, Any]:
         p = self.players[pnum]
         opp = self.players[3 - pnum]
 
         winner = self._get_winner()
+        total_my = self._get_total(pnum)
+        total_opp = self._get_total(3 - pnum)
 
         return {
             'code': self.code,
@@ -170,6 +213,11 @@ class PokerDiceGame:
             'opponent_hand_name': opp['hand']['name'] if opp['hand'] else None,
             'winner': winner,
             'you_id': self.player1_id if pnum == 1 else self.player2_id,
+            'current_round': self.current_round,
+            'total_rounds': self.total_rounds,
+            'round_history': self._get_history_for_player(pnum),
+            'total_score': total_my,
+            'opponent_total_score': total_opp,
         }
 
     @staticmethod
