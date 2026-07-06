@@ -184,13 +184,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ana-base-word .revealed{color:var(--accent-primary);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:2px;display:none}
 .ana-base-word.show .revealed{display:inline}
 
-.pd-dice{display:flex;gap:8px;justify-content:center;margin:10px 0;flex-wrap:wrap}
+.pd-dice{display:flex;gap:8px;justify-content:center;margin:20px 0;flex-wrap:wrap}
 .pd-dot-die{width:min(52px,14vw);height:min(52px,14vw);background:var(--bg-board-alt);border-radius:10px;display:grid;grid-template-rows:1fr 1fr 1fr;grid-template-columns:1fr 1fr 1fr;padding:5px;cursor:pointer;transition:.12s;user-select:none;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .pd-dot-die .dot{width:9px;height:9px;background:var(--accent-primary-light);border-radius:50%;justify-self:center;align-self:center}
 .pd-dot-die:hover{transform:scale(1.08)}
 .pd-dot-die.kept{box-shadow:0 0 0 3px #ffd700,0 0 10px rgba(255,215,0,.35);background:var(--color-btn-primary-1)}
 .pd-dot-die:active{transform:scale(.88)}
-.pd-dot-die.roll-finished{opacity:.5;cursor:default}
 .pd-roll-btn{width:min(52px,14vw);height:min(52px,14vw);border:none;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff;border-radius:10px;font-size:clamp(16px,4.5vw,22px);font-weight:700;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;user-select:none;box-shadow:0 2px 6px rgba(46,125,50,.3)}
 .pd-roll-btn:active{transform:scale(.88)}
 .pd-roll-btn .count{font-size:9px;opacity:.8;position:absolute;bottom:4px;right:6px;font-weight:400}
@@ -450,6 +449,7 @@ const LANG = {
     pdPlayAgain: '🔄 Играть ещё',
     pdRollsLeft: 'Бросков: {}',
     pdResult: 'Результат: {}',
+    pdPts: 'очк.',
     pdKeep: 'Закрепить',
     pdRound: 'Раунд {}',
     pdResultShort: 'Рез.',
@@ -572,6 +572,7 @@ const LANG = {
     pdPlayAgain: '🔄 Грати ще',
     pdRollsLeft: 'Кидків: {}',
     pdResult: 'Результат: {}',
+    pdPts: 'очк.',
     pdKeep: 'Закріпити',
     pdRound: 'Раунд {}',
     pdResultShort: 'Рез.',
@@ -694,6 +695,7 @@ const LANG = {
     pdPlayAgain: '🔄 Play again',
     pdRollsLeft: 'Rolls: {}',
     pdResult: 'Result: {}',
+    pdPts: 'pts',
     pdKeep: 'Keep',
     pdRound: 'Round {}',
     pdResultShort: 'Res.',
@@ -1531,8 +1533,8 @@ function pdShowGame(st){
     return;
   }
 
-  // Clear kept dice when it's a fresh turn (empty dice)
-  if(!st.dice || st.dice.length === 0 || st.scored){
+  // Clear kept dice when it's a fresh turn, scored, or no rolls left
+  if(!st.dice || st.dice.length === 0 || st.scored || (st.rolls_left === 0 && st.my_turn)){
     pdKept = new Set();
   }
 
@@ -1572,7 +1574,7 @@ function pdRenderScorecard(st){
     const oppDisplay = oppVal !== null ? oppVal : (oppVal === null ? '' : oppVal);
 
     html += `<tr class="${cls}" data-cat="${catId}">`;
-    html += `<td class="cat-name">${isUpper ? (i+1)+' ⚀' : '🎲'} ${catName(catId)}</td>`;
+    html += `<td class="cat-name">${isUpper ? (i+1)+' 🎲' : '🎲'} ${catName(catId)}</td>`;
     html += `<td class="cat-score">${myDisplay}</td>`;
     html += `<td class="cat-score" style="color:var(--text-hint)">${oppDisplay}</td>`;
     html += `</tr>`;
@@ -1617,7 +1619,6 @@ function pdRenderDice(st){
     const die=document.createElement('div');
     die.className='pd-dot-die';
     const val = dice[i] || 0;
-    const isKept = pdKept.has(i);
     if(val){
       const dots = PD_DOTS[val-1] || [];
       for(const [r,c] of dots){
@@ -1629,11 +1630,9 @@ function pdRenderDice(st){
       }
     }
     die.dataset.idx=i;
-    if(isKept) die.classList.add('kept');
     if(st.my_turn && !st.scored && st.rolls_left>0){
+      if(pdKept.has(i)) die.classList.add('kept');
       die.onclick=()=>pdToggleKeep(i);
-    }else{
-      die.classList.add('roll-finished');
     }
     cont.appendChild(die);
   }
@@ -1684,13 +1683,12 @@ function pdRenderInfo(st){
   }
 
   const catLeft = st.categories_left || [];
-  const catStr = t('pdCategoriesLeft') || 'Осталось:';
-  const progressStr = `📋 ${catStr} ${catLeft.length}/${st.max_categories}`;
+  const progressStr = `📋 ${catLeft.length}/${st.max_categories}`;
 
   if(st.scored){
     if(st.hand_name){
       $('pdResult').innerHTML = `<div class="pd-result" style="margin:0;padding:4px">
-        <div class="hand-name" style="font-size:14px">${st.hand_name} = ${st.hand_score} pts</div>
+        <div class="hand-name" style="font-size:14px">${st.hand_name} (${st.hand_score} ${t('pdPts')})</div>
       </div>`;
     }
     setStatus(progressStr + ' — ' + t('pdWaiting'), '');
@@ -1698,8 +1696,7 @@ function pdRenderInfo(st){
   }
 
   if(st.my_turn){
-    const rollsLeftStr = st.rolls_left > 0 ? ' · ' + t('pdRollsLeft').replace('{}',st.rolls_left) : ' · ' + (t('pdChooseCat')||'Выбери категорию');
-    setStatus(progressStr + rollsLeftStr,'battle');
+    setStatus(progressStr, 'battle');
   }else{
     setStatus(progressStr + ' — ' + t('pdWaiting'),'');
   }
@@ -1741,7 +1738,7 @@ function pdRenderResult(st){
     const isUpper = i < 6;
     const myVal = sc[catId];
     const oppVal = oppSc[catId];
-    html += `<tr><td class="cat-name">${isUpper ? (i+1)+' ⚀' : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
+    html += `<tr><td class="cat-name">${isUpper ? (i+1)+' 🎲' : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
   };
 
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
@@ -1758,7 +1755,7 @@ function pdRenderResult(st){
     html+=`<div class="pd-result" style="margin:4px auto;max-width:340px">
       <div style="font-size:13px;color:var(--text-muted)">${t('pdYourHand')}:</div>
       <div class="hand-name">${st.hand_name}</div>
-      <div class="hand-score">${st.hand_score} pts</div>
+      <div class="hand-score">${st.hand_score} ${t('pdPts')}</div>
     </div>`;
   }
 
@@ -1766,7 +1763,7 @@ function pdRenderResult(st){
     html+=`<div class="pd-opponent" style="margin:4px auto;max-width:340px">
       <div style="font-size:13px;color:var(--text-muted)">${t('pdOppHand')}:</div>
       <div class="hand-name">${st.opponent_hand_name}</div>
-      <div class="hand-score">${st.opponent_hand_score} pts</div>
+      <div class="hand-score">${st.opponent_hand_score} ${t('pdPts')}</div>
     </div>`;
   }
 
