@@ -214,7 +214,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-scorecard tr.total-row.win td{color:#66BB6A}
 .pd-scorecard tr.total-row.lose td{color:#EF5350}
 
-.pd-scorecard tr.dice-row td{padding:6px 0;font-size:24px;color:var(--accent-primary-light)}
+.pd-scorecard tr.dice-row td{padding:6px 0}
+.pd-scorecard .pd-dot-die{width:48px;height:48px;padding:4px}
 .pd-scoreboard{width:100%;max-width:340px;margin:8px 0;border-collapse:collapse;font-size:12px}
 .pd-scoreboard th{color:var(--text-muted);padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
 .pd-scoreboard td{text-align:center;padding:4px 6px;border-bottom:1px solid var(--border-color);color:var(--text-secondary)}
@@ -1584,7 +1585,17 @@ function pdRenderScorecard(st){
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
 
   // Dice row
-  html += `<tr class="dice-row"><td class="cat-name" colspan="3" style="text-align:center;padding:8px 0">${PD_DICE_FACES.join(' ')}</td></tr>`;
+  const diceHtml = (st.dice || [0,0,0,0,0]).map((val, idx) => {
+    const isKept = pdKept.has(idx);
+    let dotsHtml = '';
+    if(val){
+      const dots = PD_DOTS[val-1] || [];
+      dotsHtml = dots.map(([r,c]) => `<div class="dot" style="grid-row:${r+1};grid-column:${c+1}"></div>`).join('');
+    }
+    const keptClass = isKept ? ' kept' : '';
+    return `<div class="pd-dot-die${keptClass}">${dotsHtml}</div>`;
+  }).join('');
+  html += `<tr class="dice-row"><td class="cat-name" colspan="3" style="text-align:center;padding:8px 0">${diceHtml}</td></tr>`;
 
   // Bonus row
   const bonus = st.bonus;
