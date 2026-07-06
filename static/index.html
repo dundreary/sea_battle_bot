@@ -196,10 +196,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 .pd-round{text-align:center;font-size:13px;color:var(--accent-primary);font-weight:700;margin:4px 0}
 .pd-scorecard{width:100%;max-width:340px;margin:8px 0;border-collapse:collapse;font-size:13px}
-.pd-scorecard th{padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
+.pd-scorecard th{padding:5px;border-bottom:1px solid var(--border-color);font-weight:600}
 .pd-scorecard th.cat-name{color:var(--accent-primary-light);text-align:left}
 .pd-scorecard th.cat-score{color:var(--text-muted);text-align:center;width:40px}
-.pd-scorecard td{padding:4px 6px;border-bottom:1px solid var(--border-color);text-align:center}
+.pd-scorecard td{padding:5px;border-bottom:1px solid var(--border-color);text-align:center}
 .pd-scorecard td.cat-name{text-align:left;color:var(--text-secondary)}
 .pd-scorecard td.cat-score{color:var(--accent-primary);font-weight:600}
 .pd-scorecard tr.used td.cat-name{color:var(--text-muted)}
@@ -221,8 +221,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-scoreboard .total-row td{font-weight:700;color:#fff;border-top:2px solid var(--accent-primary);font-size:14px;padding:4px 6px}
 .pd-scoreboard .total-row.win td{color:#66BB6A}
 .pd-scoreboard .total-row.lose td{color:#EF5350}
-
-.pd-die-icon{display:inline-flex;width:24px;height:24px;background:var(--accent-primary);color:var(--bg-dark);border-radius:4px;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:4px;vertical-align:middle}
 
 .pd-result{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
 .pd-result .hand-name{font-size:18px;font-weight:700;color:var(--accent-primary)}
@@ -891,6 +889,7 @@ async function refreshState(){
     $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
     return
   }
+  if(!gameCode)return;
   state=res.state;
   updateUI();
 }
@@ -1414,14 +1413,7 @@ const PD_CAT_NAMES = {
   en: ['Ones','Twos','Threes','Fours','Fives','Sixes','One Pair','Two Pairs','Three of a Kind','Four of a Kind','Full House','S.Strt','L.Strt','Five of a Kind','Chance'],
   uk: ['Очки','Двійки','Трійки','Четвірки',"П'ятірки",'Шістки','Пара','Дві пари','Трійка','Каре','Фулл-хаус','М.стрит','В.стрит','Покер','Шанс'],
 };
-const PD_CAT_SHORT = {
-  ru: ['1','2','3','4','5','6','Пара','2пар','3одн','4одн','Фулл','М.стр','Б.стр','5одн','Шанс'],
-  en: ['1','2','3','4','5','6','Pair','2Pair','3Kind','4Kind','F.H.','S.St','L.St','5Kind','Chnc'],
-  uk: ['1','2','3','4','5','6','Пара','2пар','3одн','4одн','Ф.-х','М.стр','В.стр','5одн','Шанс'],
-};
-
 function catName(id){ const i=PD_CATEGORIES.indexOf(id); return PD_CAT_NAMES[lang]?.[i]||id; }
-function catShort(id){ const i=PD_CATEGORIES.indexOf(id); return PD_CAT_SHORT[lang]?.[i]||id; }
 
 function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -1517,6 +1509,7 @@ async function pdRefreshState(){
     showPokerDice();
     return;
   }
+  if(!pdCode)return;
   pdShowGame(res.state);
 }
 
@@ -1583,7 +1576,7 @@ function pdRenderScorecard(st){
     const oppDisplay = oppVal !== null ? oppVal : (oppVal === null ? '' : oppVal);
 
     html += `<tr class="${cls}" data-cat="${catId}">`;
-    html += `<td class="cat-name">${isUpper ? `<span class="pd-die-icon">${i+1}</span>` : '🎲'} ${catName(catId)}</td>`;
+    html += `<td class="cat-name">${isUpper ? '⚀⚁⚂⚃⚄⚅'[i] : '🎲'} ${catName(catId)}</td>`;
     html += `<td class="cat-score">${myDisplay}</td>`;
     html += `<td class="cat-score" style="color:var(--text-hint)">${oppDisplay}</td>`;
     html += `</tr>`;
@@ -1747,7 +1740,7 @@ function pdRenderResult(st){
     const isUpper = i < 6;
     const myVal = sc[catId];
     const oppVal = oppSc[catId];
-    html += `<tr><td class="cat-name">${isUpper ? `<span class="pd-die-icon">${i+1}</span>` : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
+    html += `<tr><td class="cat-name">${isUpper ? '⚀⚁⚂⚃⚄⚅'[i] : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
   };
 
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
@@ -1940,6 +1933,7 @@ async function ckRefreshState(){
     showCheckers();
     return;
   }
+  if(!ckCode)return;
   ckShowGame(res.state);
 }
 
@@ -2205,6 +2199,7 @@ async function stRefreshState(){
     showStratego();
     return;
   }
+  if(!stCode)return;
   stShowGame(res.state);
 }
 
