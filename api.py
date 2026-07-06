@@ -4,7 +4,7 @@ import logging
 import urllib.request
 from typing import Dict, Any
 
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, SUNK, auto_place_ships, auto_place_strip_ships
 # from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, get_legal_moves
@@ -472,20 +472,28 @@ def _handle_pd_state(data, uid, code):
     return {"ok": True, "state": game.get_state(pnum)}
 
 
+def _handle_surrender(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = games.get(code)
+    if not game or game.phase != "playing":
+        return {"error": "not_playing"}
+    if uid != game.player1_id and uid != game.player2_id:
+        return {"error": "not_in_game"}
+    own = game.board_for(uid)
+    for ship in own.ships:
+        for r, c in ship.cells:
+            own.grid[r][c] = SUNK
+        ship.hits = set(ship.cells)
+        own._mark_dead_zone(ship)
+    save()
+    return {"ok": True, "state": as_dict(game, uid)}
+
+
 def _handle_active_games(data, uid, code):
     if not uid:
         return {"error": "no uid"}
     games_list = []
-    sb_code = player_games.get(str(uid))
-    if sb_code and sb_code in games:
-        g = games[sb_code]
-        games_list.append({
-            'type': 'sea_battle',
-            'code': sb_code,
-            'solo': g.solo,
-            'phase': g.phase,
-            'my_turn': g.current_player() == uid,
-        })
     pd_code = pd_player_games.get(str(uid))
     if pd_code and pd_code in pd_games:
         g = pd_games[pd_code]
@@ -811,6 +819,7 @@ _HANDLERS = {
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
     "/api/upload_photo": _handle_upload_photo,
+    "/api/surrender": _handle_surrender,
     "/api/active_games": _handle_active_games,
     "/api/pd_new_solo": _handle_pd_new_solo,
     "/api/pd_new_multi": _handle_pd_new_multi,

@@ -991,7 +991,7 @@ function updateUI(){
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('surrender')}</button>`;
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
@@ -1333,7 +1333,7 @@ function showResult(icon,title,desc,strip){
         <p>${desc}</p>
         <p style="margin:12px 0;color:var(--text-secondary)" id="stripStatus">⏳ ${STRIP_LOADING_MSGS[lang].send}</p>
         <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
-        <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
+        <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
       </div>`;
     document.body.appendChild(o);
     const st=$('stripStatus');
@@ -1362,27 +1362,36 @@ function showResult(icon,title,desc,strip){
         <p>${desc}</p>
         ${photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
         <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
-        <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
+        <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
       </div>`;
     document.body.appendChild(o);
     return;
   }
   
-  // Normal flow (non-strip)
+  // Normal flow (non-strip) - game is already over, quit just goes to menu
   const playAgainFn = 'startSolo()';
+  const endMsg = state ? '' : t('gameOver');
   o.innerHTML=`
     <div class="modal">
       <div class="result-icon">${icon}</div>
       <h2>${title}</h2>
       <p>${desc}</p>
       <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();${playAgainFn}">${t('playAgain')}</button>
-      <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();leaveGame()">${t('quit')}</button>
+      <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
 }
 
-async function leaveGame(){
-  if(!confirm(t('quitConfirm')))return;
+async function leaveGame(surrender){
+  var msg = surrender ? {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang] : t('quitConfirm');
+  if(!confirm(msg))return;
+  if(surrender && state && state.phase==='playing'){
+    await api('/api/surrender',{uid:getUid(),code:gameCode});
+    localStorage.removeItem('sb_game');
+  }
+  gameCode=null;state=null;
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  try{Telegram.WebApp.close()}catch(e){}
   showMenu();
 }
 
@@ -2657,14 +2666,8 @@ function continueGame(){
 }
 
 function updateContinueButton(){
-  const saved=localStorage.getItem('sb_game');
   const btn=$('continueBtn');
-  if(saved && btn){
-    btn.textContent = t('continue');
-    btn.style.display='inline-flex';
-  }else if(btn){
-    btn.style.display='none';
-  }
+  if(btn) btn.style.display='none';
 }
 
 async function checkStartParam(){
