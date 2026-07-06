@@ -199,7 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-scorecard th{padding:4px 6px;border-bottom:1px solid var(--border-color);font-weight:600}
 .pd-scorecard th.cat-name{color:var(--accent-primary-light);text-align:left}
 .pd-scorecard th.cat-score{color:var(--text-muted);text-align:center;width:40px}
-.pd-scorecard td{padding:3px 6px;border-bottom:1px solid var(--border-color);text-align:center}
+.pd-scorecard td{padding:8px 8px;border-bottom:1px solid var(--border-color);text-align:center}
 .pd-scorecard td.cat-name{text-align:left;color:var(--text-secondary)}
 .pd-scorecard td.cat-score{color:var(--accent-primary);font-weight:600}
 .pd-scorecard tr.used td.cat-name{color:var(--text-muted)}
@@ -221,6 +221,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-scoreboard .total-row td{font-weight:700;color:#fff;border-top:2px solid var(--accent-primary);font-size:14px;padding:6px}
 .pd-scoreboard .total-row.win td{color:#66BB6A}
 .pd-scoreboard .total-row.lose td{color:#EF5350}
+
+.pd-die-icon{display:inline-flex;width:24px;height:24px;background:var(--accent-primary);color:var(--bg-dark);border-radius:4px;align-items:center;justify-content:center;font-size:13px;font-weight:700;margin-right:4px;vertical-align:middle}
 
 .pd-result{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
 .pd-result .hand-name{font-size:18px;font-weight:700;color:var(--accent-primary)}
@@ -336,7 +338,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="btn-row" id="stActions" style="margin-top:8px"></div>
   </div>
 </div>
-<footer>🎮 Games</footer>
+
 
 <script>
 const LANG = {
@@ -1549,14 +1551,12 @@ function pdRenderScorecard(st){
   cont.innerHTML = '';
 
   const categoriesLeft = st.categories_left || [];
-  const totalCats = st.max_categories || 14;
-  const filledCount = totalCats - categoriesLeft.length;
 
   const table = document.createElement('table');
   table.className = 'pd-scorecard';
   table.id = 'pdScorecardEl';
 
-  let html = `<tr><th class="cat-name">📋 ${t('pdScorecard')||'Табло'} (${filledCount}/${totalCats})</th><th class="cat-score">${t('pdScoreBtn')||'Очки'}</th><th class="cat-score" style="color:var(--text-hint)">${t('pdOpp')||'Сопер.'}</th></tr>`;
+  let html = `<tr><th class="cat-name">📋 ${t('pdScorecard')||'Табло'}</th><th class="cat-score">${t('pdScoreBtn')||'Очки'}</th><th class="cat-score" style="color:var(--text-hint)">${t('pdOpp')||'Сопер.'}</th></tr>`;
 
   const sc = st.scorecard || {};
   const oppSc = st.opponent_scorecard || {};
@@ -1574,7 +1574,7 @@ function pdRenderScorecard(st){
     const oppDisplay = oppVal !== null ? oppVal : (oppVal === null ? '' : oppVal);
 
     html += `<tr class="${cls}" data-cat="${catId}">`;
-    html += `<td class="cat-name">${isUpper ? (i+1)+' 🎲' : '🎲'} ${catName(catId)}</td>`;
+    html += `<td class="cat-name">${isUpper ? `<span class="pd-die-icon">${i+1}</span>` : '🎲'} ${catName(catId)}</td>`;
     html += `<td class="cat-score">${myDisplay}</td>`;
     html += `<td class="cat-score" style="color:var(--text-hint)">${oppDisplay}</td>`;
     html += `</tr>`;
@@ -1643,6 +1643,7 @@ function pdRenderDice(st){
 function pdToggleKeep(idx){
   if(pdKept.has(idx)) pdKept.delete(idx);
   else pdKept.add(idx);
+  sfxClick();
   const dice=$('pdDice').children;
   for(let i=0;i<dice.length;i++){
     const dieIdx = parseInt(dice[i].dataset.idx);
@@ -1682,28 +1683,26 @@ function pdRenderInfo(st){
     return;
   }
 
-  const catLeft = st.categories_left || [];
-  const progressStr = `📋 ${catLeft.length}/${st.max_categories}`;
-
   if(st.scored){
     if(st.hand_name){
       $('pdResult').innerHTML = `<div class="pd-result" style="margin:0;padding:4px">
         <div class="hand-name" style="font-size:14px">${st.hand_name} (${st.hand_score} ${t('pdPts')})</div>
       </div>`;
     }
-    setStatus(progressStr + ' — ' + t('pdWaiting'), '');
+    setStatus(t('pdWaiting'), '');
     return;
   }
 
   if(st.my_turn){
-    setStatus(progressStr, 'battle');
+    setStatus('🎲', 'battle');
   }else{
-    setStatus(progressStr + ' — ' + t('pdWaiting'),'');
+    setStatus(t('pdWaiting'),'');
   }
 }
 
 async function pdDoRoll(){
   if(!pdState)return;
+  sfxChime();
   const keep=Array.from(pdKept);
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
@@ -1712,6 +1711,7 @@ async function pdDoRoll(){
 
 async function pdDoScore(category){
   if(!pdState || !category) return;
+  sfxClick();
   const keep=Array.from(pdKept);
   const res=await api('/api/pd_score',{uid:getUid(),code:pdCode,category:category,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
@@ -1738,7 +1738,7 @@ function pdRenderResult(st){
     const isUpper = i < 6;
     const myVal = sc[catId];
     const oppVal = oppSc[catId];
-    html += `<tr><td class="cat-name">${isUpper ? (i+1)+' 🎲' : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
+    html += `<tr><td class="cat-name">${isUpper ? `<span class="pd-die-icon">${i+1}</span>` : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
   };
 
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
