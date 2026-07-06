@@ -184,7 +184,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ana-base-word .revealed{color:var(--accent-primary);font-weight:700;font-size:18px;text-transform:uppercase;letter-spacing:2px;display:none}
 .ana-base-word.show .revealed{display:inline}
 
-.pd-dice{display:flex;gap:8px;justify-content:center;margin:20px 0;flex-wrap:wrap}
+.pd-dice{display:flex;gap:8px;justify-content:center;margin:18px 0;flex-wrap:wrap}
 .pd-dot-die{width:min(52px,14vw);height:min(52px,14vw);background:var(--bg-board-alt);border-radius:10px;display:grid;grid-template-rows:1fr 1fr 1fr;grid-template-columns:1fr 1fr 1fr;padding:5px;cursor:pointer;transition:.12s;user-select:none;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.3)}
 .pd-dot-die .dot{width:9px;height:9px;background:var(--accent-primary-light);border-radius:50%;justify-self:center;align-self:center}
 .pd-dot-die:hover{transform:scale(1.08)}
@@ -920,7 +920,7 @@ function updateUI(){
   renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
   renderBoard($('oppBoard'),s.opp,true,gameOver,null,s.strip);
   
-  $('gameInfo').textContent = s.strip ? '👗 Strip' : '';
+  $('gameInfo').textContent = '';
   $('header').classList.add('in-game');
   document.title = s.strip ? t('stripTitle') : t('title');
   
@@ -1401,12 +1401,12 @@ const PD_DOTS = [
 ];
 const PD_CATEGORIES = ['ones','twos','threes','fours','fives','sixes','pair','two_pairs','three_of_kind','four_of_kind','full_house','small_straight','large_straight','five_of_kind','chance'];
 const PD_CAT_NAMES = {
-  ru: ['1','2','3','4','5','6','Пара','Две пары','Тройка','Каре','Фулл-хаус','М.стрит','Б.стрит','Покер','Шанс'],
+  ru: ['Единицы','Двойки','Тройки','Четверки','Пятерки','Шестерки','Пара','Две пары','Тройка','Каре','Фулл-хаус','М.стрит','Б.стрит','Покер','Шанс'],
   en: ['Ones','Twos','Threes','Fours','Fives','Sixes','One Pair','Two Pairs','Three of a Kind','Four of a Kind','Full House','S.Strt','L.Strt','Five of a Kind','Chance'],
   uk: ['Очки','Двійки','Трійки','Четвірки',"П'ятірки",'Шістки','Пара','Дві пари','Трійка','Каре','Фулл-хаус','М.стрит','В.стрит','Покер','Шанс'],
 };
 const PD_CAT_SHORT = {
-  ru: ['1','2','3','4','5','6','Пара','2пар','Тройка','Каре','Фулл','М.стр','Б.стр','Покер','Шанс'],
+  ru: ['1','2','3','4','5','6','Пара','2пар','3одн','4одн','Фулл','М.стр','Б.стр','5одн','Шанс'],
   en: ['1','2','3','4','5','6','Pair','2Pair','3Kind','4Kind','F.H.','S.St','L.St','5Kind','Chnc'],
   uk: ['1','2','3','4','5','6','Пара','2пар','3одн','4одн','Ф.-х','М.стр','В.стр','5одн','Шанс'],
 };
@@ -1423,7 +1423,7 @@ function showPokerDice(){
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
   document.title=t('pdTitle');
-  $('gameInfo').textContent=t('pdTitle');
+  $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
   var hasActiveGame = pdCode && localStorage.getItem('pd_game');
@@ -1520,7 +1520,7 @@ function pdShowGame(st){
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('pdTitle');
-  $('gameInfo').textContent=t('pdTitle');
+  $('gameInfo').textContent='';
 
   $('actions').innerHTML = '';
   $('actions').className = 'btn-row';
@@ -1556,7 +1556,7 @@ function pdRenderScorecard(st){
   table.className = 'pd-scorecard';
   table.id = 'pdScorecardEl';
 
-  let html = `<tr><th class="cat-name">📋 ${t('pdScorecard')||'Табло'}</th><th class="cat-score">${t('pdScoreBtn')||'Очки'}</th><th class="cat-score" style="color:var(--text-hint)">${t('pdOpp')||'Сопер.'}</th></tr>`;
+  let html = `<tr><th class="cat-name">🎲 ${t('pdScorecard')||'Табло'}</th><th class="cat-score">${t('pdScoreBtn')||'Очки'}</th><th class="cat-score" style="color:var(--text-hint)">${t('pdOpp')||'Сопер.'}</th></tr>`;
 
   const sc = st.scorecard || {};
   const oppSc = st.opponent_scorecard || {};
@@ -1832,7 +1832,7 @@ function showCkBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   document.title = t('checkers');
   setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent=t('checkers');
+  $('gameInfo').textContent='';
   $('shipHint').innerHTML = '';
   $('header').classList.remove('in-game');
   $('app').insertBefore($('status'), $('app').firstChild);
@@ -1859,7 +1859,7 @@ function showCheckers(){
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
   document.title=t('checkers');
-  $('gameInfo').textContent=t('checkers');
+  $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
@@ -1945,7 +1945,7 @@ function ckShowGame(st){
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('checkers');
-  $('gameInfo').textContent=st.solo?t('checkers')+' — '+t('vsBot'):t('checkers');
+  $('gameInfo').textContent='';
   ckRenderBoard(st);
   if(st.phase==='finished'){
     if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
@@ -2090,7 +2090,7 @@ function showStBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   document.title = t('stratego');
   setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent=t('stratego');
+  $('gameInfo').textContent='';
   $('shipHint').innerHTML = '';
   $('header').classList.remove('in-game');
   $('app').insertBefore($('status'), $('app').firstChild);
@@ -2124,7 +2124,7 @@ function showStratego(){
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
   document.title=t('stratego');
-  $('gameInfo').textContent=t('stratego');
+  $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
@@ -2212,7 +2212,7 @@ function stShowGame(st){
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('stratego');
-  $('gameInfo').textContent=st.solo?t('stratego')+' — '+t('vsBot'):t('stratego');
+  $('gameInfo').textContent='';
 
   if(st.phase==='setup_p1'||st.phase==='setup_p2'){
     stRenderSetup(st);
