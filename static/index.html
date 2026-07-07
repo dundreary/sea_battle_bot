@@ -1156,6 +1156,8 @@ function pollGame(){
 }
 
 function showMainMenu(){
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
   showShipHints = true;
   gameCode=null;state=null;
   pdCode=null;pdState=null;
@@ -1167,8 +1169,6 @@ function showMainMenu(){
   localStorage.removeItem('pd_game');
   localStorage.removeItem('ck_game');
   localStorage.removeItem('st_game');
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
   $('themeSelector').style.display='none';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
@@ -1384,6 +1384,8 @@ function showResult(icon,title,desc,strip){
 async function leaveGame(surrender){
   var msg = surrender ? {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang] : t('quitConfirm');
   if(!confirm(msg))return;
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
   if(surrender && state && state.phase==='playing'){
     await api('/api/surrender',{uid:getUid(),code:gameCode});
   }
