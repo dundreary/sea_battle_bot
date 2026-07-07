@@ -1386,8 +1386,8 @@ async function leaveGame(surrender){
   if(!confirm(msg))return;
   if(surrender && state && state.phase==='playing'){
     await api('/api/surrender',{uid:getUid(),code:gameCode});
-    localStorage.removeItem('sb_game');
   }
+  localStorage.removeItem('sb_game');
   gameCode=null;state=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   try{Telegram.WebApp.close()}catch(e){}
