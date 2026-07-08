@@ -231,13 +231,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ana-base-word.show .revealed{display:inline}
 
 .pd-dice{display:flex;gap:8px;justify-content:center;margin:18px 0;flex-wrap:wrap}
-.pd-dot-die{width:min(52px,14vw);height:min(52px,14vw);background:var(--bg-board-alt);border-radius:10px;display:grid;grid-template-rows:1fr 1fr 1fr;grid-template-columns:1fr 1fr 1fr;padding:5px;cursor:pointer;transition:.12s;user-select:none;position:relative;box-shadow:0 1px 3px rgba(0,0,0,.3)}
-.pd-dot-die .dot{width:9px;height:9px;background:var(--accent-primary-light);border-radius:50%;justify-self:center;align-self:center}
-.pd-dot-die:hover{transform:scale(1.08)}
-.pd-dot-die.kept{box-shadow:0 0 0 3px #ffd700,0 0 10px rgba(255,215,0,.35);background:var(--color-btn-primary-1)}
-.pd-dot-die:active{transform:scale(.88)}
+.pd-die{width:min(52px,14vw);height:min(52px,14vw);background:var(--bg-board-alt);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:.12s;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,.3);font-size:clamp(18px,5vw,24px);gap:2px}
+.pd-die .pd-die-emoji{font-size:clamp(20px,5.5vw,28px);line-height:1}
+.pd-die .pd-die-value{font-size:clamp(14px,4vw,20px);font-weight:700;color:var(--accent-primary-light);line-height:1}
+.pd-die:hover{transform:scale(1.08)}
+.pd-die.kept{box-shadow:0 0 0 3px #ffd700,0 0 10px rgba(255,215,0,.35);background:var(--color-btn-primary-1)}
+.pd-die:active{transform:scale(.88)}
 @keyframes pd-roll-spin{0%{transform:rotate(0deg) scale(1)}25%{transform:rotate(180deg) scale(0.85)}50%{transform:rotate(360deg) scale(1.1)}75%{transform:rotate(540deg) scale(0.9)}100%{transform:rotate(720deg) scale(1)}}
-.pd-dot-die.rolling{animation:pd-roll-spin 1.2s ease-out}
+.pd-die.rolling{animation:pd-roll-spin 1.2s ease-out}
 .pd-roll-btn{width:min(52px,14vw);height:min(52px,14vw);border:none;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff;border-radius:10px;font-size:clamp(16px,4.5vw,22px);font-weight:700;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;user-select:none;box-shadow:0 2px 6px rgba(46,125,50,.3)}
 .pd-roll-btn:active{transform:scale(.88)}
 .pd-roll-btn .count{font-size:9px;opacity:.8;position:absolute;bottom:4px;right:6px;font-weight:400}
@@ -1455,14 +1456,6 @@ function showSeaBattle(){ showSeaBattleMenu(); }
 // ---- Poker Dice ----
 let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null;
 
-const PD_DOTS = [
-  [[1,1]],
-  [[0,2],[2,0]],
-  [[0,2],[1,1],[2,0]],
-  [[0,0],[0,2],[2,0],[2,2]],
-  [[0,0],[0,2],[1,1],[2,0],[2,2]],
-  [[0,0],[0,2],[1,0],[1,2],[2,0],[2,2]],
-];
 const PD_CATEGORIES = ['ones','twos','threes','fours','fives','sixes','pair','two_pairs','three_of_kind','four_of_kind','full_house','small_straight','large_straight','five_of_kind','chance'];
 const PD_CAT_NAMES = {
   ru: ['Единицы','Двойки','Тройки','Четверки','Пятерки','Шестерки','Пара','Две пары','Тройка','Каре','Фулл-хаус','М.стрит','Б.стрит','Покер','Шанс'],
@@ -1673,18 +1666,16 @@ function pdRenderDice(st){
 
   for(let i=0;i<5;i++){
     const die=document.createElement('div');
-    die.className='pd-dot-die';
+    die.className='pd-die';
     const val = dice[i] || 0;
-    if(val){
-      const dots = PD_DOTS[val-1] || [];
-      for(const [r,c] of dots){
-        const dot=document.createElement('div');
-        dot.className='dot';
-        dot.style.gridRow=r+1;
-        dot.style.gridColumn=c+1;
-        die.appendChild(dot);
-      }
-    }
+    const emoji=document.createElement('div');
+    emoji.className='pd-die-emoji';
+    emoji.textContent='🎲';
+    die.appendChild(emoji);
+    const valEl=document.createElement('div');
+    valEl.className='pd-die-value';
+    valEl.textContent=val||'';
+    die.appendChild(valEl);
     die.dataset.idx=i;
     if(st.my_turn && !st.scored && st.rolls_left>0){
       if(pdKept.has(i)) die.classList.add('kept');
@@ -1692,8 +1683,6 @@ function pdRenderDice(st){
     }
     cont.appendChild(die);
   }
-
-
 }
 
 function pdToggleKeep(idx){
@@ -1771,16 +1760,9 @@ async function pdDoRoll(){
     for(let i=0;i<5;i++){
       const die=cont.children[i];
       if(!die)continue;
-      die.innerHTML='';
       const val=Math.floor(Math.random()*6)+1;
-      const dots=PD_DOTS[val-1]||[];
-      for(const[r,c]of dots){
-        const dot=document.createElement('div');
-        dot.className='dot';
-        dot.style.gridRow=r+1;
-        dot.style.gridColumn=c+1;
-        die.appendChild(dot);
-      }
+      const valEl=die.querySelector('.pd-die-value');
+      if(valEl) valEl.textContent=val;
     }
   },80);
 
