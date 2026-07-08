@@ -1574,8 +1574,6 @@ function pdRenderScorecard(st){
   const oppScAll = st.opponent_scorecard_all || {};
 
   const renderCat = (catId) => {
-    const i = PD_CATEGORIES.indexOf(catId);
-    const isUpper = i < 6;
     const myVal = scAll[catId];
     const oppVal = oppScAll[catId];
     const canScore = categoriesLeft.includes(catId) && st.my_turn && !st.scored && st.dice && st.dice.length > 0;
@@ -1584,7 +1582,7 @@ function pdRenderScorecard(st){
     const oppDisplay = oppVal !== null ? oppVal : (oppVal === null ? '' : oppVal);
 
     html += `<tr class="${cls}" data-cat="${catId}">`;
-    html += `<td class="cat-name">${isUpper ? '⚀⚁⚂⚃⚄⚅'[i] : '🎲'} ${catName(catId)}</td>`;
+    html += `<td class="cat-name">🎲 ${catName(catId)}</td>`;
     html += `<td class="cat-score">${myDisplay}</td>`;
     html += `<td class="cat-score" style="color:var(--text-hint)">${oppDisplay}</td>`;
     html += `</tr>`;
@@ -1710,54 +1708,49 @@ function pdRenderInfo(st){
   }
 }
 
-function pdAnimateDice(callback){
-  const cont=$('pdDice');
-  if(!cont||!cont.children.length){callback();return}
-  for(let i=0;i<cont.children.length;i++){
-    cont.children[i].classList.add('rolling');
-  }
-  const duration=1000,interval=50;
-  const totalFrames=Math.round(duration/interval);
-  let frame=0;
-  function step(){
-    frame++;
-    const progress=frame/totalFrames;
-    const changeProb=1-progress*0.85;
-    for(let i=0;i<5;i++){
-      const die=cont.children[i];
-      if(!die)continue;
-      if(Math.random()<changeProb){
-        die.innerHTML='';
-        const val=Math.floor(Math.random()*6)+1;
-        const dots=PD_DOTS[val-1]||[];
-        for(const[r,c]of dots){
-          const dot=document.createElement('div');
-          dot.className='dot';
-          dot.style.gridRow=r+1;
-          dot.style.gridColumn=c+1;
-          die.appendChild(dot);
-        }
-      }
-    }
-    if(frame>=totalFrames){
-      for(let i=0;i<cont.children.length;i++){
-        cont.children[i].classList.remove('rolling');
-      }
-      callback();
-      return;
-    }
-    setTimeout(step,interval);
-  }
-  step();
-}
-
 async function pdDoRoll(){
   if(!pdState)return;
   sfxRoll();
   const keep=Array.from(pdKept);
+
+  const cont=$('pdDice');
+  for(let i=0;i<cont.children.length;i++){
+    cont.children[i].classList.add('rolling');
+  }
+  const animId=setInterval(()=>{
+    for(let i=0;i<5;i++){
+      const die=cont.children[i];
+      if(!die)continue;
+      die.innerHTML='';
+      const val=Math.floor(Math.random()*6)+1;
+      const dots=PD_DOTS[val-1]||[];
+      for(const[r,c]of dots){
+        const dot=document.createElement('div');
+        dot.className='dot';
+        dot.style.gridRow=r+1;
+        dot.style.gridColumn=c+1;
+        die.appendChild(dot);
+      }
+    }
+  },80);
+
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  pdAnimateDice(()=>{pdShowGame(res.state)});
+  if(!res||!res.ok){
+    clearInterval(animId);
+    for(let i=0;i<cont.children.length;i++){
+      cont.children[i].classList.remove('rolling');
+    }
+    setStatus(t('error'));
+    return;
+  }
+
+  await new Promise(r=>setTimeout(r,700));
+  clearInterval(animId);
+  for(let i=0;i<cont.children.length;i++){
+    cont.children[i].classList.remove('rolling');
+  }
+
+  pdShowGame(res.state);
 }
 
 async function pdDoScore(category){
@@ -1785,11 +1778,9 @@ function pdRenderResult(st){
   const oppSc = st.opponent_scorecard_all || {};
 
   const renderCat = (catId) => {
-    const i = PD_CATEGORIES.indexOf(catId);
-    const isUpper = i < 6;
     const myVal = sc[catId];
     const oppVal = oppSc[catId];
-    html += `<tr><td class="cat-name">${isUpper ? '⚀⚁⚂⚃⚄⚅'[i] : '🎲'} ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
+    html += `<tr><td class="cat-name">🎲 ${catName(catId)}</td><td class="cat-score">${myVal !== null ? myVal : '-'}</td><td class="cat-score" style="color:var(--text-hint)">${oppVal !== null ? oppVal : '-'}</td></tr>`;
   };
 
   for(let i = 0; i < 6; i++) renderCat(PD_CATEGORIES[i]);
