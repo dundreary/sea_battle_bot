@@ -1765,8 +1765,12 @@ function pdRenderActions(st){
 
   if(st.my_turn && !st.scored){
     const canRoll = st.rolls_left > 0;
-    const disabled = canRoll ? '' : 'disabled';
-    html += `<button class="btn success" onclick="${canRoll ? 'pdDoRoll()' : ''}" style="width:100%;opacity:${canRoll ? '1' : '0.5'}" ${disabled}>🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
+    if(canRoll){
+      html += `<button class="btn success" onclick="pdDoRoll()" style="width:100%">🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
+    } else {
+      html += `<div style="width:100%;text-align:center;font-size:13px;color:var(--color-warning);padding:4px 0">👇 ${t('pdChooseCat')||'Выбери категорию'}</div>`;
+      html += `<button class="btn success" style="width:100%;opacity:0.6" disabled>🎲 ${t('pdRoll')} (0)</button>`;
+    }
     html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('quit')}</button>`;
     if(!st.solo){
       html += `<button class="btn primary" onclick="sharePdGame()" style="margin-top:8px;width:100%">📤 ${t('inviteFriend')}</button>`;
@@ -1889,19 +1893,22 @@ function pdRenderResult(st){
   html += `<tr class="${totalCls}"><td>Σ ${t('pdTotal')||'Итого'}</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td></tr>`;
   html += '</table>';
 
+  const myDice = st.my_dice || [];
+  const oppDice = st.opponent_dice || [];
+
   if(st.hand_name){
     html+=`<div class="pd-result" style="margin:4px auto;max-width:340px">
-      <div style="font-size:13px;color:var(--text-muted)">${t('pdYourHand')}:</div>
+      <div style="font-size:13px;color:var(--accent-primary);font-weight:600">${t('pdYourHand')}:</div>
+      ${pdDiceDotsHtml(myDice)}
       <div class="hand-name">${st.hand_name}</div>
       <div class="hand-score">${st.hand_score} ${t('pdPts')}</div>
     </div>`;
   }
 
   if(st.opponent_scored && st.opponent_hand_name){
-    let oppDiceHtml = st.opponent_dice && st.opponent_dice.length > 0 ? pdDiceDotsHtml(st.opponent_dice) : '';
     html+=`<div class="pd-opponent" style="margin:4px auto;max-width:340px">
-      <div style="font-size:13px;color:var(--text-muted)">${t('pdOppHand')}:</div>
-      ${oppDiceHtml}
+      <div style="font-size:13px;color:var(--color-hit);font-weight:600">${t('pdOppHand')}:</div>
+      ${pdDiceDotsHtml(oppDice)}
       <div class="hand-name">${st.opponent_hand_name}</div>
       <div class="hand-score">${st.opponent_hand_score} ${t('pdPts')}</div>
     </div>`;

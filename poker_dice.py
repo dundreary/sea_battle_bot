@@ -136,6 +136,7 @@ class PokerDiceGame:
             'scored': False,
             'hand': None,
             'scorecard': {c: None for c in CATEGORY_IDS},
+            'dice_history': [],
         }
 
     def _reset_player(self, pnum: int):
@@ -144,6 +145,7 @@ class PokerDiceGame:
         p['rolls'] = 3
         p['scored'] = False
         p['hand'] = None
+        p['dice_history'] = []
 
     def player_num(self, uid: int) -> Optional[int]:
         if uid == self.player1_id:
@@ -177,6 +179,7 @@ class PokerDiceGame:
 
         p['dice'] = dice
         p['rolls'] -= 1
+        p['dice_history'].append(list(dice))
 
         return self.get_state(pnum)
 
@@ -211,14 +214,20 @@ class PokerDiceGame:
             return
 
         if self.solo:
-            if pnum == 1 and p2_remaining:
-                self.turn = 2
-                self._bot_play()
-            elif pnum == 2 and p1_remaining:
-                self.turn = 1
-                self._reset_player(1)
+            if pnum == 1:
+                if p2_remaining:
+                    self.turn = 2
+                    self._bot_play()
+                else:
+                    self.turn = 1
+                    if self.players[1]['scored']:
+                        self._reset_player(1)
             else:
-                self.phase = 'finished'
+                if p1_remaining:
+                    self.turn = 1
+                    self._reset_player(1)
+                else:
+                    self.phase = 'finished'
         else:
             next_pnum = 3 - pnum
             next_rem = p1_remaining if next_pnum == 1 else p2_remaining
@@ -243,6 +252,7 @@ class PokerDiceGame:
 
         p['dice'] = [random.randint(1, 6) for _ in range(5)]
         p['rolls'] = 0
+        p['dice_history'] = [list(p['dice'])]
 
         remaining = _remaining_categories(p['scorecard'])
         best_cat = remaining[0]
@@ -294,15 +304,18 @@ class PokerDiceGame:
             if val is not None:
                 opp_sc[c] = val
 
+        my_turn = self.turn == pnum
+
         return {
             'code': self.code,
             'solo': self.solo,
             'phase': self.phase,
             'turn': self.turn,
-            'my_turn': self.turn == pnum,
+            'my_turn': my_turn,
             'you': pnum,
-            'dice': p['dice'],
-            'rolls_left': p['rolls'],
+            'dice': p['dice'] if my_turn else opp['dice'],
+            'my_dice': p['dice'],
+            'rolls_left': p['rolls'] if my_turn else opp['rolls'],
             'scored': p['scored'],
             'hand_rank': p['hand']['rank'] if p['hand'] else None,
             'hand_score': p['hand']['score'] if p['hand'] else None,
@@ -327,6 +340,7 @@ class PokerDiceGame:
             'categories_left': _remaining_categories(p['scorecard']),
             'opponent_categories_left': _remaining_categories(opp['scorecard']),
             'max_categories': len(CATEGORY_IDS),
+            'dice_history': p['dice_history'] if my_turn else opp['dice_history'],
         }
 
     def surrender(self, uid: int) -> Optional[Dict]:
