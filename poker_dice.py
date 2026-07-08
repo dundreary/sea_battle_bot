@@ -323,6 +323,7 @@ class PokerDiceGame:
             'bonus': my_upper >= BONUS_THRESHOLD,
             'opponent_upper_sum': _upper_sum(opp['scorecard']),
             'opponent_bonus': _upper_sum(opp['scorecard']) >= BONUS_THRESHOLD,
+            'opponent_dice': opp['dice'],
             'categories_left': _remaining_categories(p['scorecard']),
             'opponent_categories_left': _remaining_categories(opp['scorecard']),
             'max_categories': len(CATEGORY_IDS),
