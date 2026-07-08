@@ -116,31 +116,10 @@ class Board:
             for i in range(SIZE)
         )
 
-    def render_own(self):
-        return self.render(hide_ships=False)
-
-    @staticmethod
-    def render_mini_label(label1="МОИ", label2="БОТ"):
-        return f"{label1}|{label2}"
-
-    @staticmethod
-    def render_side_by_side_mini(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
-        r1 = board1.render_mini(hide_ships=False)
-        r2 = board2.render_mini(hide_ships=hide2)
-        merged = [f"{label1}|{label2}"]
-        for i in range(SIZE):
-            merged.append(f"{r1[i]}|{r2[i]}")
-        return "\n".join(merged)
-
-    @staticmethod
-    def render_side_by_side(board1, board2, label1="МОИ", label2="БОТ", hide2=True):
-        r1 = board1.render(hide_ships=False).split("\n")
-        r2 = board2.render(hide_ships=hide2).split("\n")
-        gap = "  "
-        merged = [f"{label1:^12}{gap}{label2:^12}"]
-        for i in range(SIZE):
-            merged.append(f"{r1[i]}{gap}{r2[i]}")
-        return "\n".join(merged)
+    def to_flat_list(self, hide_ships=False):
+        if hide_ships:
+            return [EMPTY if v == SHIP else v for row in self.grid for v in row]
+        return [v for row in self.grid for v in row]
 
     def to_dict(self):
         return {
@@ -325,49 +304,51 @@ CLOTHING_SHAPES = {
 }
 
 def auto_place_strip_ships(board: Board) -> None:
-    for length in STRIP_SHIPS:
-        placed = False
-        attempts = 0
-        while not placed and attempts < 1000:
-            shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
-            shape = random.choice(shapes)
-            r = random.randint(0, SIZE - 1)
-            c = random.randint(0, SIZE - 1)
-            cells = [(r + dr, c + dc) for dr, dc in shape]
-            if all(0 <= cr < SIZE and 0 <= cc < SIZE for cr, cc in cells):
-                if board.can_place(cells):
-                    board.place_ship(cells)
-                    placed = True
-            attempts += 1
-        if not placed:
-            board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
-            board.ships = []
-            auto_place_strip_ships(board)
+    while True:
+        board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
+        board.ships = []
+        for length in STRIP_SHIPS:
+            placed = False
+            for _ in range(1000):
+                shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
+                shape = random.choice(shapes)
+                r = random.randint(0, SIZE - 1)
+                c = random.randint(0, SIZE - 1)
+                cells = [(r + dr, c + dc) for dr, dc in shape]
+                if all(0 <= cr < SIZE and 0 <= cc < SIZE for cr, cc in cells):
+                    if board.can_place(cells):
+                        board.place_ship(cells)
+                        placed = True
+                        break
+            if not placed:
+                break
+        else:
             return
 
 
 def auto_place_ships(board: Board) -> None:
-    for length in SHIPS:
-        placed = False
-        attempts = 0
-        while not placed and attempts < 1000:
-            is_horizontal = random.choice([True, False])
-            if is_horizontal:
-                r = random.randint(0, SIZE - 1)
-                c = random.randint(0, SIZE - length)
-                cells = [(r, c + i) for i in range(length)]
-            else:
-                r = random.randint(0, SIZE - length)
-                c = random.randint(0, SIZE - 1)
-                cells = [(r + i, c) for i in range(length)]
-            if board.can_place(cells):
-                board.place_ship(cells)
-                placed = True
-            attempts += 1
-        if not placed:
-            board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
-            board.ships = []
-            auto_place_ships(board)
+    while True:
+        board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
+        board.ships = []
+        for length in SHIPS:
+            placed = False
+            for _ in range(1000):
+                is_horizontal = random.choice([True, False])
+                if is_horizontal:
+                    r = random.randint(0, SIZE - 1)
+                    c = random.randint(0, SIZE - length)
+                    cells = [(r, c + i) for i in range(length)]
+                else:
+                    r = random.randint(0, SIZE - length)
+                    c = random.randint(0, SIZE - 1)
+                    cells = [(r + i, c) for i in range(length)]
+                if board.can_place(cells):
+                    board.place_ship(cells)
+                    placed = True
+                    break
+            if not placed:
+                break
+        else:
             return
 
 class BotAI:
@@ -416,23 +397,22 @@ class BotAI:
             if result:
                 return result
 
-        try_hunt = list(self.hunt_queue)
-        self.hunt_queue = []
-        for r, c in try_hunt:
-            if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
-                self.hunt_queue.append((r, c))
-                self.ship_mode = True
+        validated = []
+        for r, c in self.hunt_queue:
+            if enemy_board.grid[r][c] in (EMPTY, SHIP):
+                validated.append((r, c))
             else:
                 for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < SIZE and 0 <= nc < SIZE and (nr, nc) not in self.shots:
                         if enemy_board.grid[nr][nc] not in (HIT, MISS, SUNK, DEAD):
-                            if (nr, nc) not in self.hunt_queue:
-                                self.hunt_queue.append((nr, nc))
+                            if (nr, nc) not in validated:
+                                validated.append((nr, nc))
+        self.hunt_queue = validated
 
         while self.hunt_queue:
             r, c = self.hunt_queue.pop(0)
-            if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS, SUNK, DEAD):
+            if enemy_board.grid[r][c] in (EMPTY, SHIP):
                 return r, c
 
         available = [(r, c) for r in range(SIZE) for c in range(SIZE)
@@ -451,7 +431,7 @@ class BotAI:
                         if (nr, nc) not in self.hunt_queue:
                             self.hunt_queue.append((nr, nc))
             if result == "sunk":
-                self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] != SUNK]
+                self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] not in (SUNK, DEAD)]
 
     def to_dict(self):
         return {

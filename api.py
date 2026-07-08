@@ -4,7 +4,7 @@ import logging
 import urllib.request
 from typing import Dict, Any
 
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, EMPTY, SHIP, SUNK, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
 # from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, get_legal_moves
@@ -79,12 +79,7 @@ def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
     own = game.board_for(uid)
     opp = game.opponent_board(uid)
-    opp_hidden = [EMPTY if v == SHIP else v for v in [opp.grid[r][c] for r in range(SIZE) for c in range(SIZE)]]
-    # Build ship info: size + cells for each ship on own board
-    ships_data = []
-    for ship in own.ships:
-        ship_size = len(ship.cells)
-        ships_data.append({"size": ship_size, "cells": [list(c) for c in ship.cells]})
+    ships_data = [{"size": len(s.cells), "cells": [list(c) for c in s.cells]} for s in own.ships]
     ships_list = STRIP_SHIPS if game.strip else SHIPS
     return {
         "code": game.code,
@@ -98,9 +93,9 @@ def as_dict(game, uid):
         "my_turn": game.current_player() == uid,
         "ready": game.ready,
         "you": uid,
-        "own": [own.grid[r][c] for r in range(SIZE) for c in range(SIZE)],
+        "own": own.to_flat_list(),
         "own_ships": ships_data,
-        "opp": opp_hidden,
+        "opp": opp.to_flat_list(hide_ships=True),
         "all_sunk": opp.all_sunk(),
         "my_all_sunk": own.all_sunk(),
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
