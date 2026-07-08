@@ -190,6 +190,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-dot-die:hover{transform:scale(1.08)}
 .pd-dot-die.kept{box-shadow:0 0 0 3px #ffd700,0 0 10px rgba(255,215,0,.35);background:var(--color-btn-primary-1)}
 .pd-dot-die:active{transform:scale(.88)}
+@keyframes pd-roll-shake{0%{transform:rotate(0deg) translateX(0)}10%{transform:rotate(12deg) translateX(-2px)}20%{transform:rotate(-10deg) translateX(2px)}30%{transform:rotate(15deg) translateX(-1px)}40%{transform:rotate(-12deg) translateX(1px)}50%{transform:rotate(8deg) translateX(-1px)}60%{transform:rotate(-6deg) translateX(1px)}70%{transform:rotate(4deg) translateX(0)}80%{transform:rotate(-2deg) translateX(0)}90%{transform:rotate(1deg) translateX(0)}100%{transform:rotate(0deg) translateX(0)}}
+.pd-dot-die.rolling{animation:pd-roll-shake 0.9s cubic-bezier(0.22,1,0.36,1)}
 .pd-roll-btn{width:min(52px,14vw);height:min(52px,14vw);border:none;background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff;border-radius:10px;font-size:clamp(16px,4.5vw,22px);font-weight:700;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;user-select:none;box-shadow:0 2px 6px rgba(46,125,50,.3)}
 .pd-roll-btn:active{transform:scale(.88)}
 .pd-roll-btn .count{font-size:9px;opacity:.8;position:absolute;bottom:4px;right:6px;font-weight:400}
@@ -732,6 +734,7 @@ function sfxLose(){tone(400,0.2,'sine',0.08);setTimeout(()=>tone(300,0.2,'sine',
 function sfxChime(){tone(1000,0.25,'sine',0.12);haptic('medium')}
 function sfxClick(){tone(600,0.02,'sine',0.04);haptic('light')}
 function sfxTick(){tone(1200,0.04,'sine',0.06)}
+function sfxRoll(){if(!_snd)return;for(let i=0;i<8;i++){const delay=i*70;setTimeout(()=>tone(800+Math.random()*400,0.03,'square',0.04),delay)}}
 
 function toggleSnd(){_snd=!_snd;localStorage.setItem('sb_snd',_snd?'1':'0');updateSettingsUI()}
 function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0');updateSettingsUI()}
@@ -1352,7 +1355,6 @@ function showResult(icon,title,desc,strip){
   }
   
   if(strip && icon==='🏆'){
-    // Strip win: show opponent's photo
     const photo = state && state.strip_photo ? state.strip_photo : null;
     o.innerHTML=`
       <div class="modal">
@@ -1367,7 +1369,6 @@ function showResult(icon,title,desc,strip){
     return;
   }
   
-  // Normal flow (non-strip) - game is already over, quit just goes to menu
   const playAgainFn = 'startSolo()';
   const endMsg = state ? '' : t('gameOver');
   o.innerHTML=`
@@ -1384,20 +1385,21 @@ function showResult(icon,title,desc,strip){
 async function leaveGame(surrender){
   var msg = surrender ? {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang] : t('quitConfirm');
   if(!confirm(msg))return;
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  // Clear poll timer and game state BEFORE any async operation
-  // to prevent refreshState/updateUI from re-showing boards
+  // Clear poll timer BEFORE any async operation to prevent refreshState/updateUI from re-showing boards
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   const willSurrender = surrender && state && state.phase==='playing';
   const _code = gameCode;
   localStorage.removeItem('sb_game');
   gameCode=null;state=null;
+  // Hide boards BEFORE clearing other game data to ensure UI consistency
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
   if(willSurrender){
     await api('/api/surrender',{uid:getUid(),code:_code});
   }
   try{Telegram.WebApp.close()}catch(e){}
-  showMenu();
+  // Always show main menu after leaving game, and clear all other game states
+  showMainMenu();
 }
 
 function showSeaBattle(){ showSeaBattleMenu(); }
@@ -1708,13 +1710,54 @@ function pdRenderInfo(st){
   }
 }
 
+function pdAnimateDice(callback){
+  const cont=$('pdDice');
+  if(!cont||!cont.children.length){callback();return}
+  for(let i=0;i<cont.children.length;i++){
+    cont.children[i].classList.add('rolling');
+  }
+  const duration=1000,interval=50;
+  const totalFrames=Math.round(duration/interval);
+  let frame=0;
+  function step(){
+    frame++;
+    const progress=frame/totalFrames;
+    const changeProb=1-progress*0.85;
+    for(let i=0;i<5;i++){
+      const die=cont.children[i];
+      if(!die)continue;
+      if(Math.random()<changeProb){
+        die.innerHTML='';
+        const val=Math.floor(Math.random()*6)+1;
+        const dots=PD_DOTS[val-1]||[];
+        for(const[r,c]of dots){
+          const dot=document.createElement('div');
+          dot.className='dot';
+          dot.style.gridRow=r+1;
+          dot.style.gridColumn=c+1;
+          die.appendChild(dot);
+        }
+      }
+    }
+    if(frame>=totalFrames){
+      for(let i=0;i<cont.children.length;i++){
+        cont.children[i].classList.remove('rolling');
+      }
+      callback();
+      return;
+    }
+    setTimeout(step,interval);
+  }
+  step();
+}
+
 async function pdDoRoll(){
   if(!pdState)return;
-  sfxChime();
+  sfxRoll();
   const keep=Array.from(pdKept);
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
-  pdShowGame(res.state);
+  pdAnimateDice(()=>{pdShowGame(res.state)});
 }
 
 async function pdDoScore(category){
