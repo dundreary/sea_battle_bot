@@ -25,9 +25,14 @@ def _(user, key):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
+    url = base or "https://sea-battle-bot.onrender.com"
+    if "?" in url:
+        url += "&v=2"
+    else:
+        url += "?v=2"
     user = update.effective_user
     kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=base or "https://sea-battle-bot.onrender.com"))
+        InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=url))
     ]])
     await update.message.reply_text(_(user, 'text'), reply_markup=kb, parse_mode="HTML")
 
