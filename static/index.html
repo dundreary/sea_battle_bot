@@ -1671,28 +1671,64 @@ function pdRenderDice(st){
   cont.innerHTML='';
   const dice=st.dice||[];
 
-  for(let i=0;i<5;i++){
-    const die=document.createElement('div');
-    die.className='pd-dot-die';
-    const val = dice[i] || 0;
-    if(val){
-      const dots = PD_DOTS[val-1] || [];
-      for(const [r,c] of dots){
-        const dot=document.createElement('div');
-        dot.className='dot';
-        dot.style.gridRow=r+1;
-        dot.style.gridColumn=c+1;
-        die.appendChild(dot);
+  if(st.my_turn){
+    const label = document.createElement('div');
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px';
+    label.textContent = st.scored ? `${st.hand_name} (${st.hand_score} ${t('pdPts')})` : `🎲 ${t('pdYourHand')}`;
+    cont.appendChild(label);
+
+    for(let i=0;i<5;i++){
+      const die=document.createElement('div');
+      die.className='pd-dot-die';
+      const val = dice[i] || 0;
+      if(val){
+        const dots = PD_DOTS[val-1] || [];
+        for(const [r,c] of dots){
+          const dot=document.createElement('div');
+          dot.className='dot';
+          dot.style.gridRow=r+1;
+          dot.style.gridColumn=c+1;
+          die.appendChild(dot);
+        }
       }
+      die.dataset.idx=i;
+      if(st.my_turn && !st.scored && st.rolls_left>0){
+        if(pdKept.has(i)) die.classList.add('kept');
+        die.onclick=()=>pdToggleKeep(i);
+      }
+      cont.appendChild(die);
     }
-    die.dataset.idx=i;
-    if(st.my_turn && !st.scored && st.rolls_left>0){
-      if(pdKept.has(i)) die.classList.add('kept');
-      die.onclick=()=>pdToggleKeep(i);
+  } else {
+    const label = document.createElement('div');
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px';
+    if(st.opponent_scored && st.opponent_hand_name){
+      label.textContent = `${st.opponent_hand_name} (${st.opponent_hand_score} ${t('pdPts')})`;
+    } else {
+      label.textContent = `🎯 ${t('pdOppHand')}`;
     }
-    cont.appendChild(die);
+    cont.appendChild(label);
+
+    for(let i=0;i<5;i++){
+      const die=document.createElement('div');
+      die.className='pd-dot-die';
+      die.style.cursor='default';
+
+      const val = dice[i] || 0;
+      if(val){
+        const dots = PD_DOTS[val-1] || [];
+        for(const [r,c] of dots){
+          const dot=document.createElement('div');
+          dot.className='dot';
+          dot.style.gridRow=r+1;
+          dot.style.gridColumn=c+1;
+          die.appendChild(dot);
+        }
+      }
+      cont.appendChild(die);
+    }
   }
-}
+
+  }
 
 function pdToggleKeep(idx){
   if(pdKept.has(idx)) pdKept.delete(idx);
@@ -1728,12 +1764,10 @@ function pdRenderActions(st){
   let html = '';
 
   if(st.my_turn && !st.scored){
-    if(st.rolls_left > 0){
-      html += `<button class="btn success" onclick="pdDoRoll()" style="width:100%">🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
-      html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('quit')}</button>`;
-    } else {
-      html += `<button class="btn outline" onclick="leavePdGame()" style="width:100%">${t('quit')}</button>`;
-    }
+    const canRoll = st.rolls_left > 0;
+    const disabled = canRoll ? '' : 'disabled';
+    html += `<button class="btn success" onclick="${canRoll ? 'pdDoRoll()' : ''}" style="width:100%;opacity:${canRoll ? '1' : '0.5'}" ${disabled}>🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
+    html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('quit')}</button>`;
     if(!st.solo){
       html += `<button class="btn primary" onclick="sharePdGame()" style="margin-top:8px;width:100%">📤 ${t('inviteFriend')}</button>`;
     }
@@ -1751,24 +1785,7 @@ function pdRenderInfo(st){
     return;
   }
 
-  let html = '';
-
-  // My result when I scored
-  if(st.scored && st.hand_name){
-    html += `<div class="pd-result" style="margin:0;padding:4px">
-      <div class="hand-name" style="font-size:14px">${st.hand_name} (${st.hand_score} ${t('pdPts')})</div>
-    </div>`;
-  }
-
-  // Opponent's dice + hand when visible
-  if(st.opponent_scored && st.opponent_hand_name){
-    const oppDiceHtml = st.opponent_dice && st.opponent_dice.length > 0 ? pdDiceDotsHtml(st.opponent_dice) : '';
-    html += `<div class="pd-opponent" style="margin:6px 0;padding:8px">
-      <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${t('pdOppHand')}:</div>
-      ${oppDiceHtml}
-      <div class="hand-name" style="font-size:14px">${st.opponent_hand_name} (${st.opponent_hand_score} ${t('pdPts')})</div>
-    </div>`;
-  }
+  const info = $('pdResult');
 
   // Status
   if(st.scored){
@@ -1779,7 +1796,7 @@ function pdRenderInfo(st){
     setStatus(t('pdWaiting'), '');
   }
 
-  $('pdResult').innerHTML = html;
+  info.innerHTML = '';
 }
 
 async function pdDoRoll(){
