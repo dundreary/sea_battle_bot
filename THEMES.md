@@ -1,7 +1,7 @@
-# 🎨 Sea Battle Game - Three Color Palettes
+# 🎨 Sea Battle Game - Color Palettes
 
 ## Overview
-Added three selectable color palettes to the Sea Battle game using CSS custom properties (variables) and localStorage persistence.
+Added selectable color palettes to the Sea Battle game using CSS custom properties (variables) and localStorage persistence.
 
 ## Palettes
 
@@ -25,15 +25,6 @@ Added three selectable color palettes to the Sea Battle game using CSS custom pr
 - **Warning Color:** `#ffa502` (Orange)
 - **Theme Name:** `forest`
 
-### 3. 🌙 Midnight
-- **Primary Accent:** `#b537f2` (Purple)
-- **Background:** `#0f0e17` (Black)
-- **Board Background:** `#1a1629` (Deep Purple)
-- **Border Color:** `#3d2e5f` (Purple-Gray)
-- **Ship Color:** `#6a3d7a` (Plum)
-- **Hit Color:** `#ff006e` (Hot Pink)
-- **Warning Color:** `#ffd60a` (Golden Yellow)
-- **Theme Name:** `midnight`
 
 ## Implementation Details
 
@@ -54,7 +45,7 @@ All colors are defined as CSS custom properties under `body.palette-{name}` sele
 
 ### UI
 - **Theme Selector:** Located in the main menu
-- **Buttons:** 🌊 Ocean, 🌲 Forest, 🌙 Midnight
+- **Buttons:** 🌊 Ocean, 🌲 Forest
 - **Active State:** Selected theme button highlighted
 - **Position:** Below the game board, above action buttons
 
@@ -62,7 +53,7 @@ All colors are defined as CSS custom properties under `body.palette-{name}` sele
 
 ### For Players
 1. Go to the main menu
-2. Click the theme button (🌊 / 🌲 / 🌙)
+2. Click the theme button (🌊 / 🌲)
 3. Your choice is automatically saved
 4. Theme applies immediately with smooth transition
 
