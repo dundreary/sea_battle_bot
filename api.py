@@ -471,10 +471,17 @@ def _handle_surrender(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
     game = games.get(code)
-    if not game or game.phase != "playing":
-        return {"error": "not_playing"}
+    if not game:
+        return {"error": "not_found"}
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
+    if game.phase != "playing":
+        del games[code]
+        for k in list(player_games.keys()):
+            if player_games[k] == code:
+                del player_games[k]
+        save()
+        return {"ok": True}
     own = game.board_for(uid)
     for ship in own.ships:
         for r, c in ship.cells:

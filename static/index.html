@@ -1004,6 +1004,7 @@ function updateUI(){
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+      <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
     `;
     setThemeSelectorVisibility(false);
     return;
@@ -1025,7 +1026,10 @@ function updateUI(){
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>`;
+    $('actions').innerHTML=`
+      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+    `;
   }
 }
 
@@ -1420,18 +1424,15 @@ async function leaveGame(surrender){
   }
   // Clear poll timer BEFORE any async operation to prevent refreshState/updateUI from re-showing boards
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
-  const willSurrender = surrender && state && state.phase==='playing';
   const _code = gameCode;
-  if(willSurrender) localStorage.removeItem('sb_game');
+  if(surrender) localStorage.removeItem('sb_game');
   gameCode=null;state=null;
   // Hide boards BEFORE clearing other game data to ensure UI consistency
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
-  if(willSurrender){
+  if(surrender){
     await api('/api/surrender',{uid:getUid(),code:_code});
   }
-  // Plain quit just minimizes: the game stays saved in localStorage so it can
-  // be resumed later from the main menu's active-games bar.
   showMainMenu();
 }
 
