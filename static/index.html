@@ -188,6 +188,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 #pdActions{min-height:120px}
 .pd-theme-bar{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:14px;padding-top:10px;border-top:1px solid var(--border-color);width:100%;flex-wrap:wrap}
 #pdScorecardContainer{min-height:420px;text-align:center;width:100%;max-width:340px;margin:0 auto}
+#pdScorecardContainer:empty{min-height:0}
 .pd-roll-btn:active{transform:scale(.88)}
 .pd-roll-btn .count{font-size:9px;opacity:.8;position:absolute;bottom:4px;right:6px;font-weight:400}
 
@@ -221,6 +222,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 .pd-result{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
 .pd-result:empty{display:none;padding:0;margin:0;border:none}
+#pdResult{max-width:100%;background:none;border:none;padding:0;margin:0}
 .pd-result .hand-name{font-size:18px;font-weight:700;color:var(--accent-primary)}
 .pd-result .hand-score{font-size:14px;color:var(--text-secondary)}
 .pd-opponent{width:100%;max-width:340px;text-align:center;padding:8px;margin:8px 0;background:var(--bg-board);border-radius:10px;border:1px solid var(--border-color)}
@@ -1565,7 +1567,10 @@ function pdShowGame(st){
   $('actions').innerHTML = '';
   $('actions').className = 'btn-row';
   $('pdActions').innerHTML = '';
+  $('pdActions').style.minHeight = '120px';
   $('pdDice').innerHTML='';
+  $('pdDice').style.minHeight = '';
+  $('pdScorecardContainer').style.minHeight = '420px';
   $('pdResult').innerHTML='';
 
   if(st.phase==='finished'){
@@ -1652,21 +1657,20 @@ function pdRenderDice(st){
   const cont=$('pdDice');
   cont.innerHTML='';
   const dice=st.dice||[];
+  // showOpp: opponent finished their turn, now it's my turn - show what opp rolled last
   const showOpp = st.opponent_scored && !st.scored && st.rolls_left===3;
-  const showMy = !showOpp;
 
   if(st.my_turn || showOpp){
     let labelColor = 'var(--accent-primary)';
     let labelText = '';
     if(showOpp){
       labelColor = 'var(--color-hit)';
-      labelText = st.opponent_hand_name ? `${st.opponent_hand_name} (${st.opponent_hand_score} ${t('pdPts')})` : `🎯 ${t('pdOppHand')}`;
+      labelText = st.opponent_hand_name ? `${t('pdOppHand')}: ${st.opponent_hand_name} (${st.opponent_hand_score} ${t('pdPts')})` : t('pdOppHand');
     } else {
-      labelText = st.scored ? `${st.hand_name} (${st.hand_score} ${t('pdPts')})` : `🎲 ${t('pdYourHand')}`;
+      labelText = st.scored ? `${t('pdYourHand')}: ${st.hand_name} (${st.hand_score} ${t('pdPts')})` : t('pdYourHand');
     }
     const label = document.createElement('div');
-    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:'+labelColor+';font-weight:600;margin-bottom:6px';
-    if(st.my_turn && !showOpp) label.style.marginTop='10px';
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:'+labelColor+';font-weight:600;margin-bottom:6px;margin-top:10px';
     label.textContent = labelText;
     cont.appendChild(label);
 
@@ -1694,12 +1698,13 @@ function pdRenderDice(st){
       cont.appendChild(die);
     }
   } else {
+    // Opponent's turn - show label with my last scored hand if available
     const label = document.createElement('div');
-    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px';
-    if(st.opponent_scored && st.opponent_hand_name){
-      label.textContent = `${st.opponent_hand_name} (${st.opponent_hand_score} ${t('pdPts')})`;
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
+    if(st.scored && st.hand_name){
+      label.textContent = `${t('pdYourHand')}: ${st.hand_name} (${st.hand_score} ${t('pdPts')})`;
     } else {
-      label.textContent = `🎯 ${t('pdOppHand')}`;
+      label.textContent = t('pdOppHand');
     }
     cont.appendChild(label);
 
@@ -1872,10 +1877,13 @@ async function pdDoScore(category){
 
 function pdRenderResult(st){
   const div=$('pdResult');
-  // Clear other pd areas so only result is visible
+  // Clear other pd areas so only result is visible, collapse min-heights
   $('pdScorecardContainer').innerHTML = '';
+  $('pdScorecardContainer').style.minHeight = '0';
   $('pdDice').innerHTML = '';
+  $('pdDice').style.minHeight = '0';
   $('pdActions').innerHTML = '';
+  $('pdActions').style.minHeight = '0';
   $('actions').innerHTML = '';
   $('actions').className = 'btn-row';
 
