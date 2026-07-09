@@ -1017,8 +1017,8 @@ function updateUI(){
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
-      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
-      <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
+      ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
+      ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
     `;
     setThemeSelectorVisibility(false);
     return;
