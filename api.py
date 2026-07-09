@@ -678,6 +678,19 @@ def _handle_checkers_move(data, uid, code):
     }
 
 
+def _handle_checkers_surrender(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = checkers_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    save()
+    return {"ok": True, "state": st}
+
+
 def _handle_checkers_hint(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
@@ -810,6 +823,19 @@ def _handle_stratego_confirm(data, uid, code):
     return {"ok": True, "state": game.get_state(uid)}
 
 
+def _handle_stratego_surrender(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = stratego_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    save()
+    return {"ok": True, "state": st}
+
+
 def _handle_stratego_move(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
@@ -869,6 +895,7 @@ _HANDLERS = {
     "/api/checkers_state": _handle_checkers_state,
     "/api/checkers_move": _handle_checkers_move,
     "/api/checkers_hint": _handle_checkers_hint,
+    "/api/checkers_surrender": _handle_checkers_surrender,
     "/api/stratego_new_solo": _handle_stratego_new_solo,
     "/api/stratego_new_multi": _handle_stratego_new_multi,
     "/api/stratego_join": _handle_stratego_join,
@@ -878,6 +905,7 @@ _HANDLERS = {
     "/api/stratego_auto_setup": _handle_stratego_auto_setup,
     "/api/stratego_confirm": _handle_stratego_confirm,
     "/api/stratego_move": _handle_stratego_move,
+    "/api/stratego_surrender": _handle_stratego_surrender,
 }
 
 

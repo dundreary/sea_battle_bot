@@ -271,6 +271,14 @@ class CheckersGame:
             "valid_dests": {str(k): list(v) for k, v in valid_dests.items()},
         }
 
+    def surrender(self, uid):
+        color = self.player_color(uid)
+        if color is None:
+            return None
+        self.winner = opponent(color)
+        self.phase = "finished"
+        return self.get_state(uid)
+
     @staticmethod
     def generate_code():
         return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=6))

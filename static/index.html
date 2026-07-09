@@ -2153,17 +2153,24 @@ function ckShowGame(st){
       ${inviteBtn}
       <button class="btn outline" onclick="ckGetHint()">${t('ckHint')}</button>
       <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+      <button class="btn outline quit-btn" onclick="ckSurrender()">${t('surrender')}</button>
     `;
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>`;
+    $('actions').innerHTML=`
+      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+      <button class="btn outline quit-btn" onclick="ckSurrender()">${t('surrender')}</button>
+    `;
   }
   if(!st.solo){
     $('status').style.cursor='pointer';
     $('status').title=t('copyCode');
     $('status').onclick=()=>navigator.clipboard.writeText(st.code).then(()=>setStatus('✅ '+t('shareCopied'),''));
   }
+  // Theme/sound/vibe footer
+  setThemeSelectorVisibility(true);
+  updateSettingsUI();
 }
 
 function ckRenderBoard(st){
@@ -2263,6 +2270,18 @@ function shareCkGame(){
   const text=texts[lang];
   copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+}
+
+async function ckSurrender(){
+  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  if(!confirm(msg)) return;
+  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+  const code = ckCode;
+  ckCode = null; ckState = null;
+  $('ckArea').style.display='none';
+  localStorage.removeItem('ck_game');
+  await api('/api/checkers_surrender',{uid:getUid(),code});
+  showMainMenu();
 }
 
 // ---- Stratego ----
@@ -2425,24 +2444,31 @@ function stShowGame(st){
 
   stRenderBoard(st);
 
-  if(st.my_turn){
+if(st.my_turn){
     setStatus('⚔️ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
     $('actions').className='btn-row';
     const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareStGame()">📤 ${t('inviteFriend')}</button>`;
     $('actions').innerHTML=`
       ${inviteBtn}
       <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
+      <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
     `;
   }else{
     setStatus('⏳ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>`;
+    $('actions').innerHTML=`
+      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
+      <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
+    `;
   }
   if(!st.solo){
     $('status').style.cursor='pointer';
     $('status').title=t('copyCode');
     $('status').onclick=()=>navigator.clipboard.writeText(st.code).then(()=>setStatus('✅ '+t('shareCopied'),''));
   }
+  // Theme/sound/vibe footer
+  setThemeSelectorVisibility(true);
+  updateSettingsUI();
 }
 
 function stRenderSetup(st){
@@ -2737,6 +2763,18 @@ function shareStGame(){
   const text=texts[lang];
   copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+}
+
+async function stSurrender(){
+  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  if(!confirm(msg)) return;
+  if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
+  const code = stCode;
+  stCode = null; stState = null;
+  $('stArea').style.display='none';
+  localStorage.removeItem('st_game');
+  await api('/api/stratego_surrender',{uid:getUid(),code});
+  showMainMenu();
 }
 
 async function fetchActiveGames(){

@@ -417,6 +417,15 @@ class StrategoGame:
 
     HIDDEN = -99
 
+    def surrender(self, uid):
+        owner = self.player_color(uid)
+        if owner is None:
+            return None
+        self.winner = opponent(owner)
+        self.game_over = True
+        self.phase = 'finished'
+        return self.get_state(uid)
+
     def get_state(self, uid):
         owner = self.player_color(uid)
         hidden_board = []
