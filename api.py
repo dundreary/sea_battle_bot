@@ -82,6 +82,7 @@ def as_dict(game, uid):
     ships_data = [{"size": len(s.cells), "cells": [list(c) for c in s.cells]} for s in own.ships]
     ships_list = STRIP_SHIPS if game.strip else SHIPS
     return {
+        "pnum": pnum,
         "code": game.code,
         "solo": game.solo,
         "strip": game.strip,
