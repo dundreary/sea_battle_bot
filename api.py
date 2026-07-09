@@ -504,6 +504,7 @@ def _handle_surrender(data, uid, code):
             own.grid[r][c] = SUNK
         ship.hits = set(ship.cells)
         own._mark_dead_zone(ship)
+    game.phase = "finished"
     save()
     return {"ok": True, "state": as_dict(game, uid)}
 

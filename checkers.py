@@ -82,7 +82,7 @@ def get_capture_moves(board, r, c, piece=None):
     return moves
 
 
-def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start_pos=None):
+def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start_pos=None, visited=None):
     if piece is None:
         piece = board[r][c]
     if path is None:
@@ -91,6 +91,8 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
         start_pos = (r, c)
     if captured is None:
         captured = []
+    if visited is None:
+        visited = {(r, c)}
     color = piece_color(piece)
     moves = []
     for dr, dc in get_directions(piece, capture=True):
@@ -98,7 +100,7 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
         nr, nc = r + 2 * dr, c + 2 * dc
         if in_bounds(nr, nc) and board[nr][nc] == EMPTY and in_bounds(mr, mc):
             mid = board[mr][mc]
-            if mid != EMPTY and piece_color(mid) != color and (mr, mc) not in captured:
+            if mid != EMPTY and piece_color(mid) != color and (mr, mc) not in captured and (nr, nc) not in visited:
                 new_board = [row[:] for row in board]
                 new_board[mr][mc] = EMPTY
                 new_board[r][c] = EMPTY
@@ -108,7 +110,11 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
                 elif piece == BLACK and nr == BOARD_SIZE - 1:
                     new_piece = BLACK_KING
                 new_board[nr][nc] = new_piece
-                sub = find_multi_captures(new_board, nr, nc, new_piece, path + [(nr, nc)], captured + [(mr, mc)], start_pos)
+                sub = find_multi_captures(
+                    new_board, nr, nc, new_piece,
+                    path + [(nr, nc)], captured + [(mr, mc)],
+                    start_pos, visited | {(nr, nc)},
+                )
                 if sub:
                     moves.extend(sub)
                 else:
@@ -159,7 +165,8 @@ def apply_move(board, move):
             current_piece = WHITE_KING
         elif current_piece == BLACK and r == BOARD_SIZE - 1:
             current_piece = BLACK_KING
-        new_board[r][c] = current_piece
+    fr, fc = steps[-1]
+    new_board[fr][fc] = current_piece
     return new_board
 
 
