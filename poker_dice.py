@@ -312,6 +312,7 @@ class PokerDiceGame:
             'phase': self.phase,
             'turn': self.turn,
             'my_turn': my_turn,
+            'opponent_joined': self.player2_id is not None,
             'you': pnum,
             'dice': p['dice'] if my_turn else opp['dice'],
             'my_dice': p['dice'],

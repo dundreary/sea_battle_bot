@@ -1769,10 +1769,15 @@ function pdRenderActions(st){
   let html = '';
 
   if(st.my_turn && !st.scored){
-    // Roll button — always visible, disabled at 0
+    // Roll button — always visible, disabled if 0 rolls or waiting for opponent
     const canRoll = st.rolls_left > 0;
-    html += `<button class="btn success" onclick="pdDoRoll()" ${canRoll?'':'disabled style="opacity:0.5"'}>🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
-    if(!st.solo){
+    const waitingForOpponent = !st.solo && !st.opponent_joined;
+    const rollDisabled = !canRoll || waitingForOpponent;
+    
+    html += `<button class="btn success" onclick="pdDoRoll()" ${rollDisabled?'disabled style="opacity:0.5"':''}>🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
+    
+    // Show invite button only if opponent hasn't joined yet
+    if(!st.solo && !st.opponent_joined){
       html += `<button class="btn primary" onclick="sharePdGame()">📤 ${t('inviteFriend')}</button>`;
     }
   }
@@ -1925,12 +1930,9 @@ function pdRenderResult(st){
   html += '</table>';
 
   // Action buttons right below the table
-  const inviteBtn = st.solo ? '' : `<button class="btn primary" onclick="sharePdGame()" style="width:100%;margin-top:12px">📤 ${t('inviteFriend')}</button>`;
-  const soloBtnText = st.solo ? t('pdPlayAgain') : t('close');
-  const soloBtnFn = st.solo ? 'pdStartSolo()' : 'showPokerDice()';
+  const playAgainFn = st.solo ? 'pdStartSolo()' : 'pdNewMulti()';
   html += `<div class="btn-row stack" style="margin-top:12px">
-    ${inviteBtn}
-    <button class="btn success" onclick="${soloBtnFn}">${soloBtnText}</button>
+    <button class="btn success" onclick="${playAgainFn}">🔄 ${t('pdPlayAgain')}</button>
     <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
   </div>`;
 
