@@ -331,7 +331,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   </div>
   <div id="ckArea" style="display:none">
     <div class="ck-board" id="ckBoard"></div>
-    <div class="btn-row" id="ckActions" style="margin-top:8px"></div>
+    <div class="btn-row" id="ckActions" style="margin-top:14px;min-height:120px"></div>
   </div>
   <div id="stArea" style="display:none">
     <div class="st-board" id="stBoard"></div>
@@ -761,12 +761,16 @@ function updateSettingsUI(){
   const vibeBtn=document.getElementById('vibeBtn');
   const sndBtnPd=document.getElementById('sndBtnPd');
   const vibeBtnPd=document.getElementById('vibeBtnPd');
+  const sndBtnCk=document.getElementById('sndBtnCk');
+  const vibeBtnCk=document.getElementById('vibeBtnCk');
   const sndIcon=_snd?'🔊':'🔇';
   const vibeIcon=_vibe?'📳':'📴';
   if(sndBtn)sndBtn.textContent=sndIcon;
   if(vibeBtn)vibeBtn.textContent=vibeIcon;
   if(sndBtnPd)sndBtnPd.textContent=sndIcon;
   if(vibeBtnPd)vibeBtnPd.textContent=vibeIcon;
+  if(sndBtnCk)sndBtnCk.textContent=sndIcon;
+  if(vibeBtnCk)vibeBtnCk.textContent=vibeIcon;
 }
 function setThemeSelectorVisibility(visible){
   $('themeSelector').style.display=visible?'flex':'none';
@@ -2130,6 +2134,8 @@ function ckShowGame(st){
   $('header').classList.add('in-game');
   document.title=t('checkers');
   $('gameInfo').textContent='';
+  $('actions').innerHTML='';
+  $('actions').className='btn-row';
   ckRenderBoard(st);
   if(st.phase==='finished'){
     if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
@@ -2138,39 +2144,46 @@ function ckShowGame(st){
     const title=st.winner===1?t('win'):t('lose');
     const desc=t('checkers');
     showResult(icon,title,desc,false);
-    $('actions').className='btn-row stack';
-    $('actions').innerHTML=`
+    const el=$('ckActions');
+    el.className='btn-row stack';
+    el.innerHTML=`
       <button class="btn success" onclick="ckStartSolo()">${t('playAgain')}</button>
       <button class="btn outline" onclick="showCheckers()">${t('close')}</button>
     `;
     return;
   }
+  const el=$('ckActions');
+  el.className='btn-row stack';
+  let html='';
   if(st.my_turn){
     setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
-    $('actions').className='btn-row';
     const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('inviteFriend')}</button>`;
-    $('actions').innerHTML=`
+    html+=`<div class="btn-row" style="flex-wrap:nowrap">
       ${inviteBtn}
-      <button class="btn outline" onclick="ckGetHint()">${t('ckHint')}</button>
-      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
-      <button class="btn outline quit-btn" onclick="ckSurrender()">${t('surrender')}</button>
-    `;
+      <button class="btn success" onclick="ckGetHint()">💡 ${t('ckHint')}</button>
+    </div>`;
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
-    $('actions').className='btn-row';
-    $('actions').innerHTML=`
-      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
-      <button class="btn outline quit-btn" onclick="ckSurrender()">${t('surrender')}</button>
-    `;
   }
+  html+=`<div class="btn-row" style="flex-wrap:nowrap;margin-top:${st.my_turn?'0':'8px'}">
+    <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+    <button class="btn outline quit-btn" onclick="ckSurrender()">🏳️ ${t('surrender')}</button>
+  </div>`;
+  const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
+  const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
+  html+=`<div class="pd-theme-bar">
+    <button class="theme-btn ${localStorage.getItem('sb_theme')==='ocean'||!localStorage.getItem('sb_theme')?'active':''}" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
+    <button class="theme-btn ${localStorage.getItem('sb_theme')==='forest'?'active':''}" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
+    <div class="theme-divider"></div>
+    <button class="theme-btn snd-btn" id="sndBtnCk" onclick="toggleSnd()">${sndIcon}</button>
+    <button class="theme-btn snd-btn" id="vibeBtnCk" onclick="toggleVibe()">${vibeIcon}</button>
+  </div>`;
+  el.innerHTML=html;
   if(!st.solo){
     $('status').style.cursor='pointer';
     $('status').title=t('copyCode');
     $('status').onclick=()=>navigator.clipboard.writeText(st.code).then(()=>setStatus('✅ '+t('shareCopied'),''));
   }
-  // Theme/sound/vibe footer
-  setThemeSelectorVisibility(true);
-  updateSettingsUI();
 }
 
 function ckRenderBoard(st){
