@@ -310,6 +310,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="board" id="oppBoard"></div>
   </div>
   <!-- Legend removed per request -->
+  <div class="btn-row" id="actions"></div>
   <div class="theme-selector" id="themeSelector" style="display:none">
     <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
     <button class="theme-btn" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
@@ -317,7 +318,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
     <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
   </div>
-  <div class="btn-row" id="actions"></div>
    <div id="pdArea" style="display:none">
     <div id="pdScorecardContainer"></div>
     <div class="pd-dice" id="pdDice"></div>
@@ -754,6 +754,9 @@ function updateSettingsUI(){
   if(sndBtn)sndBtn.textContent=_snd?'🔊':'🔇';
   if(vibeBtn)vibeBtn.textContent=_vibe?'📳':'📴';
 }
+function setThemeSelectorVisibility(visible){
+  $('themeSelector').style.display=visible?'flex':'none';
+}
 
 function setTheme(themeName){
   const validThemes = ['ocean', 'forest'];
@@ -993,13 +996,13 @@ function updateUI(){
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
     `;
-    $('themeSelector').style.display='none';
+    setThemeSelectorVisibility(false);
     return;
   }
   $('shipHint').innerHTML = '';
 
   $('oppBoardWrap').style.display='block';
-  $('themeSelector').style.display='flex';
+  setThemeSelectorVisibility(true);
   updateSettingsUI();
   $('ownBoardWrap').after($('status'));
 
@@ -1189,7 +1192,7 @@ function showMainMenu(){
   // Note: saved game codes (sb_game/pd_game/ck_game/st_game) are intentionally
   // NOT cleared here anymore — quitting a game only minimizes it, so it must
   // stay resumable from the active-games bar below.
-  $('themeSelector').style.display='none';
+  setThemeSelectorVisibility(false);
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('stArea').style.display='none';
@@ -1545,7 +1548,7 @@ function pdShowGame(st){
   pdState = st;
   hideAllGameAreas();
   $('pdArea').style.display='';
-  $('themeSelector').style.display='flex';
+  setThemeSelectorVisibility(true);
   updateSettingsUI();
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
@@ -2083,7 +2086,7 @@ function ckShowGame(st){
   ckSelected=null;
   hideAllGameAreas();
   $('ckArea').style.display='';
-  $('themeSelector').style.display='none';
+  setThemeSelectorVisibility(false);
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('checkers');
@@ -2355,7 +2358,7 @@ function stShowGame(st){
   stPaletteType=null;
   hideAllGameAreas();
   $('stArea').style.display='';
-  $('themeSelector').style.display='none';
+  setThemeSelectorVisibility(false);
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('stratego');
