@@ -2,7 +2,7 @@ import json
 import base64
 import logging
 import urllib.request
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
 # from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
@@ -61,23 +61,6 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
         logger.error("Failed to send strip photo: %s", e)
         return False
 
-def _generate_unique_code(code_generator, existing_games: Dict[str, Any]) -> str:
-    """Generate a unique game code to avoid collisions.
-    
-    Args:
-        code_generator: Function that generates a new game code
-        existing_games: Dictionary of existing games to check against
-        
-    Returns:
-        A unique game code not present in existing_games
-        
-    This centralizes code uniqueness logic to reduce duplication.
-    """
-    while True:
-        code = code_generator()
-        if code not in existing_games:
-            return code
-
 games: Dict[str, Game] = {}
 player_games: Dict[str, str] = {}
 
@@ -121,7 +104,9 @@ def as_dict(game, uid):
     }
 
 def new_solo(uid, strip=False, difficulty=2):
-    code = _generate_unique_code(Game.generate_code, games)
+    code = Game.generate_code()
+    while code in games:
+        code = Game.generate_code()
     game = Game(code, uid, solo=True, strip=strip, difficulty=difficulty)
     game.player2_id = 0
     games[code] = game
@@ -162,42 +147,6 @@ def _bot_shoots(game, uid):
         if own.all_sunk():
             break
     return shots
-
-
-def _pd_game_factory(uid, game_class, get_state_func: Optional[Callable] = None):
-    """Factory function to create new poker dice games with unique codes."""
-    if not uid:
-        return None, None
-    game = game_class(_generate_unique_code(game_class.generate_code, pd_games), uid, solo=True)
-    return game, get_state_func
-def _checkers_game_factory(uid, difficulty=2, solo=True, get_state_func: Optional[Callable] = None):
-    """Factory function to create new checkers games with unique codes."""
-    if not uid:
-        return None, None
-    game = CheckersGame(_generate_unique_code(CheckersGame.generate_code, checkers_games), uid, solo=solo, difficulty=difficulty)
-    return game, get_state_func
-def _stratego_game_factory(uid, difficulty=2, solo=True, get_state_func: Optional[Callable] = None):
-    """Factory function to create new stratego games with unique codes."""
-    if not uid:
-        return None, None
-    game = StrategoGame(_generate_unique_code(StrategoGame.generate_code, stratego_games), uid, solo=solo, difficulty=difficulty)
-    return game, get_state_func
-
-def _get_sea_battle_state(game, uid):
-    """Get state for sea battle game."""
-    return as_dict(game, uid)
-def _get_sea_battle_state(game, uid):
-    """Get state for sea battle game."""
-    return as_dict(game, uid)
-def _get_pd_state(game, uid):
-    """Get state for poker dice game."""
-    return game.get_state(game.player_num(uid))
-def _get_checkers_state(game, uid):
-    """Get state for checkers game."""
-    return game.get_state(uid)
-def _get_stratego_state(game, uid):
-    """Get state for stratego game."""
-    return game.get_state(uid)
 
 def shoot(uid, code, r, c):
     game = games.get(code)
@@ -245,7 +194,9 @@ def confirm_placement(uid, code):
     return False
 
 def new_multi(uid, strip=False):
-    code = _generate_unique_code(Game.generate_code, games)
+    code = Game.generate_code()
+    while code in games:
+        code = Game.generate_code()
     game = Game(code, uid, strip=strip)
     games[code] = game
     return game
@@ -423,32 +374,30 @@ def _handle_upload_photo(data, uid, code):
 # ---- Poker Dice handlers ----
 
 def _handle_pd_new_solo(data, uid, code):
-    game, get_state_func = _pd_game_factory(uid, PDGame, _get_pd_state)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
+    c = PDGame.generate_code()
+    while c in pd_games:
+        c = PDGame.generate_code()
+    game = PDGame(c, uid, solo=True)
     game.player2_id = 0
-    pd_games[game.code] = game
-    pd_player_games[str(uid)] = game.code
+    pd_games[c] = game
+    pd_player_games[str(uid)] = c
     save()
-    if get_state_func:
-        state = get_state_func(game, uid)
-    else:
-        state = game.get_state(1)
-    return {"ok": True, "code": game.code, "state": state}
+    return {"ok": True, "code": c, "state": game.get_state(1)}
 
 
 def _handle_pd_new_multi(data, uid, code):
-    game, get_state_func = _pd_game_factory(uid, PDGame, _get_pd_state)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
-    pd_games[game.code] = game
-    pd_player_games[str(uid)] = game.code
+    c = PDGame.generate_code()
+    while c in pd_games:
+        c = PDGame.generate_code()
+    game = PDGame(c, uid)
+    pd_games[c] = game
+    pd_player_games[str(uid)] = c
     save()
-    if get_state_func:
-        state = get_state_func(game, uid)
-    else:
-        state = game.get_state(1)
-    return {"ok": True, "code": game.code, "state": state}
+    return {"ok": True, "code": c, "state": game.get_state(1)}
 
 
 def _handle_pd_join(data, uid, code):
@@ -506,91 +455,119 @@ def _handle_pd_surrender(data, uid, code):
     return {"ok": True, "state": st}
 
 
-def _get_game_if_exists(game_registry: Dict[str, Any], code: str, error_prefix: str = "not_found"):
-    """Helper to check if a game exists in a registry and return it.
-    
-    Args:
-        game_registry: The dictionary containing games
-        code: The game code to look up
-        error_prefix: Error key to return if game not found
-        
-    Returns:
-        The game if it exists, or error dict if not
-    """
-    game = game_registry.get(code)
-    if not game:
-        return {"error": error_prefix}
-    return game
-def _standardize_response(game_result, success_key: str = "game", game_type: str = "sea_battle"):
-    """Helper to create standardized game responses.
-    
-    Args:
-        game_result: Either a game object or error dict
-        success_key: The key to use in successful response
-        game_type: The type of game
-        
-    Returns:
-        Standardized response dict
-    """
-    if isinstance(game_result, dict) and "error" in game_result:
-        return game_result
-    
-    return {"ok": True, success_key: game_type, "code": game_result.code}
-def _validate_uid_and_code(uid: str, code: str) -> Optional[Dict]:
-    """Helper to validate uid and code parameters.
-    
-    Args:
-        uid: User ID string
-        code: Game code string
-        
-    Returns:
-        Error dict if invalid, None if valid
-    """
+def _handle_pd_state(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
-    return None
-def _get_sea_battle_state_wrapper(game, uid):
-    """Wrapper for as_dict to standardize state retrieval."""
-    return as_dict(game, uid)
-def _get_pd_state_wrapper(game, uid):
-    """Wrapper for pd game state retrieval to standardize state retrieval."""
-    return game.get_state(game.player_num(uid))
-def _get_checkers_state_wrapper(game, uid):
-    """Wrapper for checkers game state retrieval to standardize state retrieval."""
-    return game.get_state(uid)
-def _get_stratego_state_wrapper(game, uid):
-    """Wrapper for stratego game state retrieval to standardize state retrieval."""
-    return game.get_state(uid)
+    game = pd_games.get(code)
+    if not game:
+        return {"error": "not_found"}
+    pnum = game.player_num(uid)
+    if pnum is None:
+        return {"error": "not_in_game"}
+    return {"ok": True, "state": game.get_state(pnum)}
+
+
+def _handle_surrender(data, uid, code):
+    if not uid or not code:
+        return {"error": "no uid/code"}
+    game = games.get(code)
+    if not game or game.phase != "playing":
+        return {"error": "not_playing"}
+    if uid != game.player1_id and uid != game.player2_id:
+        return {"error": "not_in_game"}
+    own = game.board_for(uid)
+    for ship in own.ships:
+        for r, c in ship.cells:
+            own.grid[r][c] = SUNK
+        ship.hits = set(ship.cells)
+        own._mark_dead_zone(ship)
+    save()
+    return {"ok": True, "state": as_dict(game, uid)}
+
+
+def _handle_active_games(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    games_list = []
+    pd_code = pd_player_games.get(str(uid))
+    if pd_code and pd_code in pd_games:
+        g = pd_games[pd_code]
+        pnum = g.player_num(uid)
+        if pnum:
+            st = g.get_state(pnum)
+            games_list.append({
+                'type': 'poker_dice',
+                'code': pd_code,
+                'phase': g.phase,
+                'my_turn': g.turn == pnum,
+            })
+    ck_code = checkers_player_games.get(str(uid))
+    if ck_code and ck_code in checkers_games:
+        g = checkers_games[ck_code]
+        games_list.append({
+            'type': 'checkers',
+            'code': ck_code,
+            'phase': g.phase,
+            'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
+        })
+    st_code = stratego_player_games.get(str(uid))
+    if st_code and st_code in stratego_games:
+        g = stratego_games[st_code]
+        games_list.append({
+            'type': 'stratego',
+            'code': st_code,
+            'phase': g.phase,
+            'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
+        })
+    return {"ok": True, "games": games_list}
+
+
+def _handle_bot_info(data, uid, code):
+    return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
+
+
+def _handle_resolve_code(data, uid, code):
+    c = data.get("code", "").strip().upper()
+    if not c:
+        return {"error": "no code"}
+    if c in games:
+        return {"ok": True, "game": "sea_battle", "code": c}
+    if c in pd_games:
+        return {"ok": True, "game": "poker_dice", "code": c}
+    if c in checkers_games:
+        return {"ok": True, "game": "checkers", "code": c}
+    if c in stratego_games:
+        return {"ok": True, "game": "stratego", "code": c}
+    return {"ok": False, "error": "not_found"}
 
 
 # ---- Checkers handlers ----
 
 def _handle_checkers_new_solo(data, uid, code):
-    game, get_state_func = _checkers_game_factory(uid, difficulty=data.get("difficulty", 2), solo=True, get_state_func=_get_checkers_state)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
-    checkers_games[game.code] = game
-    checkers_player_games[str(uid)] = game.code
+    difficulty = data.get("difficulty", 2)
+    c = CheckersGame.generate_code()
+    while c in checkers_games:
+        c = CheckersGame.generate_code()
+    game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
+    checkers_games[c] = game
+    checkers_player_games[str(uid)] = c
     save()
-    if get_state_func:
-        state = get_state_func(game, uid)
-    else:
-        state = game.get_state(uid)
-    return {"ok": True, "code": game.code, "state": state}
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
 
 
 def _handle_checkers_new_multi(data, uid, code):
-    game, get_state_func = _checkers_game_factory(uid, solo=False, get_state_func=_get_checkers_state)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
-    checkers_games[game.code] = game
-    checkers_player_games[str(uid)] = game.code
+    c = CheckersGame.generate_code()
+    while c in checkers_games:
+        c = CheckersGame.generate_code()
+    game = CheckersGame(c, uid)
+    checkers_games[c] = game
+    checkers_player_games[str(uid)] = c
     save()
-    if get_state_func:
-        state = get_state_func(game, uid)
-    else:
-        state = game.get_state(uid)
-    return {"ok": True, "code": game.code, "state": state}
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
 
 
 def _handle_checkers_join(data, uid, code):
@@ -604,11 +581,7 @@ def _handle_checkers_join(data, uid, code):
     game.player2_id = uid
     checkers_player_games[str(uid)] = code
     save()
-    if hasattr(game, 'get_state'):
-        state = game.get_state(uid)
-    else:
-        state = game.get_state(uid)
-    return {"ok": True, "state": state}
+    return {"ok": True, "state": game.get_state(uid)}
 
 
 def _handle_checkers_state(data, uid, code):
@@ -686,25 +659,32 @@ def _handle_checkers_hint(data, uid, code):
 # ---- Stratego handlers ----
 
 def _handle_stratego_new_solo(data, uid, code):
-    game = _stratego_game_factory(uid, difficulty=data.get("difficulty", 2), solo=True)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
+    c = StrategoGame.generate_code()
+    while c in stratego_games:
+        c = StrategoGame.generate_code()
+    difficulty = data.get("difficulty", 2)
+    game = StrategoGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
     game.phase = 'setup_p1'
-    stratego_games[game.code] = game
-    stratego_player_games[str(uid)] = game.code
+    stratego_games[c] = game
+    stratego_player_games[str(uid)] = c
     save()
-    return {"ok": True, "code": game.code, "state": game.get_state(uid)}
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
 
 
 def _handle_stratego_new_multi(data, uid, code):
-    game = _stratego_game_factory(uid, solo=False)
-    if not game:
+    if not uid:
         return {"error": "no uid"}
-    stratego_games[game.code] = game
-    stratego_player_games[str(uid)] = game.code
+    c = StrategoGame.generate_code()
+    while c in stratego_games:
+        c = StrategoGame.generate_code()
+    game = StrategoGame(c, uid)
+    stratego_games[c] = game
+    stratego_player_games[str(uid)] = c
     save()
-    return {"ok": True, "code": game.code, "state": game.get_state(uid)}
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
 
 
 def _handle_stratego_join(data, uid, code):
