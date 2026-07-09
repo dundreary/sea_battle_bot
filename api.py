@@ -489,12 +489,26 @@ def _handle_active_games(data, uid, code):
     if not uid:
         return {"error": "no uid"}
     games_list = []
+
+    sb_code = player_games.get(str(uid))
+    if sb_code and sb_code in games:
+        g = games[sb_code]
+        if uid == g.player1_id or uid == g.player2_id:
+            own = g.board_for(uid)
+            opp = g.opponent_board(uid)
+            if not own.all_sunk() and not opp.all_sunk():
+                games_list.append({
+                    'type': 'sea_battle',
+                    'code': sb_code,
+                    'phase': g.phase,
+                    'my_turn': g.current_player() == uid,
+                })
+
     pd_code = pd_player_games.get(str(uid))
     if pd_code and pd_code in pd_games:
         g = pd_games[pd_code]
         pnum = g.player_num(uid)
-        if pnum:
-            st = g.get_state(pnum)
+        if pnum and g.phase != 'finished':
             games_list.append({
                 'type': 'poker_dice',
                 'code': pd_code,
@@ -504,21 +518,23 @@ def _handle_active_games(data, uid, code):
     ck_code = checkers_player_games.get(str(uid))
     if ck_code and ck_code in checkers_games:
         g = checkers_games[ck_code]
-        games_list.append({
-            'type': 'checkers',
-            'code': ck_code,
-            'phase': g.phase,
-            'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
-        })
+        if g.phase != 'finished':
+            games_list.append({
+                'type': 'checkers',
+                'code': ck_code,
+                'phase': g.phase,
+                'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
+            })
     st_code = stratego_player_games.get(str(uid))
     if st_code and st_code in stratego_games:
         g = stratego_games[st_code]
-        games_list.append({
-            'type': 'stratego',
-            'code': st_code,
-            'phase': g.phase,
-            'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
-        })
+        if g.phase != 'finished':
+            games_list.append({
+                'type': 'stratego',
+                'code': st_code,
+                'phase': g.phase,
+                'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
+            })
     return {"ok": True, "games": games_list}
 
 

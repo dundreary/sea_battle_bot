@@ -514,6 +514,8 @@ const LANG = {
     pdCategoriesLeft: 'Осталось',
     pdMe: 'Я',
     continue: '▶ Продолжить',
+    minimize: '🔽 Свернуть',
+    activeGames: '▶ Активные игры',
   },
   uk: {
     title: 'Морський бій',
@@ -637,6 +639,8 @@ const LANG = {
     pdCategoriesLeft: 'Залишилось',
     pdMe: 'Я',
     continue: '▶ Продовжити',
+    minimize: '🔽 Згорнути',
+    activeGames: '▶ Активні ігри',
   },
   en: {
     title: 'Sea Battle',
@@ -760,6 +764,8 @@ const LANG = {
     pdCategoriesLeft: 'Left',
     pdMe: 'Me',
     continue: '▶ Continue',
+    minimize: '🔽 Minimize',
+    activeGames: '▶ Active games',
   }
 };
 
@@ -768,6 +774,14 @@ let state = null, uid = null, gameCode = null, lang = 'ru';
 let botUsername = '';
 
 function $(id){return document.getElementById(id)}
+
+function hideAllGameAreas(){
+  $('ownBoardWrap').style.display='none';
+  $('oppBoardWrap').style.display='none';
+  $('pdArea').style.display='none';
+  $('ckArea').style.display='none';
+  $('stArea').style.display='none';
+}
 
 let _snd=localStorage.getItem('sb_snd')!=='0',_vibe=localStorage.getItem('sb_vibe')!=='0';
 let _actx=null;
@@ -967,6 +981,9 @@ function updateUI(){
   const gameOver=s.all_sunk||s.my_all_sunk;
   const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
   if(!isPlacing) showShipHints = false;
+  $('pdArea').style.display='none';
+  $('ckArea').style.display='none';
+  $('stArea').style.display='none';
   $('ownBoardWrap').style.display='block';
   $('oppBoardWrap').style.display='block';
   renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
@@ -1028,7 +1045,7 @@ function updateUI(){
       <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
       ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
       <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
-      <button class="btn outline" onclick="leaveGame()">${t('quit')}</button>
+      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
     `;
     $('themeSelector').style.display='none';
     return;
@@ -1043,11 +1060,14 @@ function updateUI(){
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`;
+    $('actions').innerHTML=`
+      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+    `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('quit')}</button>`;
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>`;
   }
 }
 
@@ -1215,13 +1235,14 @@ function showMainMenu(){
   gameCode=null;state=null;
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
+  stCode=null;stState=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
   if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
-  localStorage.removeItem('sb_game');
-  localStorage.removeItem('pd_game');
-  localStorage.removeItem('ck_game');
-  localStorage.removeItem('st_game');
+  if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
+  // Note: saved game codes (sb_game/pd_game/ck_game/st_game) are intentionally
+  // NOT cleared here anymore — quitting a game only minimizes it, so it must
+  // stay resumable from the active-games bar below.
   $('themeSelector').style.display='none';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
@@ -1236,6 +1257,7 @@ function showMainMenu(){
   var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
+    <div id="activeGamesContainer"></div>
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
       <img src="/static/game-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
@@ -1292,6 +1314,7 @@ function startSoloWithDifficulty(diff){
 function showSeaBattleMenu(){
   showShipHints = true;
   var lb=$('langBar');if(lb)lb.style.display='none';
+  hideAllGameAreas();
   document.title = t('seaBattle');
   setStatus('');
   $('gameInfo').textContent='';
@@ -1433,13 +1456,15 @@ function showResult(icon,title,desc,strip){
 }
 
 async function leaveGame(surrender){
-  var msg = surrender ? {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang] : t('quitConfirm');
-  if(!confirm(msg))return;
+  if(surrender){
+    var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+    if(!confirm(msg))return;
+  }
   // Clear poll timer BEFORE any async operation to prevent refreshState/updateUI from re-showing boards
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   const willSurrender = surrender && state && state.phase==='playing';
   const _code = gameCode;
-  localStorage.removeItem('sb_game');
+  if(willSurrender) localStorage.removeItem('sb_game');
   gameCode=null;state=null;
   // Hide boards BEFORE clearing other game data to ensure UI consistency
   $('ownBoardWrap').style.display='none';
@@ -1447,8 +1472,8 @@ async function leaveGame(surrender){
   if(willSurrender){
     await api('/api/surrender',{uid:getUid(),code:_code});
   }
-  try{Telegram.WebApp.close()}catch(e){}
-  // Always show main menu after leaving game, and clear all other game states
+  // Plain quit just minimizes: the game stays saved in localStorage so it can
+  // be resumed later from the main menu's active-games bar.
   showMainMenu();
 }
 
@@ -1475,21 +1500,20 @@ function catName(id){ const i=PD_CATEGORIES.indexOf(id); return PD_CAT_NAMES[lan
 
 function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('ckArea').style.display='none';
-  $('stArea').style.display='none';
+  hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
+  $('header').classList.remove('in-game');
   document.title=t('pdTitle');
   $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
-  var hasActiveGame = pdCode && localStorage.getItem('pd_game');
+  var savedPd = localStorage.getItem('pd_game');
+  var hasActiveGame = !!savedPd;
   var resumeHtml = '';
   if(hasActiveGame){
-    resumeHtml = `<div class="active-game-row" onclick="resumePd('${pdCode}')">
-      <div class="info"><span class="label">🎲 </span><span class="code">${pdCode}</span></div>
+    resumeHtml = `<div class="active-game-row" onclick="resumePd('${savedPd}')">
+      <div class="info"><span class="label">🎲 </span><span class="code">${savedPd}</span></div>
       <span class="badge playing">▶ ${t('continue')||'Продолжить'}</span>
     </div>`;
   }
@@ -1573,10 +1597,10 @@ async function pdRefreshState(){
 
 function pdShowGame(st){
   pdState = st;
+  hideAllGameAreas();
   $('pdArea').style.display='';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('themeSelector').style.display='none';
+  $('themeSelector').style.display='flex';
+  updateSettingsUI();
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('pdTitle');
@@ -1785,13 +1809,13 @@ function pdRenderActions(st){
     } else {
       html += `<button class="btn success" style="width:100%;opacity:0.6" disabled>🎲 ${t('pdRoll')} (0)</button>`;
     }
-    html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('quit')}</button>`;
+    html += `<button class="btn outline" onclick="leavePdGame()" style="margin-top:10px;width:100%">${t('minimize')}</button>`;
     if(!st.solo){
       html += `<button class="btn primary" onclick="sharePdGame()" style="margin-top:8px;width:100%">📤 ${t('inviteFriend')}</button>`;
     }
     html += `<button class="btn outline quit-btn" onclick="pdSurrender()" style="width:100%">🏳️ ${t('surrender')}</button>`;
   } else {
-    html += `<button class="btn outline" onclick="leavePdGame()" style="width:100%">${t('quit')}</button>`;
+    html += `<button class="btn outline" onclick="leavePdGame()" style="width:100%">${t('minimize')}</button>`;
   }
 
   el.innerHTML = html;
@@ -1954,8 +1978,10 @@ function pdRenderResult(st){
 
 function leavePdGame(){
   if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
-  if(pdCode) localStorage.setItem('pd_game', pdCode);
-  showPokerDice();
+  // pd_game code stays in localStorage so the main menu's active-games bar can resume it
+  pdCode=null; pdState=null;
+  $('pdArea').style.display='none';
+  showMainMenu();
 }
 
 async function pdSurrender(){
@@ -2013,22 +2039,29 @@ function ckStartWithDifficulty(diff){
 
 function showCheckers(){
   var lb=$('langBar');if(lb)lb.style.display='none';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('pdArea').style.display='none';
-  $('ckArea').style.display='none';
+  hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
   document.title=t('checkers');
   $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
+  var savedCk = localStorage.getItem('ck_game');
+  var resumeHtml = '';
+  if(savedCk){
+    resumeHtml = `<div class="active-game-row" onclick="resumeCk('${savedCk}')">
+      <div class="info"><span class="label">♟ </span><span class="code">${savedCk}</span></div>
+      <span class="badge playing">▶ ${t('continue')}</span>
+    </div>`;
+  }
   $('actions').innerHTML=`
+    ${resumeHtml}
     <div class="game-card" onclick="showCkBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
+    ${!savedCk ? `
     <div class="game-card" onclick="ckNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
       <div class="name">${t('vsFriend')}</div>
@@ -2039,6 +2072,7 @@ function showCheckers(){
       <div class="name">${t('joinTitle')}</div>
       <div class="card-desc">${t('joinBtn')}</div>
     </div>
+    ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
 }
@@ -2099,10 +2133,8 @@ async function ckRefreshState(){
 function ckShowGame(st){
   ckState=st;
   ckSelected=null;
+  hideAllGameAreas();
   $('ckArea').style.display='';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('pdArea').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
@@ -2130,12 +2162,12 @@ function ckShowGame(st){
     $('actions').innerHTML=`
       ${inviteBtn}
       <button class="btn outline" onclick="ckGetHint()">${t('ckHint')}</button>
-      <button class="btn outline" onclick="leaveCkGame()">${t('quit')}</button>
+      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
     `;
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveCkGame()">${t('quit')}</button>`;
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>`;
   }
   if(!st.solo){
     $('status').style.cursor='pointer';
@@ -2227,11 +2259,11 @@ async function ckGetHint(){
 }
 
 function leaveCkGame(){
-  if(!confirm(t('quitConfirm')))return;
   if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+  // ck_game code stays in localStorage so the main menu's active-games bar can resume it
   ckCode=null;ckState=null;
-  localStorage.removeItem('ck_game');
-  showCheckers();
+  $('ckArea').style.display='none';
+  showMainMenu();
 }
 
 function shareCkGame(){
@@ -2278,23 +2310,29 @@ function stTitle(t){const m=ST_PIECE_TITLES[t];return m?m[lang]:'?'}
 
 function showStratego(){
   var lb=$('langBar');if(lb)lb.style.display='none';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('pdArea').style.display='none';
-  $('ckArea').style.display='none';
-  $('stArea').style.display='none';
+  hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   $('shipHint').innerHTML='';
   document.title=t('stratego');
   $('gameInfo').textContent='';
   setStatus('');
   $('actions').className='btn-row stack';
+  var savedSt = localStorage.getItem('st_game');
+  var resumeHtml = '';
+  if(savedSt){
+    resumeHtml = `<div class="active-game-row" onclick="resumeSt('${savedSt}')">
+      <div class="info"><span class="label">♟ </span><span class="code">${savedSt}</span></div>
+      <span class="badge playing">▶ ${t('continue')}</span>
+    </div>`;
+  }
   $('actions').innerHTML=`
+    ${resumeHtml}
     <div class="game-card" onclick="showStBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
+    ${!savedSt ? `
     <div class="game-card" onclick="stNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
       <div class="name">${t('vsFriend')}</div>
@@ -2305,6 +2343,7 @@ function showStratego(){
       <div class="name">${t('joinTitle')}</div>
       <div class="card-desc">${t('joinBtn')}</div>
     </div>
+    ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
 }
@@ -2366,11 +2405,8 @@ function stShowGame(st){
   stState=st;
   stSelected=null;
   stPaletteType=null;
+  hideAllGameAreas();
   $('stArea').style.display='';
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
-  $('pdArea').style.display='none';
-  $('ckArea').style.display='none';
   $('themeSelector').style.display='none';
   $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
@@ -2405,12 +2441,12 @@ function stShowGame(st){
     const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareStGame()">📤 ${t('inviteFriend')}</button>`;
     $('actions').innerHTML=`
       ${inviteBtn}
-      <button class="btn outline" onclick="leaveStGame()">${t('quit')}</button>
+      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
     `;
   }else{
     setStatus('⏳ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
     $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn outline" onclick="leaveStGame()">${t('quit')}</button>`;
+    $('actions').innerHTML=`<button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>`;
   }
   if(!st.solo){
     $('status').style.cursor='pointer';
@@ -2485,7 +2521,7 @@ function stRenderSetup(st){
     <button class="btn primary" onclick="stAutoSetup()">${{ru:'🔀 Авто',uk:'🔀 Авто',en:'🔀 Auto'}[lang]}</button>
     <button class="btn success" onclick="stConfirmSetup()">${{ru:'✅ Готово',uk:'✅ Готово',en:'✅ Done'}[lang]}</button>
   `:'';
-  $('actions').innerHTML=rows+`<button class="btn outline" onclick="leaveStGame()">${t('quit')}</button>`;
+  $('actions').innerHTML=rows+`<button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>`;
 
   setStatus('⚔️ '+t('stSetupTitle')+' — '+t('stRemaining')+' '+Object.values(remaining).reduce((a,b)=>a+b,0),'');
 }
@@ -2697,11 +2733,11 @@ async function stCellClick(r,c){
 }
 
 function leaveStGame(){
-  if(!confirm(t('quitConfirm')))return;
   if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
+  // st_game code stays in localStorage so the main menu's active-games bar can resume it
   stCode=null;stState=null;
-  localStorage.removeItem('st_game');
-  showStratego();
+  $('stArea').style.display='none';
+  showMainMenu();
 }
 
 function shareStGame(){
@@ -2721,14 +2757,13 @@ async function fetchActiveGames(){
     cont.innerHTML='';
     return;
   }
-  const myPdCode = localStorage.getItem('pd_game');
-  var html='<div class="active-games"><h3>▶ '+t('selectGame')+'</h3>';
+  var html='<div class="active-games"><h3>'+t('activeGames')+'</h3>';
   for(const g of res.games){
     if(g.type==='sea_battle'){
-      continue;
+      var badge=g.my_turn?'<span class="badge playing">⚓ '+t('yourTurn')+'</span>':'<span class="badge">⚓ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
     else if(g.type==='poker_dice'){
-      if(g.code === myPdCode) continue;
       var badge=g.my_turn?'<span class="badge playing">🎲 '+t('yourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
       html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
@@ -2771,40 +2806,7 @@ function resumeCk(code){
 }
 
 function tryReconnect(){
-  const saved=localStorage.getItem('sb_game');
-  if(saved){
-    gameCode=saved;
-    refreshState();
-    setTimeout(pollGame,1000);
-    fetchBotInfo();
-    return;
-  }
-  const pdSaved=localStorage.getItem('pd_game');
-  if(pdSaved){
-    pdCode=pdSaved;
-    pdRefreshState();
-    setTimeout(pdPoll,1000);
-    fetchBotInfo();
-    return;
-  }
-  const ckSaved=localStorage.getItem('ck_game');
-  if(ckSaved){
-    ckCode=ckSaved;
-    ckRefreshState();
-    setTimeout(ckPoll,1000);
-    fetchBotInfo();
-    return;
-  }
-  const stSaved=localStorage.getItem('st_game');
-  if(stSaved){
-    stCode=stSaved;
-    stRefreshState();
-    setTimeout(stPoll,1000);
-    fetchBotInfo();
-    return;
-  }
   showMenu();
-  fetchActiveGames();
   fetchBotInfo().then(() => checkStartParam());
 }
 
