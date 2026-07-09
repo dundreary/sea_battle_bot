@@ -4,7 +4,7 @@ import time
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
-STRIP_SHIPS = [4, 4, 3, 3, 2, 2, 1, 1]
+STRIP_SHIPS = [4, 4, 3, 3, 2, 2, 1]
 
 EMPTY = 0
 SHIP = 1
@@ -12,6 +12,18 @@ HIT = 2
 MISS = 3
 SUNK = 4
 DEAD = 5
+MINE = 6
+
+# Specific ship shapes for strip mode, in placement order:
+STRIP_SHIP_SHAPES = [
+    [(0,0), (0,1), (1,0), (1,1)],  # 4-deck square
+    [(0,1), (0,2), (1,0), (1,1)],  # 4-deck shifted square
+    [(0,0), (1,0), (1,1)],          # 3-deck L-shape
+    [(0,0), (0,1), (0,2)],          # 3-deck straight
+    [(0,0), (0,1)],                 # 2-deck straight
+    [(0,0), (1,1)],                 # 2-deck diagonal
+    [(0,0)],                        # 1-deck single
+]
 
 class Ship:
     def __init__(self, cells):
@@ -41,6 +53,7 @@ class Board:
     def __init__(self):
         self.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         self.ships = []
+        self.mines = []
         self.placement_mode = True
 
     def can_place(self, cells):
@@ -53,7 +66,7 @@ class Board:
                 for dc in (-1, 0, 1):
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                        if self.grid[nr][nc] == SHIP:
+                        if self.grid[nr][nc] in (SHIP, MINE):
                             return False
         return True
 
@@ -62,6 +75,19 @@ class Board:
         for r, c in cells:
             self.grid[r][c] = SHIP
         self.ships.append(ship)
+
+    def place_mine(self, r, c):
+        if self.grid[r][c] != EMPTY:
+            return False
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                    if self.grid[nr][nc] in (SHIP, MINE):
+                        return False
+        self.grid[r][c] = MINE
+        self.mines.append((r, c))
+        return True
 
     def _mark_dead_zone(self, ship):
         for sr, sc in ship.cells:
@@ -84,6 +110,9 @@ class Board:
                         self._mark_dead_zone(ship)
                         return "sunk"
             return "hit"
+        elif self.grid[r][c] == MINE:
+            self.grid[r][c] = HIT
+            return "mine"
         elif self.grid[r][c] == EMPTY:
             self.grid[r][c] = MISS
             return "miss"
@@ -100,6 +129,8 @@ class Board:
             return "⬜"
         if v == SHIP:
             return "⬜" if hide_ships else "🟩"
+        if v == MINE:
+            return "⬜" if hide_ships else "💣"
         if v == HIT:
             return "❌"
         if v == MISS:
@@ -118,13 +149,14 @@ class Board:
 
     def to_flat_list(self, hide_ships=False):
         if hide_ships:
-            return [EMPTY if v == SHIP else v for row in self.grid for v in row]
+            return [EMPTY if v in (SHIP, MINE) else v for row in self.grid for v in row]
         return [v for row in self.grid for v in row]
 
     def to_dict(self):
         return {
             'grid': self.grid,
             'ships': [s.to_dict() for s in self.ships],
+            'mines': [list(m) for m in self.mines],
             'placement_mode': self.placement_mode,
         }
 
@@ -133,6 +165,7 @@ class Board:
         board = Board()
         board.grid = data['grid']
         board.ships = [Ship.from_dict(s) for s in data['ships']]
+        board.mines = [tuple(m) for m in data.get('mines', [])]
         board.placement_mode = data.get('placement_mode', True)
         return board
 
@@ -185,8 +218,23 @@ class Game:
         idx = self.placing[pnum]["ship_idx"]
         ships_list = STRIP_SHIPS if self.strip else SHIPS
         if idx >= len(ships_list):
+            if self.strip and idx == len(ships_list):
+                return 0  # 0 means "place the mine"
             return None
         return ships_list[idx]
+
+    def trigger_mine_explosion(self, shooter_uid):
+        board = self.board_for(shooter_uid)
+        viable = [ship for ship in board.ships if len(ship.hits) < len(ship.cells)]
+        if not viable:
+            return None
+        ship = random.choice(viable)
+        unhit = [cell for cell in ship.cells if cell not in ship.hits]
+        if not unhit:
+            return None
+        target = random.choice(unhit)
+        board.receive_shot(target[0], target[1])
+        return {"r": target[0], "c": target[1]}
 
     @staticmethod
     def generate_code():
@@ -254,7 +302,7 @@ def validate_ship_placement(cells, strip=False):
     if len(cells) < 2:
         return True, ""
     if strip:
-        # In strip mode, allow any connected shape
+        # In strip mode, allow any shape connected by edge or corner
         cell_set = set(cells)
         start = cells[0]
         visited = set()
@@ -264,10 +312,13 @@ def validate_ship_placement(cells, strip=False):
             if (r, c) in visited:
                 continue
             visited.add((r, c))
-            for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
-                nr, nc = r + dr, c + dc
-                if (nr, nc) in cell_set and (nr, nc) not in visited:
-                    stack.append((nr, nc))
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    if dr == 0 and dc == 0:
+                        continue
+                    nr, nc = r + dr, c + dc
+                    if (nr, nc) in cell_set and (nr, nc) not in visited:
+                        stack.append((nr, nc))
         if len(visited) == len(cell_set):
             return True, ""
         return False, "Корабль должен быть связным (все клетки соединены)."
@@ -297,6 +348,7 @@ CLOTHING_SHAPES = {
     ],
     2: [
         [(0,0), (0,1)],  # horizontal pair
+        [(0,0), (1,1)],  # diagonal pair
     ],
     1: [
         [(0,0)],  # single cell
@@ -307,11 +359,10 @@ def auto_place_strip_ships(board: Board) -> None:
     while True:
         board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         board.ships = []
-        for length in STRIP_SHIPS:
+        board.mines = []
+        for shape in STRIP_SHIP_SHAPES:
             placed = False
             for _ in range(1000):
-                shapes = CLOTHING_SHAPES.get(length, [[(0, i) for i in range(length)]])
-                shape = random.choice(shapes)
                 r = random.randint(0, SIZE - 1)
                 c = random.randint(0, SIZE - 1)
                 cells = [(r + dr, c + dc) for dr, dc in shape]
@@ -323,6 +374,11 @@ def auto_place_strip_ships(board: Board) -> None:
             if not placed:
                 break
         else:
+            for _ in range(1000):
+                r = random.randint(0, SIZE - 1)
+                c = random.randint(0, SIZE - 1)
+                if board.place_mine(r, c):
+                    return
             return
 
 
@@ -363,6 +419,8 @@ class BotAI:
         self.hunt_queue = []
         self.ship_mode = False
 
+    _VALID_TARGET = (EMPTY, SHIP, MINE)
+
     def _probability_shot(self, enemy_board, strip=False):
         ships_list = STRIP_SHIPS if strip else SHIPS
         if strip:
@@ -372,20 +430,20 @@ class BotAI:
             for r in range(SIZE):
                 for c in range(SIZE - length + 1):
                     cells = [(r, c + i) for i in range(length)]
-                    if all(enemy_board.grid[nr][nc] in (EMPTY, SHIP) for nr, nc in cells):
+                    if all(enemy_board.grid[nr][nc] in self._VALID_TARGET for nr, nc in cells):
                         for nr, nc in cells:
                             probs[nr][nc] += 1.0
             for r in range(SIZE - length + 1):
                 for c in range(SIZE):
                     cells = [(r + i, c) for i in range(length)]
-                    if all(enemy_board.grid[nr][nc] in (EMPTY, SHIP) for nr, nc in cells):
+                    if all(enemy_board.grid[nr][nc] in self._VALID_TARGET for nr, nc in cells):
                         for nr, nc in cells:
                             probs[nr][nc] += 1.0
         best = -1.0
         best_cell = None
         for r in range(SIZE):
             for c in range(SIZE):
-                if (r, c) not in self.shots and enemy_board.grid[r][c] in (EMPTY, SHIP):
+                if (r, c) not in self.shots and enemy_board.grid[r][c] in self._VALID_TARGET:
                     if probs[r][c] > best:
                         best = probs[r][c]
                         best_cell = (r, c)
@@ -399,7 +457,7 @@ class BotAI:
 
         validated = []
         for r, c in self.hunt_queue:
-            if enemy_board.grid[r][c] in (EMPTY, SHIP):
+            if enemy_board.grid[r][c] in self._VALID_TARGET:
                 validated.append((r, c))
             else:
                 for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
@@ -412,7 +470,7 @@ class BotAI:
 
         while self.hunt_queue:
             r, c = self.hunt_queue.pop(0)
-            if enemy_board.grid[r][c] in (EMPTY, SHIP):
+            if enemy_board.grid[r][c] in self._VALID_TARGET:
                 return r, c
 
         available = [(r, c) for r in range(SIZE) for c in range(SIZE)
@@ -423,7 +481,7 @@ class BotAI:
 
     def register_shot(self, r, c, result, enemy_board):
         self.shots.add((r, c))
-        if result in ("hit", "sunk"):
+        if result in ("hit", "sunk", "mine"):
             for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < SIZE and 0 <= nc < SIZE:

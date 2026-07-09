@@ -106,7 +106,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cell{border-radius:2px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,4vw,22px);cursor:pointer;transition:background .12s;background:var(--bg-board-alt);user-select:none}
    .cell.empty{background:var(--bg-board-alt)}
  .cell.ship{background:var(--color-ship)}
- .cell.strip-ship{background:#e91e63;border-radius:4px}
+  .cell.strip-ship{background:#e91e63;border-radius:4px}
+  .cell.mine{background:#ff9800;border-radius:4px;position:relative}
+  .cell.mine::after{content:'💣';position:absolute;font-size:clamp(12px,3.5vw,20px);top:50%;left:50%;transform:translate(-50%,-50%)}
  .cell.hit{background:var(--color-hit)}
  .cell.miss{background:var(--bg-board);opacity:.4}
  .cell.sunk{background:var(--color-sunk-dark);border:1px solid #424242}
@@ -404,6 +406,7 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вибрация',
     shipHint: '🚢 Корабли: {0}',
+    mine: '💣 Мина',
     stripMode: 'На раздевание',
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
@@ -529,6 +532,7 @@ const LANG = {
     sound: 'Звук',
     vibration: 'Вібрація',
     shipHint: '🚢 Кораблі: {0}',
+    mine: '💣 Міна',
     stripMode: 'На роздягання',
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
@@ -654,6 +658,7 @@ const LANG = {
     sound: 'Sound',
     vibration: 'Vibration',
     shipHint: '🚢 Ships: {0}',
+    mine: '💣 Mine',
     stripMode: 'Strip Mode',
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
@@ -870,7 +875,7 @@ let showShipHints = true;
 
 function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
   boardEl.innerHTML='';
-  const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5;
+  const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5,MINE=6;
   // Build a map cell -> ship size for hints
   const cellSizeMap = {};
   if(shipsData && showShipHints){
@@ -884,7 +889,7 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
     cell.className='cell';
-    if(v===EMPTY||v===SHIP){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship')}}
+    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship')}else if(v===MINE){cell.classList.add('mine')}}
     else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
     else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
@@ -919,17 +924,20 @@ async function refreshState(){
   updateUI();
 }
 
-function renderShipHint(shipsList, shipsPlaced){
+function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
   if(!shipsList){ $('shipHint').innerHTML = ''; return; }
   const remaining = shipsList.slice(shipsPlaced || 0);
   const counts = {};
   remaining.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
   const parts = Object.entries(counts).sort((a,b) => +b[0]- +a[0]);
   const el = $('shipHint');
-  if(!parts.length){ el.innerHTML = ''; return; }
-  const items = parts.map(([size, count]) =>
+  let items = parts.map(([size, count]) =>
     `<span class="ship-item">${count}×${size}</span>`
   ).join('');
+  if(isStrip && shipsPlaced >= shipsList.length && !minePlaced){
+    items += `<span class="ship-item">💣 ${t('mine')||'Mine'}</span>`;
+  }
+  if(!items){ el.innerHTML = ''; return; }
   el.innerHTML = t('shipHint').replace('{0}', items);
 }
 
@@ -997,6 +1005,7 @@ function updateUI(){
       $('status').style.cursor='';
       $('status').onclick=null;
     }
+    renderShipHint(s.ships_list, s.ships_placed, s.strip, s.mine_placed);
     $('oppBoardWrap').style.display='none';
     $('actions').className = 'btn-row stack';
     $('actions').innerHTML=`
@@ -1341,6 +1350,10 @@ async function handleShot(r,c){
   let msg='';
   if(res.result.result==='hit'){msg=t('hit');sfxHit()}
   else if(res.result.result==='sunk'){msg=t('sunk');sfxSunk()}
+  else if(res.result.result==='mine'){
+    msg= {ru:'💣 МИНА! Твой корабль поврежден!',uk:'💣 МІНА! Твій корабель пошкоджено!',en:'💣 MINE! Your ship is damaged!'}[lang];
+    sfxSunk();
+  }
   else {msg=t('miss');sfxMiss()}
 
   const bs=res.result.bot_shots;
@@ -1350,6 +1363,7 @@ async function handleShot(r,c){
     for(const s of bs){
       if(s.result==='hit')msg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
       else if(s.result==='sunk')msg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
+      else if(s.result==='mine')msg+=` 💣${t('mine')}`;
       else msg+=` ${t('botMiss')}`;
     }
   }

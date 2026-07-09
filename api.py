@@ -101,6 +101,8 @@ def as_dict(game, uid):
         "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
         "ships_placed": len(own.ships),
         "ships_list": list(ships_list),
+        "own_mines": [list(m) for m in own.mines],
+        "mine_placed": len(own.mines) > 0,
     }
 
 def new_solo(uid, strip=False, difficulty=2):
@@ -113,9 +115,10 @@ def new_solo(uid, strip=False, difficulty=2):
     game.phase = "placing"
     if strip:
         auto_place_strip_ships(game.board2)
+        game.placing[2]["ship_idx"] = len(STRIP_SHIPS) + 1  # ships + mine
     else:
         auto_place_ships(game.board2)
-    game.placing[2]["ship_idx"] = len(STRIP_SHIPS if game.strip else SHIPS)
+        game.placing[2]["ship_idx"] = len(SHIPS)
     game.ready[2] = True
     return game
 
@@ -131,6 +134,7 @@ def _bot_shoots(game, uid):
     if not game.bot_ai:
         return []
     own = game.board_for(uid)
+    bot_board = game.board_for(game.opponent_id(uid))
     shots = []
     while True:
         br, bc = game.bot_ai.choose_shot(own, strip=game.strip)
@@ -139,12 +143,14 @@ def _bot_shoots(game, uid):
         bresult = own.receive_shot(br, bc)
         if bresult == "repeat":
             continue
+        if bresult == "mine":
+            game.trigger_mine_explosion(game.opponent_id(uid))
         game.bot_ai.register_shot(br, bc, bresult, own)
         shots.append({"r": br, "c": bc, "result": bresult})
-        if bresult == "miss":
+        if bresult in ("miss", "mine"):
             game.switch_turn()
             break
-        if own.all_sunk():
+        if own.all_sunk() or bot_board.all_sunk():
             break
     return shots
 
@@ -156,12 +162,15 @@ def shoot(uid, code, r, c):
     result = opp.receive_shot(r, c)
     if result == "repeat":
         return None
+    mine_damage = None
+    if result == "mine":
+        mine_damage = game.trigger_mine_explosion(uid)
     bot_shots = None
-    if result == "miss":
+    if result in ("miss", "mine"):
         game.switch_turn()
-    if game.solo and result == "miss":
+    if game.solo and result in ("miss", "mine"):
         bot_shots = _bot_shoots(game, uid)
-    return {"result": result, "bot_shots": bot_shots}
+    return {"result": result, "bot_shots": bot_shots, "mine_damage": mine_damage}
 
 def place_auto(uid, code):
     game = games.get(code)
@@ -169,12 +178,13 @@ def place_auto(uid, code):
     board = game.board_for(uid)
     board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
     board.ships = []
+    board.mines = []
     if game.strip:
         auto_place_strip_ships(board)
+        game.placing[pnum]["ship_idx"] = len(STRIP_SHIPS) + 1  # ships + mine
     else:
         auto_place_ships(board)
-    ships_list = STRIP_SHIPS if game.strip else SHIPS
-    game.placing[pnum]["ship_idx"] = len(ships_list)
+        game.placing[pnum]["ship_idx"] = len(SHIPS)
     return True
 
 def confirm_placement(uid, code):
@@ -184,8 +194,13 @@ def confirm_placement(uid, code):
     ships_list = STRIP_SHIPS if game.strip else SHIPS
     if len(board.ships) < len(ships_list):
         return None
-    if game.solo and len(game.board2.ships) < len(ships_list):
+    if game.strip and len(board.mines) < 1:
         return None
+    if game.solo:
+        if len(game.board2.ships) < len(ships_list):
+            return None
+        if game.strip and len(game.board2.mines) < 1:
+            return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
         game.phase = "playing"
