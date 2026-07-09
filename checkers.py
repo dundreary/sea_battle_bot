@@ -43,13 +43,13 @@ def opponent(color):
     return BLACK if color == WHITE else WHITE
 
 
-def get_directions(piece):
+def get_directions(piece, capture=False):
+    if capture or piece in (WHITE_KING, BLACK_KING):
+        return [(-1, -1), (-1, 1), (1, -1), (1, 1)]
     if piece == WHITE:
         return [(-1, -1), (-1, 1)]
-    elif piece == BLACK:
+    if piece == BLACK:
         return [(1, -1), (1, 1)]
-    elif piece == WHITE_KING or piece == BLACK_KING:
-        return [(-1, -1), (-1, 1), (1, -1), (1, 1)]
     return []
 
 
@@ -72,7 +72,7 @@ def get_capture_moves(board, r, c, piece=None):
         return []
     color = piece_color(piece)
     moves = []
-    for dr, dc in get_directions(piece):
+    for dr, dc in get_directions(piece, capture=True):
         mr, mc = r + dr, c + dc
         nr, nc = r + 2 * dr, c + 2 * dc
         if in_bounds(nr, nc) and board[nr][nc] == EMPTY and in_bounds(mr, mc):
@@ -93,7 +93,7 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
         captured = []
     color = piece_color(piece)
     moves = []
-    for dr, dc in get_directions(piece):
+    for dr, dc in get_directions(piece, capture=True):
         mr, mc = r + dr, c + dc
         nr, nc = r + 2 * dr, c + 2 * dc
         if in_bounds(nr, nc) and board[nr][nc] == EMPTY and in_bounds(mr, mc):
@@ -102,7 +102,6 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
                 new_board = [row[:] for row in board]
                 new_board[mr][mc] = EMPTY
                 new_board[r][c] = EMPTY
-                # Check promotion
                 new_piece = piece
                 if piece == WHITE and nr == 0:
                     new_piece = WHITE_KING
