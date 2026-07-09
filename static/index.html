@@ -1872,12 +1872,27 @@ async function pdDoScore(category){
 
 function pdRenderResult(st){
   const div=$('pdResult');
-  const oldTable = document.getElementById('pdScorecardContainer');
-  if(oldTable) oldTable.innerHTML = '';
+  // Clear other pd areas so only result is visible
+  $('pdScorecardContainer').innerHTML = '';
+  $('pdDice').innerHTML = '';
+  $('pdActions').innerHTML = '';
+  $('actions').innerHTML = '';
+  $('actions').className = 'btn-row';
 
   let html = '';
 
-  // Scorecard final table
+  // Win/lose status
+  if(st.winner===st.you_id){
+    setStatus(t('pdWin'),'battle');
+    sfxWin();
+  }else if(st.winner===0||(st.solo&&st.winner===0)){
+    setStatus(t('pdLose'),'');
+    sfxLose();
+  }else if(st.winner===-1){
+    setStatus(t('pdDraw'),'');
+  }
+
+  // Scorecard final table — first thing visible
   html += '<table class="pd-scorecard" style="margin:8px auto">';
   html += `<tr><th class="cat-name"></th><th class="cat-score">🎲 ${t('pdMe')||'Я'}</th><th class="cat-score">🎯 ${t('pdOpp')||'Сопер.'}</th></tr>`;
 
@@ -1900,47 +1915,18 @@ function pdRenderResult(st){
   html += `<tr class="${totalCls}"><td>Σ ${t('pdTotal')||'Итого'}</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td></tr>`;
   html += '</table>';
 
-  const myDice = st.my_dice || [];
-  const oppDice = st.opponent_dice || [];
-
-  if(st.hand_name){
-    html+=`<div class="pd-result" style="margin:4px auto;max-width:340px">
-      <div style="font-size:13px;color:var(--accent-primary);font-weight:600">${t('pdYourHand')}:</div>
-      ${pdDiceDotsHtml(myDice)}
-      <div class="hand-name">${st.hand_name}</div>
-      <div class="hand-score">${st.hand_score} ${t('pdPts')}</div>
-    </div>`;
-  }
-
-  if(st.opponent_scored && st.opponent_hand_name){
-    html+=`<div class="pd-opponent" style="margin:4px auto;max-width:340px">
-      <div style="font-size:13px;color:var(--color-hit);font-weight:600">${t('pdOppHand')}:</div>
-      ${pdDiceDotsHtml(oppDice)}
-      <div class="hand-name">${st.opponent_hand_name}</div>
-      <div class="hand-score">${st.opponent_hand_score} ${t('pdPts')}</div>
-    </div>`;
-  }
-
-  div.innerHTML=html;
-
-  if(st.winner===st.you_id){
-    setStatus(t('pdWin'),'battle');
-    sfxWin();
-  }else if(st.winner===0 || (st.solo && st.winner===0)){
-    setStatus(t('pdLose'),'');
-    sfxLose();
-  }else if(st.winner===-1){
-    setStatus(t('pdDraw'),'');
-  }
-
-  const inviteBtn = st.solo ? '' : `<button class="btn primary" onclick="sharePdGame()" style="width:100%">📤 ${t('inviteFriend')}</button>`;
+  // Action buttons right below the table
+  const inviteBtn = st.solo ? '' : `<button class="btn primary" onclick="sharePdGame()" style="width:100%;margin-top:12px">📤 ${t('inviteFriend')}</button>`;
   const soloBtnText = st.solo ? t('pdPlayAgain') : t('close');
   const soloBtnFn = st.solo ? 'pdStartSolo()' : 'showPokerDice()';
-  $('actions').innerHTML=`
+  html += `<div class="btn-row stack" style="margin-top:12px">
     ${inviteBtn}
     <button class="btn success" onclick="${soloBtnFn}">${soloBtnText}</button>
     <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
-  `;
+  </div>`;
+
+  div.innerHTML = html;
+
   // Clear saved game on finish so it doesn't show in menu
   if(pdCode) localStorage.removeItem('pd_game');
 }
