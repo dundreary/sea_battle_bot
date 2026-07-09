@@ -735,6 +735,7 @@ function hideAllGameAreas(){
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('stArea').style.display='none';
+  $('shipHint').innerHTML = '';
 }
 
 let _snd=localStorage.getItem('sb_snd')!=='0',_vibe=localStorage.getItem('sb_vibe')!=='0';
@@ -1293,7 +1294,6 @@ function showSeaBattleMenu(){
   document.title = t('seaBattle');
   setStatus('');
   $('gameInfo').textContent='';
-  $('shipHint').innerHTML = '';
   $('header').classList.remove('in-game');
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
@@ -1495,7 +1495,6 @@ function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
-  $('shipHint').innerHTML='';
   $('header').classList.remove('in-game');
   document.title=t('pdTitle');
   $('gameInfo').textContent='';
@@ -1594,7 +1593,6 @@ function pdShowGame(st){
   $('pdArea').style.display='';
   setThemeSelectorVisibility(false);
   updateSettingsUI();
-  $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('pdTitle');
   $('gameInfo').textContent='';
@@ -2035,7 +2033,6 @@ function showCheckers(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
-  $('shipHint').innerHTML='';
   document.title=t('checkers');
   $('gameInfo').textContent='';
   setStatus('');
@@ -2130,7 +2127,6 @@ function ckShowGame(st){
   hideAllGameAreas();
   $('ckArea').style.display='';
   setThemeSelectorVisibility(false);
-  $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('checkers');
   $('gameInfo').textContent='';
@@ -2334,7 +2330,6 @@ function showStratego(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
-  $('shipHint').innerHTML='';
   document.title=t('stratego');
   $('gameInfo').textContent='';
   setStatus('');
@@ -2430,7 +2425,6 @@ function stShowGame(st){
   hideAllGameAreas();
   $('stArea').style.display='';
   setThemeSelectorVisibility(false);
-  $('shipHint').innerHTML='';
   $('header').classList.add('in-game');
   document.title=t('stratego');
   $('gameInfo').textContent='';
