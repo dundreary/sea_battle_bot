@@ -982,10 +982,10 @@ function updateUI(){
       $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         <button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>
-        <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
-        <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
-      `;
-    }else{
+         <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
+         <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+       `;
+     }else{
       if(!s.solo){
         setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`, '');
         $('status').style.cursor='pointer';
@@ -999,9 +999,9 @@ function updateUI(){
       $('actions').innerHTML=`
         <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
         ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-        <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
-        ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
-        ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
+         <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
+         ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
+         ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
       `;
     }
     setThemeSelectorVisibility(false);
@@ -1787,8 +1787,8 @@ function pdRenderActions(st){
   }
   // Minimize + Surrender always shown (for both my turn and opponent's turn)
   html += `<div class="btn-row" style="flex-wrap:nowrap;margin-top:${st.my_turn && !st.scored ? '0' : '8px'}">
-    <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
     <button class="btn outline quit-btn" onclick="pdSurrender()">🏳️ ${t('surrender')}</button>
+    <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
   </div>`;
 
   // Theme / sound controls at the bottom
@@ -2141,8 +2141,8 @@ function ckShowGame(st){
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
   html+=`<div class="btn-row" style="flex-wrap:nowrap;margin-top:${st.my_turn?'0':'8px'}">
-    <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
     <button class="btn outline quit-btn" onclick="ckSurrender()">🏳️ ${t('surrender')}</button>
+    <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
   </div>`;
   const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
   const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
@@ -2448,15 +2448,15 @@ if(st.my_turn){
     const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareStGame()">📤 ${t('inviteFriend')}</button>`;
     $('actions').innerHTML=`
       ${inviteBtn}
-      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
       <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
     `;
   }else{
     setStatus('⏳ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
     $('actions').className='btn-row';
     $('actions').innerHTML=`
-      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
       <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
     `;
   }
   if(!st.solo){
