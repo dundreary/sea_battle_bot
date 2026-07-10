@@ -110,15 +110,20 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
                 elif piece == BLACK and nr == BOARD_SIZE - 1:
                     new_piece = BLACK_KING
                 new_board[nr][nc] = new_piece
-                sub = find_multi_captures(
-                    new_board, nr, nc, new_piece,
-                    path + [(nr, nc)], captured + [(mr, mc)],
-                    start_pos, visited | {(nr, nc)},
-                )
-                if sub:
-                    moves.extend(sub)
-                else:
+                # On an 8x8 board a man that reaches the back rank becomes a
+                # king and the move MUST end (it cannot continue capturing).
+                if new_piece in (WHITE_KING, BLACK_KING):
                     moves.append((start_pos, path[1:] + [(nr, nc)], list(captured + [(mr, mc)])))
+                else:
+                    sub = find_multi_captures(
+                        new_board, nr, nc, new_piece,
+                        path + [(nr, nc)], captured + [(mr, mc)],
+                        start_pos, visited | {(nr, nc)},
+                    )
+                    if sub:
+                        moves.extend(sub)
+                    else:
+                        moves.append((start_pos, path[1:] + [(nr, nc)], list(captured + [(mr, mc)])))
     return moves
 
 
@@ -130,7 +135,18 @@ def get_all_captures(board, color):
             if p != EMPTY and piece_color(p) == color:
                 mc = find_multi_captures(board, r, c)
                 all_moves.extend(mc)
-    return all_moves
+    if not all_moves:
+        return all_moves
+    # Russian draughts capture priority:
+    # 1) you must capture the maximum number of pieces.
+    max_captured = max(len(m[2]) for m in all_moves)
+    all_moves = [m for m in all_moves if len(m[2]) == max_captured]
+    # 2) among equal-length captures, a capture that takes a king is mandatory.
+    king_moves = [
+        m for m in all_moves
+        if any(abs(board[cr][cc]) in (WHITE_KING, BLACK_KING) for cr, cc in m[2])
+    ]
+    return king_moves if king_moves else all_moves
 
 
 def get_all_simple_moves(board, color):
@@ -207,6 +223,8 @@ class CheckersGame:
         self.phase = "playing"
         self.created_at = time.time()
         self.winner = None
+        self.draw = False
+        self.no_progress_plies = 0
         self.last_move = None
 
     @property
@@ -233,8 +251,23 @@ class CheckersGame:
         return get_legal_moves(self.board, color)
 
     def make_move(self, move):
+        sr, sc = move[0]
+        moved_piece = self.board[sr][sc]
+        captures = move[2] if len(move) > 2 else []
         self.board = apply_move(self.board, move)
         self.last_move = move
+        # No-progress draw rule (Russian draughts): a capture or a man's forward
+        # advance resets the counter; otherwise it increments. 30 plies (~15
+        # full moves) without progress ends the game as a draw.
+        if captures:
+            self.no_progress_plies = 0
+        else:
+            advanced = False
+            if moved_piece in (WHITE, BLACK):
+                fr, _ = move[1][-1]
+                if (moved_piece == WHITE and fr < sr) or (moved_piece == BLACK and fr > sr):
+                    advanced = True
+            self.no_progress_plies = 0 if advanced else self.no_progress_plies + 1
         self.switch_turn()
         if not has_pieces(self.board, self.turn):
             self.winner = opponent(self.turn)
@@ -242,6 +275,11 @@ class CheckersGame:
             return True
         if not self.get_moves_for_color(self.turn):
             self.winner = opponent(self.turn)
+            self.phase = "finished"
+            return True
+        if self.no_progress_plies >= 30:
+            self.winner = None
+            self.draw = True
             self.phase = "finished"
             return True
         return False
@@ -269,6 +307,7 @@ class CheckersGame:
             "you": uid,
             "solo": self.solo,
             "winner": self.winner,
+            "draw": self.draw,
             "last_move": self.last_move,
             "piece_counts": {
                 "white": count_pieces(self.board, WHITE),
@@ -301,6 +340,8 @@ class CheckersGame:
             "turn": self.turn,
             "phase": self.phase,
             "winner": self.winner,
+            "draw": self.draw,
+            "no_progress_plies": self.no_progress_plies,
             "last_move": self.last_move,
             "created_at": self.created_at,
         }
@@ -317,6 +358,8 @@ class CheckersGame:
         game.turn = data["turn"]
         game.phase = data.get("phase", "playing")
         game.winner = data.get("winner")
+        game.draw = data.get("draw", False)
+        game.no_progress_plies = data.get("no_progress_plies", 0)
         game.last_move = data.get("last_move")
         game.created_at = data.get("created_at", 0)
         return game

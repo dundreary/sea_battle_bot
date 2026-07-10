@@ -1,54 +1,71 @@
 import json
 import base64
 import logging
+import threading
 import urllib.request
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
 # from anagram import new_solo as ana_new, new_multi as ana_new_multi, join as ana_join, guess as ana_guess, hint as ana_hint, get_state as ana_state, rooms as ana_rooms
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, get_legal_moves
 from checkers_ai import get_ai_move
-from stratego import StrategoGame, PLAYER1, PLAYER2, ai_get_move, ai_apply_move, get_piece_title, PIECE_NAMES, can_move, cell_type, cell_owner, is_water, PIECE_RANK
+from stratego import StrategoGame, PLAYER2, ai_get_move
 from persist import save
 import config
 
 logger = logging.getLogger(__name__)
 
 
+STRIP_LOSE_CAPTIONS = {
+    'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
+    'uk': '👗 Твій друг програв у режимі «На роздягання»!',
+    'en': '👗 Your friend lost in Strip Mode!',
+}
+
+STRIP_PHOTO_BOUNDARY = '----StripPhotoBoundary'
+
+
+def _strip_photo_mime(photo_data: str) -> str:
+    if ',' in photo_data:
+        header = photo_data.split(',', 1)[0].lower()
+        if 'png' in header:
+            return 'image/png'
+        if 'gif' in header:
+            return 'image/gif'
+        if 'webp' in header:
+            return 'image/webp'
+    return 'image/jpeg'
+
+
+def _strip_photo_multipart(winner_id: int, photo_bytes: bytes, caption: str, mime: str) -> bytes:
+    boundary = STRIP_PHOTO_BOUNDARY
+    body = b''
+    body += f'--{boundary}\r\n'.encode()
+    body += 'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
+    body += f'{winner_id}\r\n'.encode()
+    body += f'--{boundary}\r\n'.encode()
+    body += 'Content-Disposition: form-data; name="caption"\r\n\r\n'.encode()
+    body += f'{caption}\r\n'.encode()
+    body += f'--{boundary}\r\n'.encode()
+    body += 'Content-Disposition: form-data; name="photo"; filename="strip_photo.jpg"\r\n'.encode()
+    body += f'Content-Type: {mime}\r\n\r\n'.encode()
+    body += photo_bytes + b'\r\n'
+    body += f'--{boundary}--\r\n'.encode()
+    return body
+
+
 def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) -> bool:
     try:
-        mime = 'image/jpeg'
-        if ',' in photo_data:
-            header, b64_data = photo_data.split(',', 1)
-            if 'png' in header:
-                mime = 'image/png'
-            elif 'gif' in header:
-                mime = 'image/gif'
-            elif 'webp' in header:
-                mime = 'image/webp'
-        else:
-            b64_data = photo_data
+        mime = _strip_photo_mime(photo_data)
+        b64_data = photo_data.split(',', 1)[1] if ',' in photo_data else photo_data
         photo_bytes = base64.b64decode(b64_data)
-
-        boundary = '----StripPhotoBoundary'
-        body = b''
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
-        body += f'{winner_id}\r\n'.encode()
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="caption"\r\n\r\n'.encode()
-        body += f'{caption}\r\n'.encode()
-        body += f'--{boundary}\r\n'.encode()
-        body += f'Content-Disposition: form-data; name="photo"; filename="strip_photo.jpg"\r\n'.encode()
-        body += f'Content-Type: {mime}\r\n\r\n'.encode()
-        body += photo_bytes + b'\r\n'
-        body += f'--{boundary}--\r\n'.encode()
+        body = _strip_photo_multipart(winner_id, photo_bytes, caption, mime)
 
         req = urllib.request.Request(
             f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto',
             data=body,
-            headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
+            headers={'Content-Type': f'multipart/form-data; boundary={STRIP_PHOTO_BOUNDARY}'},
             method='POST'
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -75,6 +92,20 @@ checkers_player_games: Dict[str, str] = {}
 stratego_games: Dict[str, StrategoGame] = {}
 stratego_player_games: Dict[str, str] = {}
 
+# Guards all shared in-memory game dictionaries below. The HTTP server thread and
+# the bot's asyncio thread both access these, so mutations must be serialized to
+# avoid race conditions (see AUDIT.md, Potential Issue #4).
+_state_lock = threading.Lock()
+
+
+def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) -> str:
+    """Return a code produced by ``gen_fn`` that is not already a key in ``existing``."""
+    code = gen_fn()
+    while code in existing:
+        code = gen_fn()
+    return code
+
+
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
     own = game.board_for(uid)
@@ -87,7 +118,7 @@ def as_dict(game, uid):
         "solo": game.solo,
         "strip": game.strip,
         "difficulty": game.difficulty,
-        "strip_photo": game.strip_photo if game.both_placed and (opp.all_sunk() or own.all_sunk()) else "",
+        "strip_photo": game.strip_photo if (opp.all_sunk() or own.all_sunk()) else "",
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -107,9 +138,7 @@ def as_dict(game, uid):
     }
 
 def new_solo(uid, strip=False, difficulty=2):
-    code = Game.generate_code()
-    while code in games:
-        code = Game.generate_code()
+    code = generate_unique_code(Game.generate_code, games)
     game = Game(code, uid, solo=True, strip=strip, difficulty=difficulty)
     game.player2_id = 0
     games[code] = game
@@ -155,6 +184,15 @@ def _bot_shoots(game, uid):
             break
     return shots
 
+def _check_game_over(game):
+    # Finalize the game once a board is completely sunk (a victory or draw).
+    # Without this a won game stays in the "playing" phase forever and is never
+    # cleaned up (see AUDIT: Sea Battle wins are never finalized).
+    if game.board1.all_sunk() or game.board2.all_sunk():
+        game.phase = "finished"
+        return True
+    return False
+
 def shoot(uid, code, r, c):
     game = games.get(code)
     if not game or game.current_player() != uid or game.phase != "playing":
@@ -167,10 +205,14 @@ def shoot(uid, code, r, c):
     if result == "mine":
         mine_damage = game.trigger_mine_explosion(uid)
     bot_shots = None
+    # A sunk board ends the game immediately (victory or draw).
+    if _check_game_over(game):
+        return {"result": result, "bot_shots": None, "mine_damage": mine_damage}
     if result in ("miss", "mine"):
         game.switch_turn()
     if game.solo and result in ("miss", "mine"):
         bot_shots = _bot_shoots(game, uid)
+        _check_game_over(game)
     return {"result": result, "bot_shots": bot_shots, "mine_damage": mine_damage}
 
 def place_auto(uid, code):
@@ -210,9 +252,7 @@ def confirm_placement(uid, code):
     return False
 
 def new_multi(uid, strip=False):
-    code = Game.generate_code()
-    while code in games:
-        code = Game.generate_code()
+    code = generate_unique_code(Game.generate_code, games)
     game = Game(code, uid, strip=strip)
     games[code] = game
     return game
@@ -306,30 +346,26 @@ def _handle_confirm(data, uid, code):
 
 
 def _handle_upload_photo(data, uid, code):
+    """Persist the strip photo. Returns ``(result, pending_send)`` where
+    ``pending_send`` is ``(winner_id, photo, caption)`` when a photo must still
+    be delivered to the opponent (the actual network send happens outside the
+    state lock in :func:`handle_api`)."""
     if not uid or not code:
-        return {"error": "no uid/code"}
+        return {"error": "no uid/code"}, None
     photo = data.get("photo")
     if not photo:
-        return {"error": "no photo"}
+        return {"error": "no photo"}, None
     game = games.get(code)
     if not game:
-        return {"error": "game not found"}
+        return {"error": "game not found"}, None
     game.strip_photo = photo
     save()
     winner_id = game.opponent_id(uid)
     if game.solo or not winner_id or winner_id == 0:
-        return {"ok": True}
+        return {"ok": True}, None
     user_lang = data.get("lang", "ru")
-    captions = {
-        'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-        'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-        'en': '👗 Your friend lost in Strip Mode!',
-    }
-    caption = captions.get(user_lang, captions['ru'])
-    ok = send_strip_photo_to_winner(winner_id, photo, caption)
-    if ok:
-        return {"ok": True}
-    return {"ok": False, "error": "send_failed"}
+    caption = STRIP_LOSE_CAPTIONS.get(user_lang, STRIP_LOSE_CAPTIONS['ru'])
+    return {"ok": True}, (winner_id, photo, caption)
 
 
 # def _handle_ana_new_solo(data, uid, code):
@@ -392,9 +428,7 @@ def _handle_upload_photo(data, uid, code):
 def _handle_pd_new_solo(data, uid, code):
     if not uid:
         return {"error": "no uid"}
-    c = PDGame.generate_code()
-    while c in pd_games:
-        c = PDGame.generate_code()
+    c = generate_unique_code(PDGame.generate_code, pd_games)
     game = PDGame(c, uid, solo=True)
     game.player2_id = 0
     pd_games[c] = game
@@ -406,9 +440,7 @@ def _handle_pd_new_solo(data, uid, code):
 def _handle_pd_new_multi(data, uid, code):
     if not uid:
         return {"error": "no uid"}
-    c = PDGame.generate_code()
-    while c in pd_games:
-        c = PDGame.generate_code()
+    c = generate_unique_code(PDGame.generate_code, pd_games)
     game = PDGame(c, uid)
     pd_games[c] = game
     pd_player_games[str(uid)] = c
@@ -509,6 +541,17 @@ def _handle_surrender(data, uid, code):
     return {"ok": True, "state": as_dict(game, uid)}
 
 
+def _add_active_game(games_list, gtype, code, game, my_turn):
+    if game.phase == 'finished':
+        return
+    games_list.append({
+        'type': gtype,
+        'code': code,
+        'phase': game.phase,
+        'my_turn': my_turn,
+    })
+
+
 def _handle_active_games(data, uid, code):
     if not uid:
         return {"error": "no uid"}
@@ -521,44 +564,27 @@ def _handle_active_games(data, uid, code):
             own = g.board_for(uid)
             opp = g.opponent_board(uid)
             if not own.all_sunk() and not opp.all_sunk():
-                games_list.append({
-                    'type': 'sea_battle',
-                    'code': sb_code,
-                    'phase': g.phase,
-                    'my_turn': g.current_player() == uid,
-                })
+                _add_active_game(games_list, 'sea_battle', sb_code, g, g.current_player() == uid)
 
     pd_code = pd_player_games.get(str(uid))
     if pd_code and pd_code in pd_games:
         g = pd_games[pd_code]
         pnum = g.player_num(uid)
-        if pnum and g.phase != 'finished':
-            games_list.append({
-                'type': 'poker_dice',
-                'code': pd_code,
-                'phase': g.phase,
-                'my_turn': g.turn == pnum,
-            })
+        if pnum:
+            _add_active_game(games_list, 'poker_dice', pd_code, g, g.turn == pnum)
+
     ck_code = checkers_player_games.get(str(uid))
     if ck_code and ck_code in checkers_games:
         g = checkers_games[ck_code]
-        if g.phase != 'finished':
-            games_list.append({
-                'type': 'checkers',
-                'code': ck_code,
-                'phase': g.phase,
-                'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
-            })
+        color = g.player_color(uid)
+        _add_active_game(games_list, 'checkers', ck_code, g, g.turn == color if color else False)
+
     st_code = stratego_player_games.get(str(uid))
     if st_code and st_code in stratego_games:
         g = stratego_games[st_code]
-        if g.phase != 'finished':
-            games_list.append({
-                'type': 'stratego',
-                'code': st_code,
-                'phase': g.phase,
-                'my_turn': g.turn == g.player_color(uid) if g.player_color(uid) else False,
-            })
+        color = g.player_color(uid)
+        _add_active_game(games_list, 'stratego', st_code, g, g.turn == color if color else False)
+
     return {"ok": True, "games": games_list}
 
 
@@ -587,9 +613,7 @@ def _handle_checkers_new_solo(data, uid, code):
     if not uid:
         return {"error": "no uid"}
     difficulty = data.get("difficulty", 2)
-    c = CheckersGame.generate_code()
-    while c in checkers_games:
-        c = CheckersGame.generate_code()
+    c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
     checkers_games[c] = game
     checkers_player_games[str(uid)] = c
@@ -600,9 +624,7 @@ def _handle_checkers_new_solo(data, uid, code):
 def _handle_checkers_new_multi(data, uid, code):
     if not uid:
         return {"error": "no uid"}
-    c = CheckersGame.generate_code()
-    while c in checkers_games:
-        c = CheckersGame.generate_code()
+    c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid)
     checkers_games[c] = game
     checkers_player_games[str(uid)] = c
@@ -669,7 +691,15 @@ def _handle_checkers_move(data, uid, code):
         ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff)
         if ai_mv:
             finished = game.make_move(ai_mv)
-            bot_result = {"move": {"start": list(ai_mv[0]), "end": list(ai_mv[1][-1])}}
+            ai_captures = ai_mv[2] if len(ai_mv) > 2 else []
+            bot_result = {
+                "move": {
+                    "start": list(ai_mv[0]),
+                    "end": list(ai_mv[1][-1]),
+                    "path": [list(s) for s in ai_mv[1]],
+                    "captures": [list(c) for c in ai_captures],
+                }
+            }
 
     save()
     return {
@@ -714,9 +744,7 @@ def _handle_checkers_hint(data, uid, code):
 def _handle_stratego_new_solo(data, uid, code):
     if not uid:
         return {"error": "no uid"}
-    c = StrategoGame.generate_code()
-    while c in stratego_games:
-        c = StrategoGame.generate_code()
+    c = generate_unique_code(StrategoGame.generate_code, stratego_games)
     difficulty = data.get("difficulty", 2)
     game = StrategoGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
@@ -730,9 +758,7 @@ def _handle_stratego_new_solo(data, uid, code):
 def _handle_stratego_new_multi(data, uid, code):
     if not uid:
         return {"error": "no uid"}
-    c = StrategoGame.generate_code()
-    while c in stratego_games:
-        c = StrategoGame.generate_code()
+    c = generate_unique_code(StrategoGame.generate_code, stratego_games)
     game = StrategoGame(c, uid)
     stratego_games[c] = game
     stratego_player_games[str(uid)] = c
@@ -922,4 +948,22 @@ def handle_api(path, body):
     handler = _HANDLERS.get(path)
     if not handler:
         return {"error": "unknown path"}
-    return handler(data, uid, code)
+
+    if path == "/api/upload_photo":
+        # The state mutation runs under the lock, but the (slow) network send to
+        # Telegram must happen outside it so other requests are not blocked.
+        with _state_lock:
+            result, pending_send = _handle_upload_photo(data, uid, code)
+        if pending_send:
+            winner_id, photo, caption = pending_send
+            if send_strip_photo_to_winner(winner_id, photo, caption):
+                return result
+            return {"ok": False, "error": "send_failed"}
+        return result
+
+    with _state_lock:
+        try:
+            return handler(data, uid, code)
+        except Exception as exc:  # defensive: never let a handler crash the HTTP handler
+            logger.exception("Unhandled error in %s: %s", path, exc)
+            return {"error": "internal"}

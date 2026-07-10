@@ -38,13 +38,13 @@ def evaluate_board(board, color):
 
 
 def alpha_beta(board, depth, alpha, beta, maximizing, ai_color):
-    if depth == 0 or not has_pieces(board, maximizing and ai_color or opponent(ai_color)):
+    current_color = ai_color if maximizing else opponent(ai_color)
+    if depth == 0:
         return evaluate_board(board, ai_color), None
-
-    current_color = maximizing and ai_color or opponent(ai_color)
     moves = get_legal_moves(board, current_color)
-    if not moves:
-        return evaluate_board(board, ai_color), None
+    # A side with no pieces or no legal moves has lost the game.
+    if not has_pieces(board, current_color) or not moves:
+        return (float("-inf") if maximizing else float("inf")), None
 
     if maximizing:
         max_eval = float("-inf")
