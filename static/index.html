@@ -400,6 +400,7 @@ const LANG = {
     anaAllWords: 'Все возможные слова: {}',
     anaBaseWord: 'Основное слово: {}',
     inviteFriend: 'Пригласить друга',
+    ckInviteFriend: 'Пригласить друга',
     shareCopied: 'Код скопирован, отправь другу',
     copyCode: 'Нажми, чтобы скопировать код',
     settings: 'Настройки',
@@ -526,6 +527,7 @@ const LANG = {
     anaAllWords: 'Всі можливі слова: {}',
     anaBaseWord: 'Основне слово: {}',
     inviteFriend: 'Запросити друга',
+    ckInviteFriend: 'Запросити друга',
     shareCopied: 'Код скопійовано, надішли другу',
     copyCode: 'Натисни, щоб скопіювати код',
     settings: 'Налаштування',
@@ -652,6 +654,7 @@ const LANG = {
     anaAllWords: 'All possible words: {}',
     anaBaseWord: 'Base word: {}',
     inviteFriend: 'Invite friend',
+    ckInviteFriend: 'Invite friend',
     shareCopied: 'Code copied, send to friend',
     copyCode: 'Tap to copy code',
     settings: 'Settings',
@@ -2127,11 +2130,13 @@ function ckShowGame(st){
   let html='';
   if(st.my_turn){
     setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
-    const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('inviteFriend')}</button>`;
-    html+=`<div class="btn-row" style="flex-wrap:nowrap">
-      ${inviteBtn}
-      <button class="btn success" onclick="ckGetHint()">💡 ${t('ckHint')}</button>
-    </div>`;
+    const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('ckInviteFriend')}</button>`;
+    if(inviteBtn){
+      html+=`<div class="btn-row">${inviteBtn}</div>`;
+    }
+    if(st.last_move || st.solo){
+      html+=`<div class="btn-row"><button class="btn success" onclick="ckGetHint()">💡 ${t('ckHint')}</button></div>`;
+    }
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
@@ -2160,36 +2165,41 @@ function ckRenderBoard(st){
   const board=$('ckBoard');
   board.innerHTML='';
   const grid=st.board;
-  const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>r*8+c));
+  // BLACK viewer sits on the opposite side: rotate the board 180° so their
+  // pieces appear at the bottom. 63 - idx is the mirrored (7-r, 7-c) cell.
+  const flip = st.my_color === 2;
+  const toCan = (i)=> flip ? 63 - i : i;
+  const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>toCan(r*8+c)));
   const lastMove=st.last_move;
   const lastCells=new Set();
   const ckDests=ckComputeDests(st, ckSelected);
   if(lastMove){
-    lastCells.add(lastMove[0][0]*8+lastMove[0][1]);
-    for(const s of lastMove[1])lastCells.add(s[0]*8+s[1]);
+    lastCells.add(toCan(lastMove[0][0]*8+lastMove[0][1]));
+    for(const s of lastMove[1])lastCells.add(toCan(s[0]*8+s[1]));
   }
   for(let r=0;r<8;r++){
     for(let c=0;c<8;c++){
       const cell=document.createElement('div');
       const isDark=(r+c)%2===1;
       cell.className='ck-cell '+(isDark?'dark':'light');
-      const idx=r*8+c;
-      const piece=grid[idx];
-      if(ckSelected&&ckSelected[0]===r&&ckSelected[1]===c)cell.classList.add('selected');
+      const visIdx=r*8+c;
+      const canIdx=toCan(visIdx);
+      const piece=grid[canIdx];
+      if(ckSelected&&toCan(ckSelected[0]*8+ckSelected[1])===canIdx)cell.classList.add('selected');
       if(isDark&&piece!==0){
         const el=document.createElement('div');
         const color=piece===1||piece===3?'white':'black';
         const isKing=piece===3||piece===4;
         el.className='ck-piece '+color+(isKing?' king':'');
-        if(lastCells.has(idx))el.classList.add('last-move');
+        if(lastCells.has(canIdx))el.classList.add('last-move');
         cell.appendChild(el);
       }
-      if(isDark&&st.my_turn&&highlighted.has(idx)){
+      if(isDark&&st.my_turn&&highlighted.has(canIdx)){
         cell.classList.add('highlight-src');
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
       }
-      if(isDark&&ckDests&&ckDests.has(idx)){
+      if(isDark&&ckDests&&ckDests.has(visIdx)){
         cell.classList.add('highlight-dest');
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
@@ -2201,23 +2211,31 @@ function ckRenderBoard(st){
 
 function ckComputeDests(st, sel){
   if(!sel||!st||!st.valid_dests)return null;
-  const key=sel[0]*8+sel[1];
-  const arr=st.valid_dests[key];
-  return arr?new Set(arr):null;
+  const flip = st.my_color === 2;
+  const visIdx=sel[0]*8+sel[1];
+  const canIdx = flip ? 63 - visIdx : visIdx;
+  const arr=st.valid_dests[canIdx];
+  if(!arr)return null;
+  return new Set(flip ? arr.map(i=>63-i) : arr);
 }
 
 async function ckCellClick(r,c){
   if(!ckState||!ckState.my_turn)return;
+  const flip = ckState.my_color === 2;
   if(ckSelected){
     const sr=ckSelected[0],sc=ckSelected[1];
     if(sr===r&&sc===c){ckSelected=null;ckRenderBoard(ckState);return}
-    const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:sr,start_c:sc,end_r:r,end_c:c});
+    let csr=sr, csc=sc, cr=r, cc=c;
+    if(flip){ csr=7-sr; csc=7-sc; cr=7-r; cc=7-c; }
+    const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:csr,start_c:csc,end_r:cr,end_c:cc});
     if(!res||!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'') ;ckSelected=null;ckRenderBoard(ckState);return}
     sfxHit();
     ckShowGame(res.state);
     return;
   }
-  const piece=ckState.board[r*8+c];
+  let pr=r, pc=c;
+  if(flip){ pr=7-r; pc=7-c; }
+  const piece=ckState.board[pr*8+pc];
   if(piece===0)return;
   const color=piece===1||piece===3?1:2;
   if(color!==ckState.turn)return;
@@ -2229,12 +2247,15 @@ async function ckGetHint(){
   const res=await api('/api/checkers_hint',{uid:getUid(),code:ckCode});
   if(!res||!res.ok){setStatus(t('ckNoMoves'),'');return}
   const h=res.hint;
-  ckSelected=[h.start[0],h.start[1]];
-  setStatus('💡 '+String.fromCharCode(65+h.end[1])+(8-h.end[0]),'');
+  const flip = ckState && ckState.my_color === 2;
+  let sr=h.start[0], sc=h.start[1], er=h.end[0], ec=h.end[1];
+  if(flip){ sr=7-sr; sc=7-sc; er=7-er; ec=7-ec; }
+  ckSelected=[sr,sc];
+  setStatus('💡 '+String.fromCharCode(65+ec)+(8-er),'');
   ckRenderBoard(ckState);
   // Highlight the hint destination
   const cells=$('ckBoard').children;
-  const idx=h.end[0]*8+h.end[1];
+  const idx=er*8+ec;
   if(cells[idx])cells[idx].classList.add('highlight-capture');
 }
 
@@ -2248,11 +2269,8 @@ function leaveCkGame(){
 
 function shareCkGame(){
   if(!ckCode)return;
-  const url=`https://t.me/${botUsername||'...'}/app?startapp=${ckCode}`;
-  const texts={ru:'🎮 Играй со мной в Шашки!',uk:'🎮 Грай зі мною в Шашки!',en:'🎮 Play Checkers with me!'};
-  const text=texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
+  copyToClipboard(ckCode,{ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(ckCode)}`)}catch(e){}
 }
 
 async function ckSurrender(){

@@ -303,6 +303,7 @@ class CheckersGame:
             "phase": self.phase,
             "board": board_to_dict(self.board),
             "turn": self.turn,
+            "my_color": color,
             "my_turn": my_turn,
             "you": uid,
             "solo": self.solo,
@@ -344,6 +345,9 @@ class CheckersGame:
             "no_progress_plies": self.no_progress_plies,
             "last_move": self.last_move,
             "created_at": self.created_at,
+            # Repetition history, so threefold-draw detection survives a
+            # restart. Position key is (flattened_board, side_to_move).
+            "seen": [[list(k[0]), k[1], v] for k, v in self._seen.items()],
         }
 
     @staticmethod
@@ -362,8 +366,12 @@ class CheckersGame:
         game.no_progress_plies = data.get("no_progress_plies", 0)
         game.last_move = data.get("last_move")
         game.created_at = data.get("created_at", 0)
-        # Repetition history is not persisted; start tracking from the
-        # restored position (good enough for resumed games).
-        game._seen = {}
-        game._record_position()
+        # Restore repetition history so threefold-draw detection survives a
+        # restart. Stored as [[flattened_board, side_to_move, count], ...].
+        seen_raw = data.get("seen")
+        if seen_raw:
+            game._seen = {(tuple(item[0]), item[1]): item[2] for item in seen_raw}
+        else:
+            game._seen = {}
+            game._record_position()
         return game

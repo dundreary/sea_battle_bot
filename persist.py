@@ -46,7 +46,9 @@ def _deserialize_games(data_dict, from_dict_fn, check_age=True):
                 games[code] = game
             else:
                 created = getattr(game, 'created_at', 0)
-                if now - created < MAX_AGE:
+                # Only finished games are dropped when stale; in-progress games
+                # are kept so a long game (or one left paused) is not lost.
+                if now - created < MAX_AGE or gdata.get('phase') != 'finished':
                     games[code] = game
         except Exception:
             pass

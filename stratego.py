@@ -544,13 +544,6 @@ def ai_get_move(game, difficulty=None):
         return None
 
     random.shuffle(pieces)
-    if difficulty >= 3:
-        own_types = {}
-        for rr in range(BOARD_SIZE):
-            for cc in range(BOARD_SIZE):
-                v = board[encode(rr, cc)]
-                if v < 0 and v != LAKE:
-                    own_types[(rr, cc)] = cell_type(v)
 
     best_overall = None
     best_overall_score = -999

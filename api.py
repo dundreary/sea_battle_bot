@@ -454,8 +454,12 @@ def _handle_pd_join(data, uid, code):
     game = pd_games.get(code)
     if not game:
         return {"ok": False, "error": "not_found"}
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
     if game.player2_id is not None:
         return {"ok": False, "error": "full"}
+    if game.player2_id == uid:
+        return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
     pd_player_games[str(uid)] = code
     save()
@@ -486,6 +490,8 @@ def _handle_pd_score(data, uid, code):
     st = game.score(uid, category)
     if st is None:
         return {"error": "invalid_score"}
+    if game.phase == 'finished':
+        _evict_game(code, pd_games, pd_player_games)
     save()
     return {"ok": True, "state": st}
 
@@ -499,6 +505,7 @@ def _handle_pd_surrender(data, uid, code):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _evict_game(code, pd_games, pd_player_games)
     save()
     return {"ok": True, "state": st}
 
@@ -632,14 +639,24 @@ def _handle_checkers_new_multi(data, uid, code):
     return {"ok": True, "code": c, "state": game.get_state(uid)}
 
 
+def _evict_game(code, games_dict, player_games_dict):
+    games_dict.pop(code, None)
+    for k in [k for k, v in player_games_dict.items() if v == code]:
+        del player_games_dict[k]
+
+
 def _handle_checkers_join(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
     game = checkers_games.get(code)
     if not game:
         return {"ok": False, "error": "not_found"}
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
     if game.player2_id is not None:
         return {"ok": False, "error": "full"}
+    if game.player2_id == uid:
+        return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
     checkers_player_games[str(uid)] = code
     save()
@@ -717,6 +734,8 @@ def _handle_checkers_move(data, uid, code):
                 }
             }
 
+    if finished:
+        _evict_game(code, checkers_games, checkers_player_games)
     save()
     return {
         "ok": True,
@@ -735,6 +754,7 @@ def _handle_checkers_surrender(data, uid, code):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _evict_game(code, checkers_games, checkers_player_games)
     save()
     return {"ok": True, "state": st}
 
@@ -788,8 +808,12 @@ def _handle_stratego_join(data, uid, code):
     game = stratego_games.get(code)
     if not game:
         return {"ok": False, "error": "not_found"}
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
     if game.player2_id is not None:
         return {"ok": False, "error": "full"}
+    if game.player2_id == uid:
+        return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
     stratego_player_games[str(uid)] = code
     save()
@@ -876,6 +900,7 @@ def _handle_stratego_surrender(data, uid, code):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _evict_game(code, stratego_games, stratego_player_games)
     save()
     return {"ok": True, "state": st}
 
@@ -898,6 +923,8 @@ def _handle_stratego_move(data, uid, code):
     bot_move = None
     if game.solo and game.phase == 'playing' and game.turn == PLAYER2:
         bot_move = _stratego_do_bot_move(game)
+    if game.game_over:
+        _evict_game(code, stratego_games, stratego_player_games)
     save()
     return {"ok": True, "state": game.get_state(uid), "battle": result, "bot_move": bot_move}
 
