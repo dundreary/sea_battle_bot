@@ -675,8 +675,24 @@ def _handle_checkers_move(data, uid, code):
 
     moves = get_legal_moves(game.board, color)
     winning_move = None
+    start = (start_r, start_c)
+    end = (end_r, end_c)
+    # If the client supplies the full landing path, prefer an exact match so
+    # that with free capture choice the intended sequence is played (two legal
+    # captures can share the same start/end but differ in between).
+    client_path = data.get("path")
+    if client_path:
+        client_path = [tuple(p) for p in client_path]
+        if client_path and tuple(client_path[0]) == start:
+            client_path = client_path[1:]
     for m in moves:
-        if m[0] == (start_r, start_c) and (end_r, end_c) == m[1][-1]:
+        if m[0] != start or m[1][-1] != end:
+            continue
+        if client_path is not None:
+            if m[1] == client_path:
+                winning_move = m
+                break
+        else:
             winning_move = m
             break
 

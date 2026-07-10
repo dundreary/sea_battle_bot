@@ -65,24 +65,7 @@ def get_simple_moves(board, r, c):
     return moves
 
 
-def get_capture_moves(board, r, c, piece=None):
-    if piece is None:
-        piece = board[r][c]
-    if piece == EMPTY:
-        return []
-    color = piece_color(piece)
-    moves = []
-    for dr, dc in get_directions(piece, capture=True):
-        mr, mc = r + dr, c + dc
-        nr, nc = r + 2 * dr, c + 2 * dc
-        if in_bounds(nr, nc) and board[nr][nc] == EMPTY and in_bounds(mr, mc):
-            mid = board[mr][mc]
-            if mid != EMPTY and piece_color(mid) != color:
-                moves.append(((r, c), [(nr, nc)], (mr, mc)))
-    return moves
-
-
-def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start_pos=None, visited=None):
+def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start_pos=None):
     if piece is None:
         piece = board[r][c]
     if path is None:
@@ -91,8 +74,6 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
         start_pos = (r, c)
     if captured is None:
         captured = []
-    if visited is None:
-        visited = {(r, c)}
     color = piece_color(piece)
     moves = []
     for dr, dc in get_directions(piece, capture=True):
@@ -100,7 +81,11 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
         nr, nc = r + 2 * dr, c + 2 * dc
         if in_bounds(nr, nc) and board[nr][nc] == EMPTY and in_bounds(mr, mc):
             mid = board[mr][mc]
-            if mid != EMPTY and piece_color(mid) != color and (mr, mc) not in captured and (nr, nc) not in visited:
+            # Russian draughts (§6.1.5.9): you may pass through the same square
+            # more than once; only re-jumping the same opponent piece is
+            # forbidden. Captured pieces are also removed from the board as we
+            # recurse, so the capture sequence stays finite either way.
+            if mid != EMPTY and piece_color(mid) != color and (mr, mc) not in captured:
                 new_board = [row[:] for row in board]
                 new_board[mr][mc] = EMPTY
                 new_board[r][c] = EMPTY
@@ -110,24 +95,29 @@ def find_multi_captures(board, r, c, piece=None, path=None, captured=None, start
                 elif piece == BLACK and nr == BOARD_SIZE - 1:
                     new_piece = BLACK_KING
                 new_board[nr][nc] = new_piece
-                # On an 8x8 board a man that reaches the back rank becomes a
-                # king and the move MUST end (it cannot continue capturing).
-                if new_piece in (WHITE_KING, BLACK_KING):
-                    moves.append((start_pos, path[1:] + [(nr, nc)], list(captured + [(mr, mc)])))
+                # Russian draughts (§6.1.5.15): if a man reaches the back rank
+                # during a capture and a further capture is available, it MUST
+                # continue the same move as a king. So we never stop on
+                # promotion — we simply recurse with the promoted piece. Kings
+                # (already kings) recurse as well. The sequence ends only when
+                # no further capture is possible (the leaf case below).
+                sub = find_multi_captures(
+                    new_board, nr, nc, new_piece,
+                    path + [(nr, nc)], captured + [(mr, mc)],
+                    start_pos,
+                )
+                if sub:
+                    moves.extend(sub)
                 else:
-                    sub = find_multi_captures(
-                        new_board, nr, nc, new_piece,
-                        path + [(nr, nc)], captured + [(mr, mc)],
-                        start_pos, visited | {(nr, nc)},
-                    )
-                    if sub:
-                        moves.extend(sub)
-                    else:
-                        moves.append((start_pos, path[1:] + [(nr, nc)], list(captured + [(mr, mc)])))
+                    moves.append((start_pos, path[1:] + [(nr, nc)], list(captured + [(mr, mc)])))
     return moves
 
 
 def get_all_captures(board, color):
+    # Russian draughts (§6.1.5.14): capturing is mandatory, but the player may
+    # choose ANY capture sequence — there is no forced maximum number of pieces
+    # and no forced "capture a king" rule. So we return every legal capture
+    # sequence; the mover (human or AI) chooses freely among them.
     all_moves = []
     for r in range(BOARD_SIZE):
         for c in range(BOARD_SIZE):
@@ -135,18 +125,7 @@ def get_all_captures(board, color):
             if p != EMPTY and piece_color(p) == color:
                 mc = find_multi_captures(board, r, c)
                 all_moves.extend(mc)
-    if not all_moves:
-        return all_moves
-    # Russian draughts capture priority:
-    # 1) you must capture the maximum number of pieces.
-    max_captured = max(len(m[2]) for m in all_moves)
-    all_moves = [m for m in all_moves if len(m[2]) == max_captured]
-    # 2) among equal-length captures, a capture that takes a king is mandatory.
-    king_moves = [
-        m for m in all_moves
-        if any(abs(board[cr][cc]) in (WHITE_KING, BLACK_KING) for cr, cc in m[2])
-    ]
-    return king_moves if king_moves else all_moves
+    return all_moves
 
 
 def get_all_simple_moves(board, color):
@@ -226,6 +205,10 @@ class CheckersGame:
         self.draw = False
         self.no_progress_plies = 0
         self.last_move = None
+        # Draw detection. `_seen` counts how many times each position (board +
+        # side to move) has occurred, used for the threefold-repetition rule.
+        self._seen = {}
+        self._record_position()
 
     @property
     def current_player(self):
@@ -240,6 +223,15 @@ class CheckersGame:
 
     def switch_turn(self):
         self.turn = opponent(self.turn)
+
+    def _position_key(self):
+        # A position is the board configuration together with the side to move.
+        return (tuple(board_to_dict(self.board)), self.turn)
+
+    def _record_position(self):
+        key = self._position_key()
+        self._seen[key] = self._seen.get(key, 0) + 1
+        return self._seen[key]
 
     def player_num(self, uid):
         return 1 if uid == self.player1_id else 2
@@ -269,6 +261,7 @@ class CheckersGame:
                     advanced = True
             self.no_progress_plies = 0 if advanced else self.no_progress_plies + 1
         self.switch_turn()
+        occurrences = self._record_position()
         if not has_pieces(self.board, self.turn):
             self.winner = opponent(self.turn)
             self.phase = "finished"
@@ -277,6 +270,13 @@ class CheckersGame:
             self.winner = opponent(self.turn)
             self.phase = "finished"
             return True
+        # Draw: same position (board + side to move) occurred three times.
+        if occurrences >= 3:
+            self.winner = None
+            self.draw = True
+            self.phase = "finished"
+            return True
+        # Draw: 30 plies of non-capturing king-only moves (~15 each).
         if self.no_progress_plies >= 30:
             self.winner = None
             self.draw = True
@@ -362,4 +362,8 @@ class CheckersGame:
         game.no_progress_plies = data.get("no_progress_plies", 0)
         game.last_move = data.get("last_move")
         game.created_at = data.get("created_at", 0)
+        # Repetition history is not persisted; start tracking from the
+        # restored position (good enough for resumed games).
+        game._seen = {}
+        game._record_position()
         return game
