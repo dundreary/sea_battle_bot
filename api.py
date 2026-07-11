@@ -122,10 +122,11 @@ def as_dict(game, uid):
         "solo": game.solo,
         "strip": game.strip,
         "difficulty": game.difficulty,
-        # The strip photo is delivered to the winner only. The loser already
-        # has the photo locally (they uploaded it), so returning it to them is
-        # wasted bandwidth. Polls also stop on game-over, so it is sent once.
-        "strip_photo": game.strip_photo if (game.strip_photo and opp.all_sunk()) else "",
+        # The strip stake photos are committed before the game starts.
+        # Each player sees their own stake (strip_stake); the winner also
+        # sees the loser's stake (opp_stake) once the loser is sunk.
+        "strip_stake": game.strip_stakes.get(pnum, "") if game.strip else "",
+        "opp_stake": (game.strip_stakes.get(3 - pnum, "") if (game.strip and opp.all_sunk()) else ""),
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -244,6 +245,10 @@ def confirm_placement(uid, code):
         return None
     if game.strip and len(board.mines) < 1:
         return None
+    # In strip mode every human participant must commit a stake photo
+    # before they can confirm placement.
+    if game.strip and not game.strip_stakes.get(pnum):
+        return None
     if game.solo:
         if len(game.board2.ships) < len(ships_list):
             return None
@@ -328,12 +333,21 @@ def _handle_shoot(data, uid, code):
         return {"error": "invalid shot"}
     game = games.get(code)
     state = as_dict(game, uid) if game else None
-    # Strip games must stay alive after game-over so the loser can still
-    # upload their photo via /api/upload_photo.
-    if game and game.phase == 'finished' and not game.strip:
-        _evict_game(code, games, player_games)
+    pending_stake = None
+    # When a strip game finishes, the loser's pre-committed stake photo
+    # is delivered to the winner (the shooter). Strip games stay alive
+    # past game-over until that send completes.
+    if game and game.phase == 'finished':
+        if game.strip:
+            loser_id = game.opponent_id(uid)
+            loser_stake = game.strip_stakes.get(game.player_num(loser_id), "")
+            if loser_stake:
+                caption = STRIP_LOSE_CAPTIONS['ru']
+                pending_stake = (loser_id, loser_stake, caption)
+        else:
+            _evict_game(code, games, player_games)
     save()
-    return {"ok": True, "result": result, "state": state}
+    return {"ok": True, "result": result, "state": state}, pending_stake
 
 
 def _handle_place_auto(data, uid, code):
@@ -350,6 +364,9 @@ def _handle_confirm(data, uid, code):
     if err: return err
     started = confirm_placement(uid, code)
     if started is None:
+        game = games.get(code)
+        if game and game.strip and not game.strip_stakes.get(game.player_num(uid)):
+            return {"ok": False, "error": "need_stake"}
         return {"ok": False, "error": "not_all_placed"}
     state = as_dict(game, uid)
     save()
@@ -378,6 +395,23 @@ def _handle_upload_photo(data, uid, code):
     user_lang = data.get("lang", "ru")
     caption = STRIP_LOSE_CAPTIONS.get(user_lang, STRIP_LOSE_CAPTIONS['ru'])
     return {"ok": True}, (winner_id, photo, caption)
+
+
+def _handle_upload_stake(data, uid, code):
+    """Persist a player's strip "stake" photo. Stakes are committed
+    before the game starts (during placement) so a participant cannot
+    join a strip game and then refuse the forfeit."""
+    game, err = _get_game(games, code, uid)
+    if err: return err
+    if uid != game.player1_id and uid != game.player2_id:
+        return {"error": "not_in_game"}
+    photo = data.get("photo")
+    if not photo:
+        return {"error": "no photo"}
+    pnum = game.player_num(uid)
+    game.strip_stakes[pnum] = photo
+    save()
+    return {"ok": True}
 
 
 # ---- Poker Dice handlers ----
@@ -730,6 +764,7 @@ _HANDLERS = {
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
     "/api/upload_photo": _handle_upload_photo,
+    "/api/upload_stake": _handle_upload_stake,
     "/api/surrender": _handle_surrender,
     "/api/active_games": _handle_active_games,
     "/api/pd_new_solo": _handle_pd_new_solo,
@@ -778,6 +813,15 @@ def handle_api(path, body):
                 return result
             return {"ok": False, "error": "send_failed"}
         return result
+
+    if path == "/api/shoot":
+        # The stake-photo delivery to the winner happens outside the lock.
+        with _state_lock:
+            response, pending_stake = _handle_shoot(data, uid, code)
+        if pending_stake:
+            winner_id, photo, caption = pending_stake
+            send_strip_photo_to_winner(winner_id, photo, caption)
+        return response
 
     with _state_lock:
         try:

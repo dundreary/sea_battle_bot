@@ -195,6 +195,9 @@ class Game:
         }
         self.ready = {1: False, 2: False}
         self.strip_photo = ""
+        # Per-player "stake" photo, committed before the game starts
+        # (both participants must upload one to confirm placement).
+        self.strip_stakes = {1: "", 2: ""}
         self.created_at = time.time()
 
     @property
@@ -256,6 +259,7 @@ class Game:
             'strip': self.strip,
             'difficulty': self.difficulty,
             'strip_photo': self.strip_photo,
+            'strip_stakes': {str(k): v for k, v in self.strip_stakes.items()},
             'created_at': self.created_at,
             'board1': self.board1.to_dict(),
             'board2': self.board2.to_dict(),
@@ -282,6 +286,7 @@ class Game:
         game.strip = data.get('strip', False)
         game.difficulty = data.get('difficulty', 2)
         game.strip_photo = data.get('strip_photo', "")
+        game.strip_stakes = {int(k): v for k, v in data.get('strip_stakes', {1: "", 2: ""}).items()}
         game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
         game.board2 = Board.from_dict(data['board2'])

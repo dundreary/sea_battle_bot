@@ -386,6 +386,7 @@ const LANG = {
     stripPhotoSent: 'Фото отправлено победителю ✅',
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
+    stripStakeBtn: '📸 Загрузи фото-ставку',
     stripPlayAgain: '💪 Отыграться',
     checkers: 'Шашки',
     ckHint: '💡 Подсказка',
@@ -491,6 +492,7 @@ const LANG = {
     stripPhotoSent: 'Фото надіслано переможцю ✅',
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
+    stripStakeBtn: '📸 Завантаж фото-ставку',
     stripPlayAgain: '💪 Відігратись',
     checkers: 'Шашки',
     ckHint: '💡 Підказка',
@@ -596,6 +598,7 @@ const LANG = {
     stripPhotoSent: 'Photo sent to winner ✅',
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
+    stripStakeBtn: '📸 Upload stake photo',
     stripPlayAgain: '💪 Redeem',
     checkers: 'Checkers',
     ckHint: '💡 Hint',
@@ -852,7 +855,7 @@ function updateUI(){
   }
 
   if(gameOver){
-    if(s.all_sunk && s.strip && !s.strip_photo){
+    if(s.all_sunk && s.strip && !s.opp_stake && !s.strip_photo){
       setStatus('⏳ ' + {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang], 'battle');
       if(!window._stripPhotoWaitTimer){
         window._stripPhotoWaitTimer = setTimeout(() => {
@@ -893,25 +896,30 @@ function updateUI(){
          <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
          <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
        `;
-     }else{
-      if(!s.solo){
-        setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`, '');
-        $('status').style.cursor='pointer';
-        $('status').title=t('copyCode');
-        $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
       }else{
-        setStatus(s.strip ? t('stripPlace') : t('placing'),'');
-        $('status').style.cursor='';
-        $('status').onclick=null;
+        if(!s.solo){
+          setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`, '');
+          $('status').style.cursor='pointer';
+          $('status').title=t('copyCode');
+          $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
+        }else{
+          setStatus(s.strip ? t('stripPlace') : t('placing'),'');
+          $('status').style.cursor='';
+          $('status').onclick=null;
+        }
+        // In strip mode each player must commit a stake photo before
+        // confirming. Show the upload button and keep Confirm disabled.
+        const needStake = s.strip && !s.strip_stake;
+        const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
+        $('actions').innerHTML=`
+          <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
+          ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
+           <button class="btn primary" onclick="confirmPlace()" ${needStake ? 'disabled style="opacity:0.5;cursor:default"' : ''}>${t('confirm')}</button>
+           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
+           ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
+           ${stakeBtn}
+        `;
       }
-      $('actions').innerHTML=`
-        <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
-        ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-         <button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>
-         ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
-         ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
-      `;
-    }
     setThemeSelectorVisibility(false);
     return;
   }
@@ -1001,35 +1009,49 @@ function showStripInfoOverlay(){
   document.body.appendChild(o);
 }
 
+// Opens the camera/file picker and resolves with a compressed
+// data-URL, or null if the user cancels.
+function captureStripPhoto(){
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    let cancelled = true;
+    const onFocus = () => {
+      window.removeEventListener('focus', onFocus);
+      if(cancelled) resolve(null);
+    };
+    window.addEventListener('focus', onFocus);
+    input.onchange = async (e) => {
+      cancelled = false;
+      window.removeEventListener('focus', onFocus);
+      const file = e.target.files[0];
+      if(!file){resolve(null);return}
+      const reader = new FileReader();
+      reader.onerror = () => resolve(null);
+      reader.onload = async (ev) => { resolve(await compressImage(ev.target.result)); };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  });
+}
+
 async function startStripCapture(){
   showLoadingOverlay(STRIP_LOADING_MSGS[lang].process);
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/*';
-  input.capture = 'environment';
-  let cancelled = true;
-  const onFocus = () => {
-    window.removeEventListener('focus', onFocus);
-    if(cancelled){
-      hideLoadingOverlay();
-      showStripInfoOverlay();
-    }
-  };
-  window.addEventListener('focus', onFocus);
-  input.onchange = async (e) => {
-    cancelled = false;
-    window.removeEventListener('focus', onFocus);
-    const file = e.target.files[0];
-    if(!file){hideLoadingOverlay();return}
-    const reader = new FileReader();
-    reader.onerror = () => { hideLoadingOverlay(); setStatus(t('error')); };
-    reader.onload = async (ev) => {
-      window._stripPhotoData = await compressImage(ev.target.result);
-      doStripMulti();
-    };
-    reader.readAsDataURL(file);
-  };
-  input.click();
+  const data = await captureStripPhoto();
+  if(!data){ hideLoadingOverlay(); showStripInfoOverlay(); return; }
+  window._stripPhotoData = data;
+  doStripMulti();
+}
+
+// Captures a "stake" photo and uploads it before the game starts.
+async function captureAndUploadStake(){
+  const data = await captureStripPhoto();
+  if(!data) return;
+  const res = await api('/api/upload_stake',{uid:getUid(),code:gameCode,photo:data,lang:lang});
+  if(!(res&&res.ok)){ setStatus(t('error')); return; }
+  await refreshState();
 }
 
 async function doStripMulti(){
@@ -1040,6 +1062,9 @@ async function doStripMulti(){
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
+  // Host commits their stake photo up-front so a strip game
+  // always has both players' photos before it begins.
+  await api('/api/upload_stake',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
   await refreshState();
   pollGame();
 }
@@ -1084,6 +1109,11 @@ async function joinByCode(code){
     localStorage.setItem('sb_game', code);
     $('actions').innerHTML = '';
     await refreshState();
+    // In strip mode the joiner must commit a stake photo before
+    // they can confirm placement.
+    if(res.state && res.state.strip && !res.state.strip_stake){
+      await captureAndUploadStake();
+    }
     pollGame();
   } else if(gameType === 'poker_dice'){
     const res = await api('/api/pd_join', {uid: getUid(), code});
@@ -1285,35 +1315,22 @@ function showResult(icon,title,desc,strip){
   if(icon==='🏆')sfxWin();else sfxLose();
   
   if(strip && icon==='💔'){
+    // The loser's stake photo was already committed (and
+    // delivered to the winner) before the game started.
     o.innerHTML=`
       <div class="modal">
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        <p style="margin:12px 0;color:var(--text-secondary)" id="stripStatus">⏳ ${STRIP_LOADING_MSGS[lang].send}</p>
         <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
       </div>`;
     document.body.appendChild(o);
-    const st=$('stripStatus');
-    if(window._stripPhotoData){
-      (async () => {
-        try {
-          const res=await api('/api/upload_photo',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
-          if(st) st.innerHTML = (res&&res.ok) ? '✅ ' + t('stripPhotoSent') : '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
-        } catch(e){
-          if(st) st.innerHTML = '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
-        }
-        window._stripPhotoData = null;
-      })();
-    } else {
-      if(st) st.innerHTML = '❌ ' + {ru:'Фото не загружено',uk:'Фото не завантажено',en:'No photo uploaded'}[lang];
-    }
     return;
   }
   
   if(strip && icon==='🏆'){
-    const photo = state && state.strip_photo ? state.strip_photo : null;
+    const photo = state && (state.opp_stake || state.strip_photo) ? (state.opp_stake || state.strip_photo) : null;
     o.innerHTML=`
       <div class="modal">
         <div class="result-icon">🏆</div>
