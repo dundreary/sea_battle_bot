@@ -7,7 +7,7 @@ from typing import Dict, Any, Callable
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
-from checkers import CheckersGame, BLACK, get_legal_moves
+from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from checkers_ai import get_ai_move
 from persist import save
 import config
@@ -95,6 +95,16 @@ def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) ->
     while code in existing:
         code = gen_fn()
     return code
+
+
+def _get_game(games_dict, code, uid):
+    """Look up a game by code, validate uid. Returns (game, None) or (None, error_dict)."""
+    if not uid or not code:
+        return None, {"error": "no uid/code"}
+    game = games_dict.get(code)
+    if not game:
+        return None, {"error": "not_found"}
+    return game, None
 
 
 def as_dict(game, uid):
@@ -256,9 +266,17 @@ def join_game(uid, code):
     game.phase = "placing"
     return game, "ok"
 
-def _handle_new_solo(data, uid, code):
+def _with_uid(uid, fn):
     if not uid:
         return {"error": "no uid"}
+    return fn()
+
+
+def _handle_new_solo(data, uid, code):
+    return _with_uid(uid, lambda: _do_new_solo(data, uid))
+
+
+def _do_new_solo(data, uid):
     strip = data.get("strip", False)
     difficulty = data.get("difficulty", 2)
     game = new_solo(uid, strip=strip, difficulty=difficulty)
@@ -268,8 +286,10 @@ def _handle_new_solo(data, uid, code):
 
 
 def _handle_new_multi(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
+    return _with_uid(uid, lambda: _do_new_multi(data, uid))
+
+
+def _do_new_multi(data, uid):
     strip = data.get("strip", False)
     game = new_multi(uid, strip=strip)
     player_games[str(uid)] = game.code
@@ -289,8 +309,6 @@ def _handle_join(data, uid, code):
 
 
 def _handle_state(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
     state = get_state(uid, code)
     if not state:
         return {"error": "no game"}
@@ -315,23 +333,21 @@ def _handle_shoot(data, uid, code):
 
 
 def _handle_place_auto(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
+    game, err = _get_game(games, code, uid)
+    if err: return err
     place_auto(uid, code)
-    game = games.get(code)
-    state = as_dict(game, uid) if game else None
+    state = as_dict(game, uid)
     save()
     return {"ok": True, "state": state}
 
 
 def _handle_confirm(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
+    game, err = _get_game(games, code, uid)
+    if err: return err
     started = confirm_placement(uid, code)
     if started is None:
         return {"ok": False, "error": "not_all_placed"}
-    game = games.get(code)
-    state = as_dict(game, uid) if game else None
+    state = as_dict(game, uid)
     save()
     return {"ok": True, "started": started, "state": state}
 
@@ -341,14 +357,11 @@ def _handle_upload_photo(data, uid, code):
     ``pending_send`` is ``(winner_id, photo, caption)`` when a photo must still
     be delivered to the opponent (the actual network send happens outside the
     state lock in :func:`handle_api`)."""
-    if not uid or not code:
-        return {"error": "no uid/code"}, None
+    game, err = _get_game(games, code, uid)
+    if err: return err, None
     photo = data.get("photo")
     if not photo:
         return {"error": "no photo"}, None
-    game = games.get(code)
-    if not game:
-        return {"error": "game not found"}, None
     game.strip_photo = photo
     save()
     winner_id = game.opponent_id(uid)
@@ -417,8 +430,10 @@ def _handle_upload_photo(data, uid, code):
 # ---- Poker Dice handlers ----
 
 def _handle_pd_new_solo(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
+    return _with_uid(uid, lambda: _do_pd_new_solo(data, uid))
+
+
+def _do_pd_new_solo(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
     game = PDGame(c, uid, solo=True)
     game.player2_id = 0
@@ -429,8 +444,10 @@ def _handle_pd_new_solo(data, uid, code):
 
 
 def _handle_pd_new_multi(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
+    return _with_uid(uid, lambda: _do_pd_new_multi(data, uid))
+
+
+def _do_pd_new_multi(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
     game = PDGame(c, uid)
     pd_games[c] = game
@@ -439,86 +456,9 @@ def _handle_pd_new_multi(data, uid, code):
     return {"ok": True, "code": c, "state": game.get_state(1)}
 
 
-def _handle_pd_join(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = pd_games.get(code)
-    if not game:
-        return {"ok": False, "error": "not_found"}
-    if game.player1_id == uid:
-        return {"ok": False, "error": "cannot_join_own_game"}
-    if game.player2_id is not None:
-        return {"ok": False, "error": "full"}
-    if game.player2_id == uid:
-        return {"ok": False, "error": "already_joined"}
-    game.player2_id = uid
-    pd_player_games[str(uid)] = code
-    save()
-    return {"ok": True, "state": game.get_state(2)}
-
-
-def _handle_pd_roll(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = pd_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    keep = data.get("keep", [])
-    st = game.roll(uid, keep)
-    if st is None:
-        return {"error": "invalid_roll"}
-    save()
-    return {"ok": True, "state": st}
-
-
-def _handle_pd_score(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = pd_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    category = data.get("category", "")
-    st = game.score(uid, category)
-    if st is None:
-        return {"error": "invalid_score"}
-    if game.phase == 'finished':
-        _evict_game(code, pd_games, pd_player_games)
-    save()
-    return {"ok": True, "state": st}
-
-
-def _handle_pd_surrender(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = pd_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    st = game.surrender(uid)
-    if st is None:
-        return {"error": "invalid_surrender"}
-    _evict_game(code, pd_games, pd_player_games)
-    save()
-    return {"ok": True, "state": st}
-
-
-def _handle_pd_state(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = pd_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    pnum = game.player_num(uid)
-    if pnum is None:
-        return {"error": "not_in_game"}
-    return {"ok": True, "state": game.get_state(pnum)}
-
-
 def _handle_surrender(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = games.get(code)
-    if not game:
-        return {"error": "not_found"}
+    game, err = _get_game(games, code, uid)
+    if err: return err
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
     if game.phase != "playing":
@@ -536,6 +476,56 @@ def _handle_surrender(data, uid, code):
     _evict_game(code, games, player_games)
     save()
     return {"ok": True, "state": state}
+
+
+def _handle_pd_join(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err: return err
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    if game.player2_id == uid:
+        return {"ok": False, "error": "already_joined"}
+    game.player2_id = uid
+    pd_player_games[str(uid)] = code
+    save()
+    return {"ok": True, "state": game.get_state(2)}
+
+
+def _handle_pd_roll(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err: return err
+    keep = data.get("keep", [])
+    st = game.roll(uid, keep)
+    if st is None:
+        return {"error": "invalid_roll"}
+    save()
+    return {"ok": True, "state": st}
+
+
+def _handle_pd_score(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err: return err
+    category = data.get("category", "")
+    st = game.score(uid, category)
+    if st is None:
+        return {"error": "invalid_score"}
+    if game.phase == 'finished':
+        _evict_game(code, pd_games, pd_player_games)
+    save()
+    return {"ok": True, "state": st}
+
+
+def _handle_pd_surrender(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err: return err
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    _evict_game(code, pd_games, pd_player_games)
+    save()
+    return {"ok": True, "state": st}
 
 
 def _add_active_game(games_list, gtype, code, game, my_turn):
@@ -597,8 +587,10 @@ def _handle_resolve_code(data, uid, code):
 # ---- Checkers handlers ----
 
 def _handle_checkers_new_solo(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
+    return _with_uid(uid, lambda: _do_checkers_new_solo(data, uid))
+
+
+def _do_checkers_new_solo(data, uid):
     difficulty = data.get("difficulty", 2)
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
@@ -609,8 +601,10 @@ def _handle_checkers_new_solo(data, uid, code):
 
 
 def _handle_checkers_new_multi(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
+    return _with_uid(uid, lambda: _do_checkers_new_multi(data, uid))
+
+
+def _do_checkers_new_multi(data, uid):
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid)
     checkers_games[c] = game
@@ -626,11 +620,8 @@ def _evict_game(code, games_dict, player_games_dict):
 
 
 def _handle_checkers_join(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = checkers_games.get(code)
-    if not game:
-        return {"ok": False, "error": "not_found"}
+    game, err = _get_game(checkers_games, code, uid)
+    if err: return err
     if game.player1_id == uid:
         return {"ok": False, "error": "cannot_join_own_game"}
     if game.player2_id is not None:
@@ -644,19 +635,15 @@ def _handle_checkers_join(data, uid, code):
 
 
 def _handle_checkers_state(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = checkers_games.get(code)
-    if not game:
-        return {"error": "not_found"}
+    game, err = _get_game(checkers_games, code, uid)
+    if err: return err
     return {"ok": True, "state": game.get_state(uid)}
 
 
 def _handle_checkers_move(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = checkers_games.get(code)
-    if not game or game.phase != "playing":
+    game, err = _get_game(checkers_games, code, uid)
+    if err: return err
+    if game.phase != "playing":
         return {"error": "not_playing"}
 
     color = game.player_color(uid)
@@ -671,6 +658,19 @@ def _handle_checkers_move(data, uid, code):
         return {"error": "missing_coords"}
 
     moves = get_legal_moves(game.board, color)
+    if not moves:
+        opp_color = opponent(color)
+        if not has_pieces(game.board, opp_color):
+            game.winner = None
+            game.draw = True
+        else:
+            game.winner = opp_color
+        game.phase = "finished"
+        state = game.get_state(uid)
+        _evict_game(code, checkers_games, checkers_player_games)
+        save()
+        return {"ok": True, "state": state, "finished": True}
+
     winning_move = None
     start = (start_r, start_c)
     end = (end_r, end_c)
@@ -726,11 +726,8 @@ def _handle_checkers_move(data, uid, code):
 
 
 def _handle_checkers_surrender(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = checkers_games.get(code)
-    if not game:
-        return {"error": "not_found"}
+    game, err = _get_game(checkers_games, code, uid)
+    if err: return err
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
@@ -740,10 +737,9 @@ def _handle_checkers_surrender(data, uid, code):
 
 
 def _handle_checkers_hint(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = checkers_games.get(code)
-    if not game or game.phase != "playing":
+    game, err = _get_game(checkers_games, code, uid)
+    if err: return err
+    if game.phase != "playing":
         return {"error": "not_playing"}
     color = game.player_color(uid)
     if color is None or game.turn != color:

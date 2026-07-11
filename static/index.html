@@ -2091,7 +2091,7 @@ function ckRenderBoard(st){
         if(lastCells.has(canIdx))el.classList.add('last-move');
         cell.appendChild(el);
       }
-      if(isDark&&st.my_turn&&highlighted.has(canIdx)){
+      if(isDark&&st.my_turn&&highlighted.has(visIdx)){
         cell.classList.add('highlight-src');
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
