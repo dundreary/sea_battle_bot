@@ -414,22 +414,10 @@ def _handle_surrender(data, uid, code):
     if err: return err
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
-    if game.phase != "playing":
-        # Already finished, or a surrender during placement. Sink the
-        # surrendering player's ships so the opponent sees a clean result,
-        # then return a state snapshot (instead of an empty ok) so the
-        # client can show the result overlay.
-        own = game.board_for(uid)
-        for ship in own.ships:
-            for r, c in ship.cells:
-                own.grid[r][c] = SUNK
-            ship.hits = set(ship.cells)
-            own._mark_dead_zone(ship)
-        game.phase = "finished"
-        if not game.strip:
-            _evict_game(code, games, player_games)
-        save()
-        return {"ok": True, "state": as_dict(game, uid)}
+    # Sink the surrendering player's ships so the opponent sees a clean result,
+    # whether this is an in-progress surrender, a surrender during placement, or
+    # a repeat call on an already-finished game. We return a state snapshot
+    # (instead of an empty ok) so the client can show the result overlay.
     own = game.board_for(uid)
     for ship in own.ships:
         for r, c in ship.cells:
@@ -438,6 +426,8 @@ def _handle_surrender(data, uid, code):
         own._mark_dead_zone(ship)
     game.phase = "finished"
     state = as_dict(game, uid)
+    # Strip games stay alive after game-over so the loser can still upload
+    # their forfeit photo via /api/upload_photo.
     if not game.strip:
         _evict_game(code, games, player_games)
     save()
