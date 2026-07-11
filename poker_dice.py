@@ -355,6 +355,53 @@ class PokerDiceGame:
         self.phase = 'finished'
         return self.get_state(pnum)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'code': self.code,
+            'player1_id': self.player1_id,
+            'player2_id': self.player2_id,
+            'solo': self.solo,
+            'phase': self.phase,
+            'turn': self.turn,
+            'surrendered': self.surrendered,
+            'players': {
+                str(k): {
+                    'dice': list(v['dice']),
+                    'rolls': v['rolls'],
+                    'scored': v['scored'],
+                    'hand': v['hand'],
+                    'scorecard': dict(v['scorecard']),
+                    'dice_history': [list(h) for h in v['dice_history']],
+                }
+                for k, v in self.players.items()
+            },
+        }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'PokerDiceGame':
+        game = PokerDiceGame.__new__(PokerDiceGame)
+        game.code = data['code']
+        game.player1_id = data['player1_id']
+        game.player2_id = data.get('player2_id')
+        game.solo = data.get('solo', False)
+        game.phase = data.get('phase', 'playing')
+        game.turn = data.get('turn', 1)
+        game.surrendered = data.get('surrendered')
+        game.players = {}
+        for k, v in data.get('players', {}).items():
+            pnum = int(k)
+            game.players[pnum] = {
+                'dice': list(v.get('dice', [])),
+                'rolls': v.get('rolls', 3),
+                'scored': v.get('scored', False),
+                'hand': v.get('hand'),
+                'scorecard': {c: v.get('scorecard', {}).get(c) for c in CATEGORY_IDS},
+                'dice_history': [list(h) for h in v.get('dice_history', [])],
+            }
+        if game.solo and game.player2_id is None:
+            game.player2_id = 0
+        return game
+
     @staticmethod
     def generate_code() -> str:
         return ''.join(random.choices(string.ascii_uppercase, k=6))

@@ -75,7 +75,7 @@ def save():
             # Stratego disabled — see AUDIT.md. Not persisted while disabled.
             # 'stratego_games': _serialize_games(api.stratego_games, lambda g: g.to_dict()),
             # 'stratego_player_games': {str(k): v for k, v in api.stratego_player_games.items()},
-            'poker_dice_games': _serialize_games(api.pd_games, lambda g: {'code': g.code, 'player1_id': g.player1_id, 'player2_id': g.player2_id, 'solo': g.solo}),
+            'poker_dice_games': _serialize_games(api.pd_games, lambda g: g.to_dict()),
             'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
         }
         _write(data)
@@ -116,7 +116,7 @@ def load():
         api.pd_games.clear()
         api.pd_games.update(_deserialize_games(
             data.get('poker_dice_games', {}),
-            lambda gd: PokerDiceGame(gd['code'], gd['player1_id'], gd.get('player2_id'), gd.get('solo', False)),
+            PokerDiceGame.from_dict,
             check_age=False,
         ))
         api.pd_player_games.clear()

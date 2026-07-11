@@ -187,8 +187,6 @@ def _bot_shoots(game, uid):
 
 def _check_game_over(game):
     # Finalize the game once a board is completely sunk (a victory or draw).
-    # Without this a won game stays in the "playing" phase forever and is never
-    # cleaned up (see AUDIT: Sea Battle wins are never finalized).
     if game.board1.all_sunk() or game.board2.all_sunk():
         game.phase = "finished"
         return True
@@ -320,6 +318,8 @@ def _handle_shoot(data, uid, code):
         return {"error": "invalid shot"}
     game = games.get(code)
     state = as_dict(game, uid) if game else None
+    if game and game.phase == 'finished':
+        _evict_game(code, games, player_games)
     save()
     return {"ok": True, "result": result, "state": state}
 
@@ -532,10 +532,7 @@ def _handle_surrender(data, uid, code):
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
     if game.phase != "playing":
-        del games[code]
-        for k in list(player_games.keys()):
-            if player_games[k] == code:
-                del player_games[k]
+        _evict_game(code, games, player_games)
         save()
         return {"ok": True}
     own = game.board_for(uid)
@@ -545,8 +542,10 @@ def _handle_surrender(data, uid, code):
         ship.hits = set(ship.cells)
         own._mark_dead_zone(ship)
     game.phase = "finished"
+    state = as_dict(game, uid)
+    _evict_game(code, games, player_games)
     save()
-    return {"ok": True, "state": as_dict(game, uid)}
+    return {"ok": True, "state": state}
 
 
 def _add_active_game(games_list, gtype, code, game, my_turn):
@@ -565,34 +564,25 @@ def _handle_active_games(data, uid, code):
         return {"error": "no uid"}
     games_list = []
 
-    sb_code = player_games.get(str(uid))
-    if sb_code and sb_code in games:
-        g = games[sb_code]
-        if uid == g.player1_id or uid == g.player2_id:
-            own = g.board_for(uid)
-            opp = g.opponent_board(uid)
-            if not own.all_sunk() and not opp.all_sunk():
-                _add_active_game(games_list, 'sea_battle', sb_code, g, g.current_player() == uid)
+    # Scan all games dicts for games involving this player, instead of relying
+    # on the single-code-per-player mapping that gets overwritten on new game.
+    for sb_code, g in games.items():
+        if uid != g.player1_id and uid != g.player2_id:
+            continue
+        own = g.board_for(uid)
+        opp = g.opponent_board(uid)
+        if not own.all_sunk() and not opp.all_sunk():
+            _add_active_game(games_list, 'sea_battle', sb_code, g, g.current_player() == uid)
 
-    pd_code = pd_player_games.get(str(uid))
-    if pd_code and pd_code in pd_games:
-        g = pd_games[pd_code]
+    for pd_code, g in pd_games.items():
         pnum = g.player_num(uid)
         if pnum:
             _add_active_game(games_list, 'poker_dice', pd_code, g, g.turn == pnum)
 
-    ck_code = checkers_player_games.get(str(uid))
-    if ck_code and ck_code in checkers_games:
-        g = checkers_games[ck_code]
+    for ck_code, g in checkers_games.items():
         color = g.player_color(uid)
-        _add_active_game(games_list, 'checkers', ck_code, g, g.turn == color if color else False)
-
-    # Stratego disabled — see AUDIT.md.
-    # st_code = stratego_player_games.get(str(uid))
-    # if st_code and st_code in stratego_games:
-    #     g = stratego_games[st_code]
-    #     color = g.player_color(uid)
-    #     _add_active_game(games_list, 'stratego', st_code, g, g.turn == color if color else False)
+        if color is not None:
+            _add_active_game(games_list, 'checkers', ck_code, g, g.turn == color)
 
     return {"ok": True, "games": games_list}
 

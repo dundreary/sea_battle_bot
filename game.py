@@ -356,7 +356,7 @@ CLOTHING_SHAPES = {
 }
 
 def auto_place_strip_ships(board: Board) -> None:
-    while True:
+    for _ in range(100):
         board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         board.ships = []
         board.mines = []
@@ -380,10 +380,11 @@ def auto_place_strip_ships(board: Board) -> None:
                 if board.place_mine(r, c):
                     return
             return
+    raise RuntimeError("auto_place_strip_ships: failed to place all ships after 100 attempts")
 
 
 def auto_place_ships(board: Board) -> None:
-    while True:
+    for _ in range(100):
         board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         board.ships = []
         for length in SHIPS:
@@ -406,6 +407,7 @@ def auto_place_ships(board: Board) -> None:
                 break
         else:
             return
+    raise RuntimeError("auto_place_ships: failed to place all ships after 100 attempts")
 
 class BotAI:
     def __init__(self, difficulty=2):
