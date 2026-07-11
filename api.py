@@ -528,6 +528,15 @@ def _handle_pd_surrender(data, uid, code):
     return {"ok": True, "state": st}
 
 
+def _handle_pd_state(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err: return err
+    pnum = game.player_num(uid)
+    if pnum is None:
+        return {"error": "not_in_game"}
+    return {"ok": True, "state": game.get_state(pnum)}
+
+
 def _add_active_game(games_list, gtype, code, game, my_turn):
     if game.phase == 'finished':
         return
