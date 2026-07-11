@@ -10,7 +10,8 @@ from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_pl
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, get_legal_moves
 from checkers_ai import get_ai_move
-from stratego import StrategoGame, PLAYER2, ai_get_move
+# Stratego disabled (game currently not offered to players) — see AUDIT.md.
+# from stratego import StrategoGame, PLAYER2, ai_get_move
 from persist import save
 import config
 
@@ -88,9 +89,9 @@ player_games: Dict[str, str] = {}
 checkers_games: Dict[str, CheckersGame] = {}
 checkers_player_games: Dict[str, str] = {}
 
-# Stratego games
-stratego_games: Dict[str, StrategoGame] = {}
-stratego_player_games: Dict[str, str] = {}
+# Stratego games (disabled — see AUDIT.md)
+# stratego_games: Dict[str, StrategoGame] = {}
+# stratego_player_games: Dict[str, str] = {}
 
 # Guards all shared in-memory game dictionaries below. The HTTP server thread and
 # the bot's asyncio thread both access these, so mutations must be serialized to
@@ -586,11 +587,12 @@ def _handle_active_games(data, uid, code):
         color = g.player_color(uid)
         _add_active_game(games_list, 'checkers', ck_code, g, g.turn == color if color else False)
 
-    st_code = stratego_player_games.get(str(uid))
-    if st_code and st_code in stratego_games:
-        g = stratego_games[st_code]
-        color = g.player_color(uid)
-        _add_active_game(games_list, 'stratego', st_code, g, g.turn == color if color else False)
+    # Stratego disabled — see AUDIT.md.
+    # st_code = stratego_player_games.get(str(uid))
+    # if st_code and st_code in stratego_games:
+    #     g = stratego_games[st_code]
+    #     color = g.player_color(uid)
+    #     _add_active_game(games_list, 'stratego', st_code, g, g.turn == color if color else False)
 
     return {"ok": True, "games": games_list}
 
@@ -609,8 +611,9 @@ def _handle_resolve_code(data, uid, code):
         return {"ok": True, "game": "poker_dice", "code": c}
     if c in checkers_games:
         return {"ok": True, "game": "checkers", "code": c}
-    if c in stratego_games:
-        return {"ok": True, "game": "stratego", "code": c}
+    # Stratego disabled — see AUDIT.md.
+    # if c in stratego_games:
+    #     return {"ok": True, "game": "stratego", "code": c}
     return {"ok": False, "error": "not_found"}
 
 
@@ -775,169 +778,169 @@ def _handle_checkers_hint(data, uid, code):
     return {"ok": True, "hint": {"start": list(move[0]), "end": list(move[1][-1])}}
 
 
-# ---- Stratego handlers ----
-
-def _handle_stratego_new_solo(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
-    c = generate_unique_code(StrategoGame.generate_code, stratego_games)
-    difficulty = data.get("difficulty", 2)
-    game = StrategoGame(c, uid, solo=True, difficulty=difficulty)
-    game.player2_id = 0
-    game.phase = 'setup_p1'
-    stratego_games[c] = game
-    stratego_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
-
-
-def _handle_stratego_new_multi(data, uid, code):
-    if not uid:
-        return {"error": "no uid"}
-    c = generate_unique_code(StrategoGame.generate_code, stratego_games)
-    game = StrategoGame(c, uid)
-    stratego_games[c] = game
-    stratego_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
-
-
-def _handle_stratego_join(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"ok": False, "error": "not_found"}
-    if game.player1_id == uid:
-        return {"ok": False, "error": "cannot_join_own_game"}
-    if game.player2_id is not None:
-        return {"ok": False, "error": "full"}
-    if game.player2_id == uid:
-        return {"ok": False, "error": "already_joined"}
-    game.player2_id = uid
-    stratego_player_games[str(uid)] = code
-    save()
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_state(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_place(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    r = data.get("r")
-    c = data.get("c")
-    ptype = data.get("type")
-    if None in (r, c, ptype):
-        return {"error": "missing_params"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    ok, msg = game.place_piece(uid, r, c, ptype)
-    if not ok:
-        return {"ok": False, "error": msg}
-    save()
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_remove(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    r = data.get("r")
-    c = data.get("c")
-    if None in (r, c):
-        return {"error": "missing_params"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    ok = game.remove_placed(uid, r, c)
-    if not ok:
-        return {"ok": False, "error": "remove_failed"}
-    save()
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_auto_setup(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    game.auto_setup(uid)
-    save()
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_confirm(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    ok, msg = game.confirm_setup(uid)
-    if not ok:
-        return {"ok": False, "error": msg}
-    save()
-    if game.solo and game.phase == 'playing' and game.turn == PLAYER2:
-        _stratego_do_bot_move(game)
-        save()
-    return {"ok": True, "state": game.get_state(uid)}
-
-
-def _handle_stratego_surrender(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    st = game.surrender(uid)
-    if st is None:
-        return {"error": "invalid_surrender"}
-    _evict_game(code, stratego_games, stratego_player_games)
-    save()
-    return {"ok": True, "state": st}
-
-
-def _handle_stratego_move(data, uid, code):
-    if not uid or not code:
-        return {"error": "no uid/code"}
-    r = data.get("r")
-    c = data.get("c")
-    nr = data.get("nr")
-    nc = data.get("nc")
-    if None in (r, c, nr, nc):
-        return {"error": "missing_params"}
-    game = stratego_games.get(code)
-    if not game:
-        return {"error": "not_found"}
-    result, status = game.move(uid, r, c, nr, nc)
-    if status != "ok":
-        return {"ok": False, "error": status}
-    bot_move = None
-    if game.solo and game.phase == 'playing' and game.turn == PLAYER2:
-        bot_move = _stratego_do_bot_move(game)
-    if game.game_over:
-        _evict_game(code, stratego_games, stratego_player_games)
-    save()
-    return {"ok": True, "state": game.get_state(uid), "battle": result, "bot_move": bot_move}
-
-
-def _stratego_do_bot_move(game):
-    bot_uid = 0
-    move = ai_get_move(game, difficulty=game.difficulty)
-    if not move:
-        return None
-    result, status = game.move(bot_uid, move[0], move[1], move[2], move[3])
-    if status == "ok":
-        return {"from": [move[0], move[1]], "to": [move[2], move[3]], "battle": result}
-    return None
+# ---- Stratego handlers (disabled — game currently not offered, see AUDIT.md) ----
+#
+# def _handle_stratego_new_solo(data, uid, code):
+#     if not uid:
+#         return {"error": "no uid"}
+#     c = generate_unique_code(StrategoGame.generate_code, stratego_games)
+#     difficulty = data.get("difficulty", 2)
+#     game = StrategoGame(c, uid, solo=True, difficulty=difficulty)
+#     game.player2_id = 0
+#     game.phase = 'setup_p1'
+#     stratego_games[c] = game
+#     stratego_player_games[str(uid)] = c
+#     save()
+#     return {"ok": True, "code": c, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_new_multi(data, uid, code):
+#     if not uid:
+#         return {"error": "no uid"}
+#     c = generate_unique_code(StrategoGame.generate_code, stratego_games)
+#     game = StrategoGame(c, uid)
+#     stratego_games[c] = game
+#     stratego_player_games[str(uid)] = c
+#     save()
+#     return {"ok": True, "code": c, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_join(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"ok": False, "error": "not_found"}
+#     if game.player1_id == uid:
+#         return {"ok": False, "error": "cannot_join_own_game"}
+#     if game.player2_id is not None:
+#         return {"ok": False, "error": "full"}
+#     if game.player2_id == uid:
+#         return {"ok": False, "error": "already_joined"}
+#     game.player2_id = uid
+#     stratego_player_games[str(uid)] = code
+#     save()
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_state(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_place(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     r = data.get("r")
+#     c = data.get("c")
+#     ptype = data.get("type")
+#     if None in (r, c, ptype):
+#         return {"error": "missing_params"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     ok, msg = game.place_piece(uid, r, c, ptype)
+#     if not ok:
+#         return {"ok": False, "error": msg}
+#     save()
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_remove(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     r = data.get("r")
+#     c = data.get("c")
+#     if None in (r, c):
+#         return {"error": "missing_params"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     ok = game.remove_placed(uid, r, c)
+#     if not ok:
+#         return {"ok": False, "error": "remove_failed"}
+#     save()
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_auto_setup(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     game.auto_setup(uid)
+#     save()
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_confirm(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     ok, msg = game.confirm_setup(uid)
+#     if not ok:
+#         return {"ok": False, "error": msg}
+#     save()
+#     if game.solo and game.phase == 'playing' and game.turn == PLAYER2:
+#         _stratego_do_bot_move(game)
+#         save()
+#     return {"ok": True, "state": game.get_state(uid)}
+#
+#
+# def _handle_stratego_surrender(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     st = game.surrender(uid)
+#     if st is None:
+#         return {"error": "invalid_surrender"}
+#     _evict_game(code, stratego_games, stratego_player_games)
+#     save()
+#     return {"ok": True, "state": st}
+#
+#
+# def _handle_stratego_move(data, uid, code):
+#     if not uid or not code:
+#         return {"error": "no uid/code"}
+#     r = data.get("r")
+#     c = data.get("c")
+#     nr = data.get("nr")
+#     nc = data.get("nc")
+#     if None in (r, c, nr, nc):
+#         return {"error": "missing_params"}
+#     game = stratego_games.get(code)
+#     if not game:
+#         return {"error": "not_found"}
+#     result, status = game.move(uid, r, c, nr, nc)
+#     if status != "ok":
+#         return {"ok": False, "error": status}
+#     bot_move = None
+#     if game.solo and game.phase == 'playing' and game.turn == PLAYER2:
+#         bot_move = _stratego_do_bot_move(game)
+#     if game.game_over:
+#         _evict_game(code, stratego_games, stratego_player_games)
+#     save()
+#     return {"ok": True, "state": game.get_state(uid), "battle": result, "bot_move": bot_move}
+#
+#
+# def _stratego_do_bot_move(game):
+#     bot_uid = 0
+#     move = ai_get_move(game, difficulty=game.difficulty)
+#     if not move:
+#         return None
+#     result, status = game.move(bot_uid, move[0], move[1], move[2], move[3])
+#     if status == "ok":
+#         return {"from": [move[0], move[1]], "to": [move[2], move[3]], "battle": result}
+#     return None
 
 
 _HANDLERS = {
@@ -967,16 +970,17 @@ _HANDLERS = {
     "/api/checkers_move": _handle_checkers_move,
     "/api/checkers_hint": _handle_checkers_hint,
     "/api/checkers_surrender": _handle_checkers_surrender,
-    "/api/stratego_new_solo": _handle_stratego_new_solo,
-    "/api/stratego_new_multi": _handle_stratego_new_multi,
-    "/api/stratego_join": _handle_stratego_join,
-    "/api/stratego_state": _handle_stratego_state,
-    "/api/stratego_place": _handle_stratego_place,
-    "/api/stratego_remove": _handle_stratego_remove,
-    "/api/stratego_auto_setup": _handle_stratego_auto_setup,
-    "/api/stratego_confirm": _handle_stratego_confirm,
-    "/api/stratego_move": _handle_stratego_move,
-    "/api/stratego_surrender": _handle_stratego_surrender,
+    # Stratego handlers disabled — see AUDIT.md.
+    # "/api/stratego_new_solo": _handle_stratego_new_solo,
+    # "/api/stratego_new_multi": _handle_stratego_new_multi,
+    # "/api/stratego_join": _handle_stratego_join,
+    # "/api/stratego_state": _handle_stratego_state,
+    # "/api/stratego_place": _handle_stratego_place,
+    # "/api/stratego_remove": _handle_stratego_remove,
+    # "/api/stratego_auto_setup": _handle_stratego_auto_setup,
+    # "/api/stratego_confirm": _handle_stratego_confirm,
+    # "/api/stratego_move": _handle_stratego_move,
+    # "/api/stratego_surrender": _handle_stratego_surrender,
 }
 
 

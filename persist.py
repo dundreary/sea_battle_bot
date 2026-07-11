@@ -72,8 +72,9 @@ def save():
             'api_player_games': {str(k): v for k, v in api.player_games.items()},
             'checkers_games': _serialize_games(api.checkers_games, lambda g: g.to_dict()),
             'checkers_player_games': {str(k): v for k, v in api.checkers_player_games.items()},
-            'stratego_games': _serialize_games(api.stratego_games, lambda g: g.to_dict()),
-            'stratego_player_games': {str(k): v for k, v in api.stratego_player_games.items()},
+            # Stratego disabled — see AUDIT.md. Not persisted while disabled.
+            # 'stratego_games': _serialize_games(api.stratego_games, lambda g: g.to_dict()),
+            # 'stratego_player_games': {str(k): v for k, v in api.stratego_player_games.items()},
             'poker_dice_games': _serialize_games(api.pd_games, lambda g: {'code': g.code, 'player1_id': g.player1_id, 'player2_id': g.player2_id, 'solo': g.solo}),
             'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
         }
@@ -84,7 +85,8 @@ def load():
     import api
     from game import Game
     from checkers import CheckersGame
-    from stratego import StrategoGame
+    # Stratego disabled — see AUDIT.md.
+    # from stratego import StrategoGame
     from poker_dice import PokerDiceGame
 
     data = _read()
@@ -104,11 +106,12 @@ def load():
         api.checkers_player_games.update(data.get('checkers_player_games', {}))
         _cleanup_stale_player_games(api.checkers_player_games, set(api.checkers_games.keys()))
 
-        api.stratego_games.clear()
-        api.stratego_games.update(_deserialize_games(data.get('stratego_games', {}), StrategoGame.from_dict))
-        api.stratego_player_games.clear()
-        api.stratego_player_games.update(data.get('stratego_player_games', {}))
-        _cleanup_stale_player_games(api.stratego_player_games, set(api.stratego_games.keys()))
+        # Stratego disabled — see AUDIT.md. Not loaded while disabled.
+        # api.stratego_games.clear()
+        # api.stratego_games.update(_deserialize_games(data.get('stratego_games', {}), StrategoGame.from_dict))
+        # api.stratego_player_games.clear()
+        # api.stratego_player_games.update(data.get('stratego_player_games', {}))
+        # _cleanup_stale_player_games(api.stratego_player_games, set(api.stratego_games.keys()))
 
         api.pd_games.clear()
         api.pd_games.update(_deserialize_games(

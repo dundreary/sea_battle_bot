@@ -1190,12 +1190,10 @@ function showMainMenu(){
   gameCode=null;state=null;
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
-  stCode=null;stState=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
   if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
-  if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
-  // Note: saved game codes (sb_game/pd_game/ck_game/st_game) are intentionally
+  // Note: saved game codes (sb_game/pd_game/ck_game) are intentionally
   // NOT cleared here anymore — quitting a game only minimizes it, so it must
   // stay resumable from the active-games bar below.
   setThemeSelectorVisibility(false);
@@ -1228,11 +1226,13 @@ function showMainMenu(){
       <div class="name" style="color:#D4A96A">${t('checkers')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
+    <!-- Stratego disabled — see AUDIT.md.
     <div class="game-card" onclick="showStratego()" style="margin-bottom:8px">
       <svg style="width:64px;height:64px;display:block;margin:0 auto 8px" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="none" stroke="#D4A96A" stroke-width="2"/><text x="32" y="30" text-anchor="middle" font-size="10" fill="#D4A96A">♟</text><text x="32" y="42" text-anchor="middle" font-size="8" fill="#D4A96A">⚔️</text></svg>
       <div class="name" style="color:#D4A96A">${t('stratego')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
+    -->
   `;
   updateContinueButton();
   fetchActiveGames();
@@ -2285,6 +2285,7 @@ async function ckSurrender(){
   showMainMenu();
 }
 
+/* ---- Stratego disabled (game currently not offered) — see AUDIT.md. ----
 // ---- Stratego ----
 let stState=null, stCode=null, stSelected=null, stPaletteType=null;
 let stDifficulty = 2;
@@ -2775,6 +2776,7 @@ async function stSurrender(){
   showMainMenu();
 }
 
+---- end of disabled Stratego block ---- */
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
   if(!cont)return;
@@ -2797,10 +2799,11 @@ async function fetchActiveGames(){
       var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
       html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
-    else if(g.type==='stratego'){
-      var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeSt(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
-    }
+    // Stratego disabled — see AUDIT.md.
+    // else if(g.type==='stratego'){
+    //   var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+    //   html+='<div class="active-game-row" onclick="resumeSt(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+    // }
   }
   html+='</div>';
   cont.innerHTML=html;
@@ -2814,13 +2817,14 @@ function resumeSB(code){
   setTimeout(pollGame,500);
 }
 
-function resumeSt(code){
-  stCode=code;
-  localStorage.setItem('st_game',code);
-  $('actions').innerHTML='';
-  stRefreshState();
-  stPoll();
-}
+// Stratego disabled — see AUDIT.md.
+// function resumeSt(code){
+//   stCode=code;
+//   localStorage.setItem('st_game',code);
+//   $('actions').innerHTML='';
+//   stRefreshState();
+//   stPoll();
+// }
 
 function resumeCk(code){
   ckCode=code;
@@ -2895,18 +2899,18 @@ async function checkStartParam(){
         return;
       }
     }
-    // Try Stratego
-    if(resolveRes.game === 'stratego'){
-      const stRes = await api('/api/stratego_join', {uid: getUid(), code});
-      if(stRes && stRes.ok){
-        stCode = code;
-        localStorage.setItem('st_game', code);
-        $('actions').innerHTML = '';
-        stShowGame(stRes.state);
-        stPoll();
-        return;
-      }
-    }
+    // Stratego disabled — see AUDIT.md.
+    // if(resolveRes.game === 'stratego'){
+    //   const stRes = await api('/api/stratego_join', {uid: getUid(), code});
+    //   if(stRes && stRes.ok){
+    //     stCode = code;
+    //     localStorage.setItem('st_game', code);
+    //     $('actions').innerHTML = '';
+    //     stShowGame(stRes.state);
+    //     stPoll();
+    //     return;
+    //   }
+    // }
     // Join failed – show error
     setStatus(t('joinError'), '');
   } catch(e){}
@@ -2920,3 +2924,4 @@ tryReconnect();
 </script>
 </body>
 </html>
+
