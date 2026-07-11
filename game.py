@@ -112,6 +112,12 @@ class Board:
             return "hit"
         elif self.grid[r][c] == MINE:
             self.grid[r][c] = HIT
+            for dr in (-1, 0, 1):
+                for dc in (-1, 0, 1):
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                        if self.grid[nr][nc] == EMPTY:
+                            self.grid[nr][nc] = DEAD
             return "mine"
         elif self.grid[r][c] == EMPTY:
             self.grid[r][c] = MISS

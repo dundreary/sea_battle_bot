@@ -115,7 +115,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
  .cell.dead{background:var(--bg-board);opacity:.4}
  .cell.highlight{background:#ff9800;border:2px solid #ff6f00;animation:glow 1s ease-in-out infinite}
 .cell.shootable{background:var(--border-color);border:1px solid var(--color-btn-outline-border)}
-.cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
+/* On touch screens :hover can remain on the last tapped cell, making it look selected. */
+@media (hover:hover) and (pointer:fine){
+  .cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
+}
  @keyframes glow{0%{box-shadow:0 0 8px rgba(255,152,0,0.6)}50%{box-shadow:0 0 20px rgba(255,152,0,0.9)}100%{box-shadow:0 0 8px rgba(255,152,0,0.6)}}
  .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
 .btn-row.stack{flex-direction:column;gap:8px}
@@ -1273,6 +1276,7 @@ function showResult(icon,title,desc,strip){
         } catch(e){
           if(st) st.innerHTML = '❌ ' + {ru:'Ошибка отправки',uk:'Помилка надсилання',en:'Send failed'}[lang];
         }
+        window._stripPhotoData = null;
       })();
     } else {
       if(st) st.innerHTML = '❌ ' + {ru:'Фото не загружено',uk:'Фото не завантажено',en:'No photo uploaded'}[lang];
@@ -1295,7 +1299,8 @@ function showResult(icon,title,desc,strip){
     return;
   }
   
-  const playAgainFn = 'startSolo()';
+  const isMulti = state && !state.solo;
+  const playAgainFn = isMulti ? 'newMulti(false)' : 'startSolo()';
   const endMsg = state ? '' : t('gameOver');
   o.innerHTML=`
     <div class="modal">
@@ -1563,6 +1568,7 @@ function pdRenderDice(st){
   const cont=$('pdDice');
   cont.innerHTML='';
   const dice=st.dice||[];
+  const diceTotal = values => values.reduce((total, value) => total + value, 0);
   // showOpp: opponent finished their turn, now it's my turn - show what opp rolled last
   const showOpp = st.opponent_scored && !st.scored && st.rolls_left===3;
 
@@ -1571,9 +1577,9 @@ function pdRenderDice(st){
     let labelText = '';
     if(showOpp){
       labelColor = 'var(--color-hit)';
-      labelText = st.opponent_hand_name ? `${t('pdOppHand')}: ${pdHandName(st.opponent_hand_name)} (${st.opponent_hand_score} ${t('pdPts')})` : t('pdOppHand');
+      labelText = st.opponent_hand_name ? `${t('pdOppHand')}: ${pdHandName(st.opponent_hand_name)} (${diceTotal(st.opponent_dice||[])} ${t('pdPts')})` : t('pdOppHand');
     } else {
-      labelText = st.scored ? `${t('pdYourHand')}: ${pdHandName(st.hand_name)} (${st.hand_score} ${t('pdPts')})` : t('pdYourHand');
+      labelText = st.scored ? `${t('pdYourHand')}: ${pdHandName(st.hand_name)} (${diceTotal(dice)} ${t('pdPts')})` : t('pdYourHand');
     }
     const label = document.createElement('div');
     label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:'+labelColor+';font-weight:600;margin-bottom:6px;margin-top:10px';
@@ -1604,11 +1610,11 @@ function pdRenderDice(st){
       cont.appendChild(die);
     }
   } else {
-    // Opponent's turn - show label with my last scored hand if available
+    // The dice on screen belong to the opponent while their turn is in progress.
     const label = document.createElement('div');
     label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
-    if(st.scored && st.hand_name){
-      label.textContent = `${t('pdYourHand')}: ${pdHandName(st.hand_name)} (${st.hand_score} ${t('pdPts')})`;
+    if(dice.length){
+      label.textContent = `${t('pdOppHand')} (${diceTotal(dice)} ${t('pdPts')})`;
     } else {
       label.textContent = t('pdOppHand');
     }
@@ -2304,4 +2310,3 @@ tryReconnect();
 </script>
 </body>
 </html>
-
