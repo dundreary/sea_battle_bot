@@ -56,18 +56,33 @@ class Board:
         self.mines = []
         self.placement_mode = True
 
+    def _neighbors_occupied(self, r, c):
+        """True if any cell in the 3x3 area around (r, c) holds a ship or mine."""
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                    if self.grid[nr][nc] in (SHIP, MINE):
+                        return True
+        return False
+
+    def _fill_dead_zone(self, r, c):
+        """Mark every empty cell in the 3x3 area around (r, c) as a dead zone."""
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                    if self.grid[nr][nc] == EMPTY:
+                        self.grid[nr][nc] = DEAD
+
     def can_place(self, cells):
         for r, c in cells:
             if not (0 <= r < SIZE and 0 <= c < SIZE):
                 return False
             if self.grid[r][c] != EMPTY:
                 return False
-            for dr in (-1, 0, 1):
-                for dc in (-1, 0, 1):
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                        if self.grid[nr][nc] in (SHIP, MINE):
-                            return False
+            if self._neighbors_occupied(r, c):
+                return False
         return True
 
     def place_ship(self, cells):
@@ -79,24 +94,15 @@ class Board:
     def place_mine(self, r, c):
         if self.grid[r][c] != EMPTY:
             return False
-        for dr in (-1, 0, 1):
-            for dc in (-1, 0, 1):
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                    if self.grid[nr][nc] in (SHIP, MINE):
-                        return False
+        if self._neighbors_occupied(r, c):
+            return False
         self.grid[r][c] = MINE
         self.mines.append((r, c))
         return True
 
     def _mark_dead_zone(self, ship):
         for sr, sc in ship.cells:
-            for dr in (-1, 0, 1):
-                for dc in (-1, 0, 1):
-                    nr, nc = sr + dr, sc + dc
-                    if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                        if self.grid[nr][nc] == EMPTY:
-                            self.grid[nr][nc] = DEAD
+            self._fill_dead_zone(sr, sc)
 
     def receive_shot(self, r, c):
         if self.grid[r][c] == SHIP:
@@ -112,12 +118,7 @@ class Board:
             return "hit"
         elif self.grid[r][c] == MINE:
             self.grid[r][c] = HIT
-            for dr in (-1, 0, 1):
-                for dc in (-1, 0, 1):
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                        if self.grid[nr][nc] == EMPTY:
-                            self.grid[nr][nc] = DEAD
+            self._fill_dead_zone(r, c)
             return "mine"
         elif self.grid[r][c] == EMPTY:
             self.grid[r][c] = MISS

@@ -1,6 +1,7 @@
 import json
 import base64
 import logging
+import secrets
 import threading
 import urllib.request
 from typing import Dict, Any, Callable
@@ -36,8 +37,7 @@ def _strip_photo_mime(photo_data: str) -> str:
     return 'image/jpeg'
 
 
-def _strip_photo_multipart(winner_id: int, photo_bytes: bytes, caption: str, mime: str) -> bytes:
-    boundary = STRIP_PHOTO_BOUNDARY
+def _strip_photo_multipart(boundary: str, winner_id: int, photo_bytes: bytes, caption: str, mime: str) -> bytes:
     body = b''
     body += f'--{boundary}\r\n'.encode()
     body += 'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
@@ -58,12 +58,15 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
         mime = _strip_photo_mime(photo_data)
         b64_data = photo_data.split(',', 1)[1] if ',' in photo_data else photo_data
         photo_bytes = base64.b64decode(b64_data)
-        body = _strip_photo_multipart(winner_id, photo_bytes, caption, mime)
+        # A unique boundary per request removes any chance of the binary
+        # photo bytes being mistaken for a multipart boundary.
+        boundary = STRIP_PHOTO_BOUNDARY + secrets.token_hex(16)
+        body = _strip_photo_multipart(boundary, winner_id, photo_bytes, caption, mime)
 
         req = urllib.request.Request(
             f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto',
             data=body,
-            headers={'Content-Type': f'multipart/form-data; boundary={STRIP_PHOTO_BOUNDARY}'},
+            headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
             method='POST'
         )
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -119,7 +122,10 @@ def as_dict(game, uid):
         "solo": game.solo,
         "strip": game.strip,
         "difficulty": game.difficulty,
-        "strip_photo": game.strip_photo if (opp.all_sunk() or own.all_sunk()) else "",
+        # The strip photo is delivered to the winner only. The loser already
+        # has the photo locally (they uploaded it), so returning it to them is
+        # wasted bandwidth. Polls also stop on game-over, so it is sent once.
+        "strip_photo": game.strip_photo if (game.strip_photo and opp.all_sunk()) else "",
         "phase": game.phase,
         "turn": game.turn,
         "current_player": game.current_player(),
@@ -322,7 +328,9 @@ def _handle_shoot(data, uid, code):
         return {"error": "invalid shot"}
     game = games.get(code)
     state = as_dict(game, uid) if game else None
-    if game and game.phase == 'finished':
+    # Strip games must stay alive after game-over so the loser can still
+    # upload their photo via /api/upload_photo.
+    if game and game.phase == 'finished' and not game.strip:
         _evict_game(code, games, player_games)
     save()
     return {"ok": True, "result": result, "state": state}
@@ -355,6 +363,8 @@ def _handle_upload_photo(data, uid, code):
     state lock in :func:`handle_api`)."""
     game, err = _get_game(games, code, uid)
     if err: return err, None
+    if uid != game.player1_id and uid != game.player2_id:
+        return {"error": "not_in_game"}, None
     photo = data.get("photo")
     if not photo:
         return {"error": "no photo"}, None
@@ -362,65 +372,12 @@ def _handle_upload_photo(data, uid, code):
     save()
     winner_id = game.opponent_id(uid)
     if game.solo or not winner_id or winner_id == 0:
+        # No opponent to deliver to; the game is fully finished now.
+        _evict_game(code, games, player_games)
         return {"ok": True}, None
     user_lang = data.get("lang", "ru")
     caption = STRIP_LOSE_CAPTIONS.get(user_lang, STRIP_LOSE_CAPTIONS['ru'])
     return {"ok": True}, (winner_id, photo, caption)
-
-
-# def _handle_ana_new_solo(data, uid, code):
-#     sid, g = ana_new()
-#     save()
-#     return {"ok": True, "sid": sid, "state": ana_state(sid)}
-#
-#
-# def _handle_ana_new_multi(data, uid, code):
-#     sid, new_code, g = ana_new_multi()
-#     if uid:
-#         ana_player_sessions[str(uid)] = {'code': new_code, 'sid': sid}
-#     save()
-#     return {"ok": True, "sid": sid, "code": new_code, "state": ana_state(sid)}
-#
-#
-# def _handle_ana_join(data, uid, code):
-#     c = data.get("code", "")
-#     if not c:
-#         return {"error": "no code"}
-#     result = ana_join(c)
-#     if not result[0]:
-#         return {"ok": False, "error": result[1]}
-#     if uid and result[0]:
-#         ana_player_sessions[str(uid)] = {'code': c.upper(), 'sid': result[0]}
-#     save()
-#     return {"ok": True, "sid": result[0], "state": ana_state(result[0])}
-#
-#
-# def _handle_ana_guess(data, uid, code):
-#     sid = data.get("sid", "")
-#     word = data.get("word", "")
-#     result = ana_guess(sid, word)
-#     if result[0] != "ok":
-#         return {"ok": False, "error": result[0]}
-#     save()
-#     return {"ok": True, "result": result[1], "state": ana_state(sid)}
-#
-#
-# def _handle_ana_hint(data, uid, code):
-#     sid = data.get("sid", "")
-#     result = ana_hint(sid)
-#     if not result:
-#         return {"ok": False, "error": "no_hint"}
-#     save()
-#     return {"ok": True, "result": result, "state": ana_state(sid)}
-#
-#
-# def _handle_ana_state(data, uid, code):
-#     sid = data.get("sid", "")
-#     st = ana_state(sid)
-#     if not st:
-#         return {"error": "not_found"}
-#     save()
-#     return {"ok": True, "state": st}
 
 
 # ---- Poker Dice handlers ----
@@ -458,9 +415,21 @@ def _handle_surrender(data, uid, code):
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
     if game.phase != "playing":
-        _evict_game(code, games, player_games)
+        # Already finished, or a surrender during placement. Sink the
+        # surrendering player's ships so the opponent sees a clean result,
+        # then return a state snapshot (instead of an empty ok) so the
+        # client can show the result overlay.
+        own = game.board_for(uid)
+        for ship in own.ships:
+            for r, c in ship.cells:
+                own.grid[r][c] = SUNK
+            ship.hits = set(ship.cells)
+            own._mark_dead_zone(ship)
+        game.phase = "finished"
+        if not game.strip:
+            _evict_game(code, games, player_games)
         save()
-        return {"ok": True}
+        return {"ok": True, "state": as_dict(game, uid)}
     own = game.board_for(uid)
     for ship in own.ships:
         for r, c in ship.cells:
@@ -469,7 +438,8 @@ def _handle_surrender(data, uid, code):
         own._mark_dead_zone(ship)
     game.phase = "finished"
     state = as_dict(game, uid)
-    _evict_game(code, games, player_games)
+    if not game.strip:
+        _evict_game(code, games, player_games)
     save()
     return {"ok": True, "state": state}
 
@@ -645,6 +615,11 @@ def _handle_checkers_state(data, uid, code):
     return {"ok": True, "state": game.get_state(uid)}
 
 
+def _checkers_ai_difficulty(game):
+    """Map the player's chosen difficulty to the AI search depth."""
+    return 6 if game.difficulty >= 3 else 3
+
+
 def _handle_checkers_move(data, uid, code):
     game, err = _get_game(checkers_games, code, uid)
     if err: return err
@@ -705,7 +680,7 @@ def _handle_checkers_move(data, uid, code):
     bot_result = None
 
     if game.solo and not finished and game.turn == BLACK:
-        ai_diff = 6 if game.difficulty >= 3 else 3
+        ai_diff = _checkers_ai_difficulty(game)
         ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff)
         if ai_mv:
             finished = game.make_move(ai_mv)
@@ -749,7 +724,7 @@ def _handle_checkers_hint(data, uid, code):
     color = game.player_color(uid)
     if color is None or game.turn != color:
         return {"error": "not_your_turn"}
-    ai_diff = 6 if game.difficulty >= 3 else 3
+    ai_diff = _checkers_ai_difficulty(game)
     move = get_ai_move(game.board, color, difficulty=ai_diff)
     if not move:
         return {"error": "no_move"}
@@ -801,11 +776,15 @@ def handle_api(path, body):
     if path == "/api/upload_photo":
         # The state mutation runs under the lock, but the (slow) network send to
         # Telegram must happen outside it so other requests are not blocked.
+        # Strip games stay alive until the photo is delivered, then are evicted.
         with _state_lock:
             result, pending_send = _handle_upload_photo(data, uid, code)
         if pending_send:
             winner_id, photo, caption = pending_send
             if send_strip_photo_to_winner(winner_id, photo, caption):
+                with _state_lock:
+                    _evict_game(code, games, player_games)
+                    save()
                 return result
             return {"ok": False, "error": "send_failed"}
         return result
