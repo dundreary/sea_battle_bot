@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5C2A"/>
+      <stop offset="100%" stop-color="#6B4423"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#D4B896"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A2810"/>
+      <stop offset="100%" stop-color="#2E1A0A"/>
+    </linearGradient>
+    <linearGradient id="flash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#E8C98E"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="url(#bg)"/>
+  <rect x="10" y="14" width="12" height="14" rx="3" fill="url(#metal)" stroke="#4A2810" stroke-width="1"/>
+  <rect x="11" y="17" width="10" height="3" fill="url(#band)"/>
+  <rect x="11" y="24" width="10" height="2" fill="url(#band)"/>
+  <rect x="10" y="28" width="12" height="4" rx="1" fill="url(#band)"/>
+  <rect x="26" y="14" width="12" height="14" rx="3" fill="url(#metal)" stroke="#4A2810" stroke-width="1"/>
+  <rect x="27" y="17" width="10" height="3" fill="url(#band)"/>
+  <rect x="27" y="24" width="10" height="2" fill="url(#band)"/>
+  <rect x="26" y="28" width="12" height="4" rx="1" fill="url(#band)"/>
+  <rect x="42" y="14" width="12" height="14" rx="3" fill="url(#metal)" stroke="#4A2810" stroke-width="1"/>
+  <rect x="43" y="17" width="10" height="3" fill="url(#band)"/>
+  <rect x="43" y="24" width="10" height="2" fill="url(#band)"/>
+  <rect x="42" y="28" width="12" height="4" rx="1" fill="url(#band)"/>
+  <path d="M12 40 Q16 36 18 38 Q22 42 26 36 Q30 34 34 40 Q38 44 42 36 Q46 34 50 40 Q52 42 54 38" fill="none" stroke="url(#flash)" stroke-width="2" opacity="0.6"/>
+  <path d="M18 42 Q24 46 30 42 Q36 38 42 44 Q46 46 50 42" fill="none" stroke="url(#flash)" stroke-width="1.5" opacity="0.4"/>
+  <circle cx="20" cy="44" r="1.5" fill="url(#flash)" opacity="0.5"/>
+  <circle cx="34" cy="46" r="1.5" fill="url(#flash)" opacity="0.5"/>
+  <circle cx="46" cy="44" r="1" fill="url(#flash)" opacity="0.3"/>
+  <circle cx="28" cy="48" r="1" fill="url(#flash)" opacity="0.3"/>
+</svg>

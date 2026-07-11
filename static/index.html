@@ -358,7 +358,7 @@ const LANG = {
     errorShot: '⚠️ Сюда уже стреляли',
     gameOver: '🔱 Игра закончилась.',
     gameInfo: '{code} {mode}',
-    seaBattle: '⚓ Морской бой',
+    seaBattle: 'Морской бой',
     selectGame: 'Выбери режим',
     inviteFriend: 'Пригласить друга',
     ckInviteFriend: 'Пригласить друга',
@@ -384,14 +384,14 @@ const LANG = {
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
     stripPlayAgain: '💪 Отыграться',
-    checkers: '♟ Шашки',
+    checkers: 'Шашки',
     ckHint: '💡 Подсказка',
     ckNoMoves: 'Нет ходов',
     stEasy: 'Легко',
     stMedium: 'Средне',
     stHard: 'Сложно',
     selectDifficulty: 'Выбери сложность',
-    pdTitle: '🎲 Покер в кости',
+    pdTitle: 'Покер в кости',
     pdSolo: '🕹️ Соло',
     pdFriend: '👤 С другом',
     pdRoll: '🎲 Бросить',
@@ -463,7 +463,7 @@ const LANG = {
     errorShot: '⚠️ Сюди вже стріляли',
     gameOver: '🔱 Гра закінчилась.',
     gameInfo: '{code} {mode}',
-    seaBattle: '⚓ Морський бій',
+    seaBattle: 'Морський бій',
     selectGame: 'Обери режим',
     inviteFriend: 'Запросити друга',
     ckInviteFriend: 'Запросити друга',
@@ -489,14 +489,14 @@ const LANG = {
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
     stripPlayAgain: '💪 Відігратись',
-    checkers: '♟ Шашки',
+    checkers: 'Шашки',
     ckHint: '💡 Підказка',
     ckNoMoves: 'Немає ходів',
     stEasy: 'Легко',
     stMedium: 'Середньо',
     stHard: 'Складно',
     selectDifficulty: 'Обери складність',
-    pdTitle: '🎲 Покер у кості',
+    pdTitle: 'Покер у кості',
     pdSolo: '🕹️ Соло',
     pdFriend: '👤 З другом',
     pdRoll: '🎲 Кинути',
@@ -568,7 +568,7 @@ const LANG = {
     errorShot: '⚠️ Already targeted',
     gameOver: '🔱 Game over.',
     gameInfo: '{code} {mode}',
-    seaBattle: '⚓ Sea Battle',
+    seaBattle: 'Sea Battle',
     selectGame: 'Select mode',
     inviteFriend: 'Invite friend',
     ckInviteFriend: 'Invite friend',
@@ -594,14 +594,14 @@ const LANG = {
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
     stripPlayAgain: '💪 Redeem',
-    checkers: '♟ Checkers',
+    checkers: 'Checkers',
     ckHint: '💡 Hint',
     ckNoMoves: 'No moves',
     stEasy: 'Easy',
     stMedium: 'Medium',
     stHard: 'Hard',
     selectDifficulty: 'Choose difficulty',
-    pdTitle: '🎲 Poker Dice',
+    pdTitle: 'Poker Dice',
     pdSolo: '🕹️ Solo',
     pdFriend: '👤 With Friend',
     pdRoll: '🎲 Roll',
@@ -1116,12 +1116,12 @@ function showMainMenu(){
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-      <img src="/static/game-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">⚓ ${t('seaBattle')}</div>
+      <img src="/static/sb-navy.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
     <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
-      <img src="/static/mode-dice.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <img src="/static/pd-green.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>

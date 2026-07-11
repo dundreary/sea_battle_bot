@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5C2A"/>
+      <stop offset="100%" stop-color="#6B4423"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#D4B896"/>
+    </linearGradient>
+    <linearGradient id="metalDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A2810"/>
+      <stop offset="100%" stop-color="#2E1A0A"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="url(#bg)"/>
+  <line x1="32" y1="10" x2="32" y2="20" stroke="url(#metalDark)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M24 20 L40 20 L40 22 L36 22 L36 26 Q32 30 28 26 L28 22 L24 22 Z" fill="url(#metal)"/>
+  <line x1="36" y1="22" x2="36" y2="32" stroke="url(#metalDark)" stroke-width="1.5"/>
+  <path d="M28 22 Q28 16 32 14 Q36 16 36 22" fill="url(#metal)"/>
+  <path d="M18 32 Q32 46 46 32" fill="none" stroke="url(#metal)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M18 32 L14 30 M46 32 L50 30" stroke="url(#metalDark)" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M18 34 L22 38 M46 34 L42 38" stroke="url(#metalDark)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M28 46 Q32 42 36 46" fill="none" stroke="url(#metalDark)" stroke-width="1.5"/>
+  <rect x="30" y="46" width="4" height="8" rx="1" fill="url(#metalDark)"/>
+</svg>

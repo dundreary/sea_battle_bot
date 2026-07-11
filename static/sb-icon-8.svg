@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5C2A"/>
+      <stop offset="100%" stop-color="#6B4423"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A2810"/>
+      <stop offset="100%" stop-color="#2E1A0A"/>
+    </linearGradient>
+    <linearGradient id="handle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#D4B896"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="url(#bg)"/>
+  <circle cx="32" cy="32" r="18" fill="none" stroke="url(#metal)" stroke-width="2.5"/>
+  <circle cx="32" cy="32" r="15" fill="none" stroke="url(#metal)" stroke-width="1"/>
+  <circle cx="32" cy="32" r="8" fill="none" stroke="url(#metal)" stroke-width="1.5"/>
+  <line x1="32" y1="14" x2="32" y2="8" stroke="url(#handle)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="32" y1="56" x2="32" y2="50" stroke="url(#handle)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="14" y1="32" x2="8" y2="32" stroke="url(#handle)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="56" y1="32" x2="50" y2="32" stroke="url(#handle)" stroke-width="3" stroke-linecap="round"/>
+  <line x1="17" y1="17" x2="23" y2="23" stroke="url(#handle)" stroke-width="2"/>
+  <line x1="47" y1="17" x2="41" y2="23" stroke="url(#handle)" stroke-width="2"/>
+  <line x1="17" y1="47" x2="23" y2="41" stroke="url(#handle)" stroke-width="2"/>
+  <line x1="47" y1="47" x2="41" y2="41" stroke="url(#handle)" stroke-width="2"/>
+  <path d="M26 32 Q28 28 32 28 Q36 28 38 32 Q36 36 32 36 Q28 36 26 32" fill="url(#handle)" stroke="url(#metal)" stroke-width="1"/>
+</svg>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5C2A"/>
+      <stop offset="100%" stop-color="#6B4423"/>
+    </linearGradient>
+    <linearGradient id="pole" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A2810"/>
+      <stop offset="100%" stop-color="#2E1A0A"/>
+    </linearGradient>
+    <linearGradient id="cloth" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#D4B896"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="url(#bg)"/>
+  <line x1="16" y1="8" x2="16" y2="52" stroke="url(#pole)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="16" cy="8" r="2.5" fill="url(#pole)"/>
+  <path d="M18 12 L48 18 L48 34 L18 36 Z" fill="url(#cloth)" stroke="#4A2810" stroke-width="1"/>
+  <line x1="18" y1="20" x2="48" y2="24" stroke="#4A2810" stroke-width="1" opacity="0.4"/>
+  <line x1="18" y1="28" x2="48" y2="30" stroke="#4A2810" stroke-width="1" opacity="0.4"/>
+  <line x1="28" y1="12" x2="28" y2="36" stroke="#4A2810" stroke-width="0.5" opacity="0.3"/>
+  <line x1="38" y1="14" x2="38" y2="35" stroke="#4A2810" stroke-width="0.5" opacity="0.3"/>
+  <path d="M38 14 L42 14 L42 22 L38 22 Z" fill="#4A2810" opacity="0.6"/>
+  <path d="M28 18 L32 18 L32 26 L28 26 Z" fill="#4A2810" opacity="0.4"/>
+</svg>

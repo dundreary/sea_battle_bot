@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8B5C2A"/>
+      <stop offset="100%" stop-color="#6B4423"/>
+    </linearGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4A2810"/>
+      <stop offset="100%" stop-color="#2E1A0A"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#D4A96A"/>
+      <stop offset="50%" stop-color="#C49A6C"/>
+      <stop offset="100%" stop-color="#D4A96A"/>
+    </linearGradient>
+    <linearGradient id="deck" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F3E2C7"/>
+      <stop offset="100%" stop-color="#D4B896"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="8" fill="url(#bg)"/>
+  <path d="M12 40 L14 34 L50 34 L52 40 L56 44 L8 44 Z" fill="url(#hull)"/>
+  <rect x="18" y="28" width="28" height="6" rx="2" fill="url(#deck)"/>
+  <rect x="30" y="18" width="10" height="10" rx="2" fill="url(#hull)"/>
+  <rect x="32" y="14" width="6" height="6" rx="1.5" fill="url(#deck)"/>
+  <rect x="20" y="30" width="4" height="8" rx="1" fill="#2E1A0A"/>
+  <rect x="26" y="30" width="4" height="8" rx="1" fill="#2E1A0A"/>
+  <rect x="34" y="30" width="4" height="8" rx="1" fill="#2E1A0A"/>
+  <rect x="40" y="30" width="4" height="8" rx="1" fill="#2E1A0A"/>
+  <line x1="35" y1="14" x2="35" y2="6" stroke="#D4A96A" stroke-width="1.5" opacity="0.6"/>
+  <polygon points="35,6 33,10 37,10" fill="#D4A96A" opacity="0.6"/>
+  <path d="M12 44 Q20 48 32 48 Q44 48 52 44" fill="none" stroke="url(#water)" stroke-width="2"/>
+</svg>
