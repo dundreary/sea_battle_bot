@@ -1070,16 +1070,44 @@ function copyToClipboard(text, msg){
   }
 }
 
-async function joinGame(){
-  const code=prompt(t('joinPlaceholder'));
-  if(!code)return;
-  const res=await api('/api/join',{uid:getUid(),code:code.toUpperCase()});
-  if(!res||!res.ok){setStatus(t('joinError'));return}
-  gameCode=code.toUpperCase();
-  localStorage.setItem('sb_game',gameCode);
-  $('actions').innerHTML='';
-  await refreshState();
-  pollGame();
+async function joinByCode(code){
+  const resolveRes = await api('/api/resolve_code', {code});
+  if(!resolveRes || !resolveRes.ok){
+    setStatus(t('joinError'), '');
+    return;
+  }
+  const gameType = resolveRes.game;
+  if(gameType === 'sea_battle'){
+    const res = await api('/api/join', {uid: getUid(), code});
+    if(!res || !res.ok){ setStatus(t('joinError')); return; }
+    gameCode = code;
+    localStorage.setItem('sb_game', code);
+    $('actions').innerHTML = '';
+    await refreshState();
+    pollGame();
+  } else if(gameType === 'poker_dice'){
+    const res = await api('/api/pd_join', {uid: getUid(), code});
+    if(!res || !res.ok){ setStatus(t('joinError')); return; }
+    pdCode = code;
+    localStorage.setItem('pd_game', code);
+    $('actions').innerHTML = '';
+    pdShowGame(res.state);
+    pdPoll();
+  } else if(gameType === 'checkers'){
+    const res = await api('/api/checkers_join', {uid: getUid(), code});
+    if(!res || !res.ok){ setStatus(t('joinError')); return; }
+    ckCode = code;
+    localStorage.setItem('ck_game', code);
+    $('actions').innerHTML = '';
+    ckShowGame(res.state);
+    ckPoll();
+  }
+}
+
+async function universalJoinGame(){
+  const code = prompt(t('joinPlaceholder'));
+  if(!code) return;
+  await joinByCode(code.toUpperCase());
 }
 
 let pollTimer=null;
@@ -1118,6 +1146,11 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
+    <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
+      <img src="/static/mode-join.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
+      <div class="card-desc">${t('joinBtn')}</div>
+    </div>
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
       <img src="/static/sb-navy.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
@@ -1189,11 +1222,6 @@ function showSeaBattleMenu(){
       <img src="/static/mode-shirt.svg" class="card-icon">
       <div class="name">${t('stripMode')}</div>
       <div class="card-desc">${t('stripDesc')}</div>
-    </div>
-    <div class="game-card" onclick="joinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" class="card-icon">
-      <div class="name">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
     </div>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
@@ -1400,19 +1428,9 @@ function showPokerDice(){
       <div class="name">${t('pdFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <div class="game-card" onclick="pdJoinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" class="card-icon">
-      <div class="name">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
-    </div>
     ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
-}
-
-function pdJoinGame(){
-  const code=prompt(t('joinPlaceholder'));
-  if(code) pdJoin(code);
 }
 
 async function pdStartSolo(){
@@ -1938,19 +1956,9 @@ function showCheckers(){
       <div class="name">${t('vsFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <div class="game-card" onclick="ckJoinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" class="card-icon">
-      <div class="name">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
-    </div>
     ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
   `;
-}
-
-function ckJoinGame(){
-  const code=prompt(t('joinPlaceholder'));
-  if(code)ckJoin(code);
 }
 
 async function ckStartSolo(){
@@ -2256,49 +2264,7 @@ async function checkStartParam(){
   try {
     const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
     if(!sp) return;
-    const code = sp.trim().toUpperCase();
-    // Verify the code exists before joining
-    const resolveRes = await api('/api/resolve_code', {code});
-    if(!resolveRes || !resolveRes.ok){
-      setStatus(t('joinError'), '');
-      return;
-    }
-    // Try Sea Battle
-    const sbRes = await api('/api/join', {uid: getUid(), code});
-    if(sbRes && sbRes.ok){
-          gameCode = code;
-      localStorage.setItem('sb_game', code);
-      $('actions').innerHTML = '';
-      await refreshState();
-      pollGame();
-      return;
-    }
-    // Try Poker Dice
-    if(resolveRes.game === 'poker_dice'){
-      const pdRes = await api('/api/pd_join', {uid: getUid(), code});
-      if(pdRes && pdRes.ok){
-        pdCode = code;
-        localStorage.setItem('pd_game', code);
-        $('actions').innerHTML = '';
-        pdShowGame(pdRes.state);
-        pdPoll();
-        return;
-      }
-    }
-    // Try Checkers
-    if(resolveRes.game === 'checkers'){
-      const ckRes = await api('/api/checkers_join', {uid: getUid(), code});
-      if(ckRes && ckRes.ok){
-        ckCode = code;
-        localStorage.setItem('ck_game', code);
-        $('actions').innerHTML = '';
-        ckShowGame(ckRes.state);
-        ckPoll();
-        return;
-      }
-    }
-    // Join failed – show error
-    setStatus(t('joinError'), '');
+    await joinByCode(sp.trim().toUpperCase());
   } catch(e){}
 }
 

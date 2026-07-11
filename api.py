@@ -256,16 +256,6 @@ def new_multi(uid, strip=False):
     games[code] = game
     return game
 
-def join_game(uid, code):
-    game = games.get(code)
-    if not game:
-        return None, "not_found"
-    if game.player2_id is not None:
-        return None, "full"
-    game.player2_id = uid
-    game.phase = "placing"
-    return game, "ok"
-
 def _with_uid(uid, fn):
     if not uid:
         return {"error": "no uid"}
@@ -300,9 +290,15 @@ def _do_new_multi(data, uid):
 def _handle_join(data, uid, code):
     if not uid or not code:
         return {"error": "no uid/code"}
-    game, status = join_game(uid, code)
+    game = games.get(code)
     if not game:
-        return {"ok": False, "error": status}
+        return {"ok": False, "error": "not_found"}
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    game.player2_id = uid
+    game.phase = "placing"
     player_games[str(uid)] = code
     save()
     return {"ok": True, "state": as_dict(game, uid)}
