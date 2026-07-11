@@ -264,29 +264,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black.king{color:#FFD700}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
-.st-board{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);gap:0;width:100%;max-width:360px;aspect-ratio:1;background:#3E2510;border:3px solid #2a1a0a;border-radius:8px;overflow:hidden;margin:4px 0}
-.st-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;cursor:default;transition:background .12s;user-select:none;font-size:clamp(9px,2.5vw,14px);font-weight:700;position:relative}
-.st-cell.light{background:#D4A96A}
-.st-cell.dark{background:#8B5C2A}
-.st-cell.lake{background:#3B6BA5!important;cursor:default!important;pointer-events:none}
-.st-cell.lake::after{content:'~';color:rgba(255,255,255,.3);font-size:clamp(12px,3vw,20px)}
-.st-cell.selected{outline:3px solid #FFD700;outline-offset:-3px;z-index:1}
-.st-cell.highlight-src{background:#42A5F5!important;cursor:pointer!important}
-.st-cell.highlight-dest{background:#66BB6A!important;cursor:pointer!important}
-.st-cell.battle-result{background:#EF5350!important}
-.st-cell.enemy{background:radial-gradient(circle at 35% 35%, #666, #333);border:1px solid #555;color:#eee;font-size:clamp(14px,4vw,24px);cursor:default}
-.st-piece{width:80%;height:80%;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-size:clamp(8px,2.2vw,12px);font-weight:700;cursor:pointer;transition:transform .12s;position:relative;line-height:1.1}
-.st-piece:active{transform:scale(.9)}
-.st-piece.p1{background:radial-gradient(circle at 35% 35%, #5B9BD5, #2B579A);border:2px solid #1A3A6A;color:#fff}
-.st-piece.p2{background:radial-gradient(circle at 35% 35%, #E57373, #B71C1C);border:2px solid #7F0000;color:#fff}
-.st-piece.immobile{opacity:.7;cursor:default}
-.st-piece .st-rank{font-size:clamp(10px,2.8vw,16px);line-height:1}
-.st-piece .st-name{font-size:clamp(6px,1.6vw,9px);opacity:.8;line-height:1}
-.st-palette{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;padding:6px;margin:4px 0;background:var(--bg-board);border:1px solid var(--border-color);border-radius:8px;max-width:360px}
-.st-palette-item{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:clamp(8px,2vw,12px);background:var(--bg-board-alt);border:2px solid transparent;transition:.1s;color:#fff}
-.st-palette-item:hover{border-color:var(--accent-primary)}
-.st-palette-item.selected{background:var(--color-btn-primary-1);border-color:var(--accent-primary)}
-.st-palette-item .count{color:var(--text-muted);font-size:clamp(7px,1.5vw,11px)}
+
 
 
 </style>
@@ -333,12 +311,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="ck-board" id="ckBoard"></div>
     <div class="btn-row" id="ckActions" style="margin-top:14px;min-height:120px"></div>
   </div>
-  <div id="stArea" style="display:none">
-    <div class="st-board" id="stBoard"></div>
-    <div class="st-palette" id="stPalette" style="display:none"></div>
-    <div class="btn-row" id="stActions" style="margin-top:8px"></div>
   </div>
-</div>
 
 
 <script>
@@ -385,20 +358,8 @@ const LANG = {
     errorShot: '⚠️ Сюда уже стреляли',
     gameOver: '🔱 Игра закончилась.',
     gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Анаграмма',
-    anaSolo: '🕹️ Соло',
-    anaFriend: '👤 С другом',
-    anaPlaceholder: 'Введи слово...',
-    anaFound: 'Найдено: {}',
-    anaHint: '💡 Подсказка (-200)',
-    anaWaiting: '⏳ Ожидаем соперника...',
-    anaOver: 'Игра окончена! Счёт: {}',
-    anaPlayAgain: '🔄 Играть ещё',
     seaBattle: '⚓ Морской бой',
     selectGame: 'Выбери режим',
-    anaLettersCode: 'Буквы: {}',
-    anaAllWords: 'Все возможные слова: {}',
-    anaBaseWord: 'Основное слово: {}',
     inviteFriend: 'Пригласить друга',
     ckInviteFriend: 'Пригласить друга',
     shareCopied: 'Код скопирован, отправь другу',
@@ -426,16 +387,6 @@ const LANG = {
     checkers: '♟ Шашки',
     ckHint: '💡 Подсказка',
     ckNoMoves: 'Нет ходов',
-    stratego: '♟ Стратего',
-    stSolo: '🕹️ Соло',
-    stFriend: '👤 С другом',
-    stPlacePieces: 'Расстановка фигур',
-    stRemaining: 'Осталось:',
-    stNoMoves: 'Нет ходов',
-    stBattle: '⚔️ Бой: {a} vs {d}',
-    stYourTurn: '⚔️ ТВОЙ ХОД!',
-    stOppTurn: '⏳ ХОД СОПЕРНИКА...',
-    stSetupTitle: 'Расставь фигуры',
     stEasy: 'Легко',
     stMedium: 'Средне',
     stHard: 'Сложно',
@@ -512,20 +463,8 @@ const LANG = {
     errorShot: '⚠️ Сюди вже стріляли',
     gameOver: '🔱 Гра закінчилась.',
     gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Анаграма',
-    anaSolo: '🕹️ Соло',
-    anaFriend: '👤 З другом',
-    anaPlaceholder: 'Введи слово...',
-    anaFound: 'Знайдено: {}',
-    anaHint: '💡 Підказка (-200)',
-    anaWaiting: '⏳ Чекаємо суперника...',
-    anaOver: 'Гра закінчена! Рахунок: {}',
-    anaPlayAgain: '🔄 Грати ще',
     seaBattle: '⚓ Морський бій',
     selectGame: 'Обери режим',
-    anaLettersCode: 'Букви: {}',
-    anaAllWords: 'Всі можливі слова: {}',
-    anaBaseWord: 'Основне слово: {}',
     inviteFriend: 'Запросити друга',
     ckInviteFriend: 'Запросити друга',
     shareCopied: 'Код скопійовано, надішли другу',
@@ -553,16 +492,6 @@ const LANG = {
     checkers: '♟ Шашки',
     ckHint: '💡 Підказка',
     ckNoMoves: 'Немає ходів',
-    stratego: '♟ Стратего',
-    stSolo: '🕹️ Соло',
-    stFriend: '👤 З другом',
-    stPlacePieces: 'Розстановка фігур',
-    stRemaining: 'Залишилось:',
-    stNoMoves: 'Немає ходів',
-    stBattle: '⚔️ Бій: {a} vs {d}',
-    stYourTurn: '⚔️ ТВІЙ ХІД!',
-    stOppTurn: '⏳ ХІД СУПЕРНИКА...',
-    stSetupTitle: 'Розстав фігури',
     stEasy: 'Легко',
     stMedium: 'Середньо',
     stHard: 'Складно',
@@ -639,20 +568,8 @@ const LANG = {
     errorShot: '⚠️ Already targeted',
     gameOver: '🔱 Game over.',
     gameInfo: '{code} {mode}',
-    anaTitle: '🔤 Anagram',
-    anaSolo: '🕹️ Solo',
-    anaFriend: '👤 With Friend',
-    anaPlaceholder: 'Type a word...',
-    anaFound: 'Found: {}',
-    anaHint: '💡 Hint (-200)',
-    anaWaiting: '⏳ Waiting for opponent...',
-    anaOver: 'Game over! Score: {}',
-    anaPlayAgain: '🔄 Play again',
     seaBattle: '⚓ Sea Battle',
     selectGame: 'Select mode',
-    anaLettersCode: 'Letters: {}',
-    anaAllWords: 'All possible words: {}',
-    anaBaseWord: 'Base word: {}',
     inviteFriend: 'Invite friend',
     ckInviteFriend: 'Invite friend',
     shareCopied: 'Code copied, send to friend',
@@ -680,16 +597,6 @@ const LANG = {
     checkers: '♟ Checkers',
     ckHint: '💡 Hint',
     ckNoMoves: 'No moves',
-    stratego: '♟ Stratego',
-    stSolo: '🕹️ Solo',
-    stFriend: '👤 With Friend',
-    stPlacePieces: 'Place your pieces',
-    stRemaining: 'Remaining:',
-    stNoMoves: 'No moves',
-    stBattle: '⚔️ Battle: {a} vs {d}',
-    stYourTurn: '⚔️ YOUR TURN!',
-    stOppTurn: '⏳ OPPONENT\'S TURN...',
-    stSetupTitle: 'Set up your pieces',
     stEasy: 'Easy',
     stMedium: 'Medium',
     stHard: 'Hard',
@@ -737,7 +644,6 @@ function hideAllGameAreas(){
   $('oppBoardWrap').style.display='none';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
-  $('stArea').style.display='none';
   $('shipHint').innerHTML = '';
 }
 
@@ -924,7 +830,6 @@ function updateUI(){
   const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
-  $('stArea').style.display='none';
   $('ownBoardWrap').style.display='block';
   $('oppBoardWrap').style.display='block';
   renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
@@ -1199,7 +1104,6 @@ function showMainMenu(){
   setThemeSelectorVisibility(false);
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
-  $('stArea').style.display='none';
   $('shipHint').innerHTML = '';
   document.title = t('seaBattle');
   $('gameInfo').textContent='';
@@ -1226,13 +1130,6 @@ function showMainMenu(){
       <div class="name" style="color:#D4A96A">${t('checkers')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
-    <!-- Stratego disabled — see AUDIT.md.
-    <div class="game-card" onclick="showStratego()" style="margin-bottom:8px">
-      <svg style="width:64px;height:64px;display:block;margin:0 auto 8px" viewBox="0 0 64 64"><rect x="8" y="8" width="48" height="48" rx="4" fill="none" stroke="#D4A96A" stroke-width="2"/><text x="32" y="30" text-anchor="middle" font-size="10" fill="#D4A96A">♟</text><text x="32" y="42" text-anchor="middle" font-size="8" fill="#D4A96A">⚔️</text></svg>
-      <div class="name" style="color:#D4A96A">${t('stratego')}</div>
-      <div class="card-desc">${t('startBtn')}</div>
-    </div>
-    -->
   `;
   updateContinueButton();
   fetchActiveGames();
@@ -2285,498 +2182,7 @@ async function ckSurrender(){
   showMainMenu();
 }
 
-/* ---- Stratego disabled (game currently not offered) — see AUDIT.md. ----
-// ---- Stratego ----
-let stState=null, stCode=null, stSelected=null, stPaletteType=null;
-let stDifficulty = 2;
 
-function showStBotDifficulty(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  document.title = t('stratego');
-  setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent='';
-  $('shipHint').innerHTML = '';
-  $('header').classList.remove('in-game');
-  $('app').insertBefore($('status'), $('app').firstChild);
-  $('actions').className='btn-row stack';
-  $('actions').innerHTML=`
-    <button class="btn success" onclick="stStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn primary" onclick="stStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
-    <button class="btn outline" onclick="stStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
-    <button class="btn outline quit-btn" onclick="showStratego()" style="margin-top:8px">${t('quit')}</button>
-  `;
-}
-
-function stStartWithDifficulty(diff){
-  stDifficulty = diff;
-  stStartSolo();
-}
-
-const ST_PIECE_NAMES={1:'F',2:'S',3:'s',4:'M',5:'5',6:'6',7:'7',8:'8',9:'9',10:'10',11:'11',12:'B'};
-const ST_PIECE_TITLES={1:{ru:'Флаг',uk:'Прапор',en:'Flag'},2:{ru:'Шпион',uk:'Шпигун',en:'Spy'},3:{ru:'Разведчик',uk:'Розвідник',en:'Scout'},4:{ru:'Минёр',uk:'Мінер',en:'Miner'},5:{ru:'Сержант',uk:'Сержант',en:'Sergeant'},6:{ru:'Лейтенант',uk:'Лейтенант',en:'Lieutenant'},7:{ru:'Капитан',uk:'Капітан',en:'Captain'},8:{ru:'Майор',uk:'Майор',en:'Major'},9:{ru:'Полковник',uk:'Полковник',en:'Colonel'},10:{ru:'Генерал',uk:'Генерал',en:'General'},11:{ru:'Маршал',uk:'Маршал',en:'Marshal'},12:{ru:'Бомба',uk:'Бомба',en:'Bomb'}};
-const ST_CAN_MOVE={1:false,12:false};
-function stCanMove(t){return ST_CAN_MOVE[t]!==false}
-function stTitle(t){const m=ST_PIECE_TITLES[t];return m?m[lang]:'?'}
-
-function showStratego(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  hideAllGameAreas();
-  if($('legend'))$('legend').style.display='none';
-  document.title=t('stratego');
-  $('gameInfo').textContent='';
-  setStatus('');
-  $('actions').className='btn-row stack';
-  var savedSt = localStorage.getItem('st_game');
-  var resumeHtml = '';
-  if(savedSt){
-    resumeHtml = `<div class="active-game-row" onclick="resumeSt('${savedSt}')">
-      <div class="info"><span class="label">♟ </span><span class="code">${savedSt}</span></div>
-      <span class="badge playing">▶ ${t('continue')}</span>
-    </div>`;
-  }
-  $('actions').innerHTML=`
-    ${resumeHtml}
-    <div class="game-card" onclick="showStBotDifficulty()" style="margin-bottom:8px">
-      <img src="/static/mode-bot.svg" class="card-icon">
-      <div class="name">${t('vsBot')}</div>
-      <div class="card-desc">${t('withBot')}</div>
-    </div>
-    ${!savedSt ? `
-    <div class="game-card" onclick="stNewMulti()" style="margin-bottom:8px">
-      <img src="/static/mode-friend.svg" class="card-icon">
-      <div class="name">${t('vsFriend')}</div>
-      <div class="card-desc">${t('withFriend')}</div>
-    </div>
-    <div class="game-card" onclick="stJoinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" class="card-icon">
-      <div class="name">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
-    </div>
-    ` : ''}
-    <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
-  `;
-}
-
-function stJoinGame(){
-  const code=prompt(t('joinPlaceholder'));
-  if(code)stJoin(code);
-}
-
-async function stStartSolo(){
-  const res=await api('/api/stratego_new_solo',{uid:getUid(), difficulty: stDifficulty});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  stCode=res.code;
-  localStorage.setItem('st_game',stCode);
-  stShowGame(res.state);
-}
-
-async function stNewMulti(){
-  const res=await api('/api/stratego_new_multi',{uid:getUid()});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  stCode=res.code;
-  localStorage.setItem('st_game',stCode);
-  stShowGame(res.state);
-  stPoll();
-}
-
-async function stJoin(code){
-  const res=await api('/api/stratego_join',{uid:getUid(),code:code.toUpperCase()});
-  if(!res||!res.ok){setStatus(t('joinError'));return}
-  stCode=code.toUpperCase();
-  localStorage.setItem('st_game',stCode);
-  stShowGame(res.state);
-  stPoll();
-}
-
-let stPollTimer=null;
-function stPoll(){
-  if(stPollTimer)clearInterval(stPollTimer);
-  stPollTimer=setInterval(async()=>{
-    if(!stCode){clearInterval(stPollTimer);stPollTimer=null;return}
-    await stRefreshState();
-  },2000);
-}
-
-async function stRefreshState(){
-  if(!stCode)return;
-  const res=await api('/api/stratego_state',{uid:getUid(),code:stCode});
-  if(!res||!res.ok){
-    localStorage.removeItem('st_game');
-    stCode=null;
-    showStratego();
-    return;
-  }
-  if(!stCode)return;
-  stShowGame(res.state);
-}
-
-function stShowGame(st){
-  stState=st;
-  stSelected=null;
-  stPaletteType=null;
-  hideAllGameAreas();
-  $('stArea').style.display='';
-  setThemeSelectorVisibility(false);
-  $('header').classList.add('in-game');
-  document.title=t('stratego');
-  $('gameInfo').textContent='';
-
-  if(st.phase==='setup_p1'||st.phase==='setup_p2'){
-    stRenderSetup(st);
-    return;
-  }
-
-  if(st.phase==='finished'){
-    if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
-    localStorage.removeItem('st_game');
-    const isWin=st.winner===st.you;
-    const icon=isWin?'🏆':'💔';
-    const title=isWin?t('win'):t('lose');
-    showResult(icon,title,t('stratego'),false);
-    $('actions').className='btn-row stack';
-    $('actions').innerHTML=`
-      <button class="btn success" onclick="stStartSolo()">${t('playAgain')}</button>
-      <button class="btn outline" onclick="showStratego()">${t('close')}</button>
-    `;
-    return;
-  }
-
-  stRenderBoard(st);
-
-if(st.my_turn){
-    setStatus('⚔️ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
-    $('actions').className='btn-row';
-    const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareStGame()">📤 ${t('inviteFriend')}</button>`;
-    $('actions').innerHTML=`
-      ${inviteBtn}
-      <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
-    `;
-  }else{
-    setStatus('⏳ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
-    $('actions').className='btn-row';
-    $('actions').innerHTML=`
-      <button class="btn outline quit-btn" onclick="stSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>
-    `;
-  }
-  if(!st.solo){
-    $('status').style.cursor='pointer';
-    $('status').title=t('copyCode');
-    $('status').onclick=()=>navigator.clipboard.writeText(st.code).then(()=>setStatus('✅ '+t('shareCopied'),''));
-  }
-  // Theme/sound/vibe footer
-  setThemeSelectorVisibility(true);
-  updateSettingsUI();
-}
-
-function stRenderSetup(st){
-  const board=$('stBoard');
-  board.innerHTML='';
-  const grid=st.board;
-  const isMySetup=(st.phase==='setup_p1'&&st.turn===1)||(st.phase==='setup_p2'&&st.turn===2);
-  const myOwner=st.turn; // 1 or 2
-
-  for(let r=0;r<10;r++){
-    for(let c=0;c<10;c++){
-      const cell=document.createElement('div');
-      const isDark=(r+c)%2===1;
-      cell.className='st-cell '+(isDark?'dark':'light');
-      const idx=r*10+c;
-      const val=grid[idx];
-      const isLake=val===99;
-      if(isLake){cell.className+=' lake';board.appendChild(cell);continue}
-      if(val===-99){board.appendChild(cell);continue}
-
-      const isMine=(val>0&&myOwner===1)||(val<0&&myOwner===2&&val!==-99);
-      const absVal=Math.abs(val);
-
-      if(isMine&&absVal>0){
-        cell.classList.add('st-piece','p'+(myOwner===1?1:2));
-        cell.style.width='80%';cell.style.height='80%';
-        cell.style.borderRadius='6px';
-        cell.style.display='flex';cell.style.flexDirection='column';
-        cell.style.alignItems='center';cell.style.justifyContent='center';
-        const rankSpan=document.createElement('span');
-        rankSpan.className='st-rank';
-        rankSpan.textContent=ST_PIECE_NAMES[absVal]||'?';
-        cell.appendChild(rankSpan);
-        const nameSpan=document.createElement('span');
-        nameSpan.className='st-name';
-        nameSpan.textContent=stTitle(absVal);
-        cell.appendChild(nameSpan);
-        cell.onclick=()=>stSetupClick(r,c);
-      }
-
-      board.appendChild(cell);
-    }
-  }
-
-  $('stPalette').style.display=isMySetup?'flex':'none';
-  $('stPalette').innerHTML='';
-  if(isMySetup){
-    const remaining=st.remaining_pieces||{};
-    const types=Object.keys(remaining).map(Number).sort((a,b)=>b-a);
-    for(const t of types){
-      const cnt=remaining[t];
-      const el=document.createElement('div');
-      el.className='st-palette-item'+(stPaletteType===t?' selected':'');
-      el.innerHTML=`<b>${ST_PIECE_NAMES[t]||'?'}</b> ${stTitle(t)} <span class="count">(${cnt})</span>`;
-      if(!stCanMove(t))el.style.opacity='.6';
-      el.onclick=()=>{
-        stPaletteType=stPaletteType===t?null:t;
-        stRenderSetup(st);
-      };
-      $('stPalette').appendChild(el);
-    }
-  }
-
-  $('actions').className='btn-row';
-  const rows=isMySetup?`
-    <button class="btn primary" onclick="stAutoSetup()">${{ru:'🔀 Авто',uk:'🔀 Авто',en:'🔀 Auto'}[lang]}</button>
-    <button class="btn success" onclick="stConfirmSetup()">${{ru:'✅ Готово',uk:'✅ Готово',en:'✅ Done'}[lang]}</button>
-  `:'';
-  $('actions').innerHTML=rows+`<button class="btn outline" onclick="leaveStGame()">${t('minimize')}</button>`;
-
-  setStatus('⚔️ '+t('stSetupTitle')+' — '+t('stRemaining')+' '+Object.values(remaining).reduce((a,b)=>a+b,0),'');
-}
-
-function stSetupClick(r,c){
-  const val=stState.board[r*10+c];
-  const isMySetup=(stState.phase==='setup_p1'&&stState.turn===1)||(stState.phase==='setup_p2'&&stState.turn===2);
-  const myOwner=stState.turn;
-  if(!isMySetup)return;
-  // Check if there's already a piece of ours at this cell
-  const isMine=(val>0&&myOwner===1)||(val<0&&myOwner===2&&val!==-99);
-  if(isMine){
-    // Remove piece
-    api('/api/stratego_remove',{uid:getUid(),code:stCode,r,c}).then(res=>{
-      if(!res||!res.ok)return;
-      sfxPlace();
-      stShowGame(res.state);
-    });
-    return;
-  }
-  if(!stPaletteType)return;
-  if(val!==0)return;
-  api('/api/stratego_place',{uid:getUid(),code:stCode,r,c,type:stPaletteType}).then(res=>{
-    if(!res||!res.ok){setStatus('⚠️ '+(res?.error||t('error')));return}
-    sfxPlace();
-    stShowGame(res.state);
-  });
-}
-
-async function stAutoSetup(){
-  const res=await api('/api/stratego_auto_setup',{uid:getUid(),code:stCode});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  stShowGame(res.state);
-}
-
-async function stConfirmSetup(){
-  const res=await api('/api/stratego_confirm',{uid:getUid(),code:stCode});
-  if(!res||!res.ok){setStatus('⚠️ '+(res?.error||t('error')));return}
-  stShowGame(res.state);
-}
-
-const ST_MOVABLE={1:false,12:false};
-
-function stRenderBoard(st){
-  const board=$('stBoard');
-  board.innerHTML='';
-  const grid=st.board;
-  const myTurn=st.my_turn;
-
-  let moves=null;
-  let selectedCell=null;
-  if(stSelected){
-    const idx=stSelected[0]*10+stSelected[1];
-    const val=grid[idx];
-    const absVal=val>0?val:(val<0&&val!==-99?-val:0);
-    if(absVal>0){
-      if(ST_MOVABLE[absVal]===false){
-        moves=null;
-      }else{
-        moves=stComputeMoves(st,stSelected[0],stSelected[1]);
-      }
-    }
-  }
-
-  for(let r=0;r<10;r++){
-    for(let c=0;c<10;c++){
-      const cell=document.createElement('div');
-      const isDark=(r+c)%2===1;
-      cell.className='st-cell '+(isDark?'dark':'light');
-      const idx=r*10+c;
-      const val=grid[idx];
-      const isLake=val===99;
-      if(isLake){cell.className+=' lake';board.appendChild(cell);continue}
-
-      if(val===0){
-        // empty cell
-      }else if(val<0){
-        if(val===-99){
-          cell.classList.add('enemy');
-          cell.textContent='?';
-        }else{
-          // own piece with negative value (P2)
-          const absVal=-val;
-          cell.classList.add('st-piece','p2');
-          cell.style.width='80%';cell.style.height='80%';
-          cell.style.borderRadius='6px';
-          cell.style.display='flex';cell.style.flexDirection='column';
-          cell.style.alignItems='center';cell.style.justifyContent='center';
-          const rankSpan=document.createElement('span');
-          rankSpan.className='st-rank';
-          rankSpan.textContent=ST_PIECE_NAMES[absVal]||'?';
-          cell.appendChild(rankSpan);
-          const nameSpan=document.createElement('span');
-          nameSpan.className='st-name';
-          nameSpan.textContent=stTitle(absVal);
-          cell.appendChild(nameSpan);
-        }
-      }else{
-        const absVal=val;
-        cell.classList.add('st-piece','p1');
-        cell.style.width='80%';cell.style.height='80%';
-        cell.style.borderRadius='6px';
-        cell.style.display='flex';cell.style.flexDirection='column';
-        cell.style.alignItems='center';cell.style.justifyContent='center';
-        const rankSpan=document.createElement('span');
-        rankSpan.className='st-rank';
-        rankSpan.textContent=ST_PIECE_NAMES[absVal]||'?';
-        cell.appendChild(rankSpan);
-        const nameSpan=document.createElement('span');
-        nameSpan.className='st-name';
-        nameSpan.textContent=stTitle(absVal);
-        cell.appendChild(nameSpan);
-      }
-
-      if(stSelected&&stSelected[0]===r&&stSelected[1]===c){
-        cell.classList.add('selected');
-      }
-      var stClickable=(val>0||(val<0&&val!==-99));
-      var stPieceType=stClickable?(val>0?val:-val):0;
-      if(myTurn&&stClickable&&ST_MOVABLE[stPieceType]!==false){
-        cell.style.cursor='pointer';
-        cell.onclick=()=>stCellClick(r,c);
-      }
-      if(moves&&moves.has(idx)){
-        cell.classList.add('highlight-dest');
-        cell.style.cursor='pointer';
-        cell.onclick=()=>stCellClick(r,c);
-      }
-
-      board.appendChild(cell);
-    }
-  }
-
-  if(st.last_battle){
-    const b=st.last_battle;
-    let msg='';
-    const langMap={ru:ru||'ru',uk:'uk',en:'en'};
-    if(b.result==='move'){msg={ru:'➡️ Ход',uk:'➡️ Хід',en:'➡️ Move'}[lang];}
-    else if(b.result==='attack_win'){msg={ru:'⚔️ Победа! '+stTitle(b.defender_rank)+' уничтожен',uk:'⚔️ Перемога! '+stTitle(b.defender_rank)+' знищено',en:'⚔️ Victory! '+stTitle(b.defender_rank)+' destroyed'}[lang];}
-    else if(b.result==='attack_lose'){msg={ru:'💀 '+stTitle(b.attacker_rank)+' погиб',uk:'💀 '+stTitle(b.attacker_rank)+' загинув',en:'💀 '+stTitle(b.attacker_rank)+' died'}[lang];}
-    else if(b.result==='both_removed'){msg={ru:'💥 Оба погибли!',uk:'💥 Обидва загинули!',en:'💥 Both died!'}[lang];}
-    if(msg)setStatus(msg,'battle');
-  }
-}
-
-function stComputeMoves(st, r, c){
-  const val=st.board[r*10+c];
-  if(val===0||val===99)return null;
-  if(val===-99)return null;
-  const absVal=val>0?val:-val;
-  if(ST_MOVABLE[absVal]===false)return null;
-  const moves=new Set();
-  if(absVal===3){
-    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
-      let nr=r+dr, nc=c+dc;
-      while(nr>=0&&nr<10&&nc>=0&&nc<10){
-        const idx=nr*10+nc;
-        const v=st.board[idx];
-        if(v===99)break;
-        if(v===0){moves.add(idx)}
-        else if(v===-99){moves.add(idx);break}
-        else if(v<0){moves.add(idx);break}
-        else break;
-        nr+=dr;nc+=dc;
-      }
-    }
-  }else{
-    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
-      const nr=r+dr, nc=c+dc;
-      if(nr<0||nr>=10||nc<0||nc>=10)continue;
-      const idx=nr*10+nc;
-      const v=st.board[idx];
-      if(v===99)continue;
-      if(v===0)moves.add(idx);
-      else if(v===-99)moves.add(idx);
-      else if(v<0)moves.add(idx);
-    }
-  }
-  return moves;
-}
-
-async function stCellClick(r,c){
-  if(!stState||!stState.my_turn)return;
-  if(stSelected){
-    const sr=stSelected[0],sc=stSelected[1];
-    if(sr===r&&sc===c){stSelected=null;stRenderBoard(stState);return}
-    const moves=stComputeMoves(stState,sr,sc);
-    if(!moves||!moves.has(r*10+c)){stSelected=null;stRenderBoard(stState);return}
-    const res=await api('/api/stratego_move',{uid:getUid(),code:stCode,r:sr,c:sc,nr:r,nc:c});
-    if(!res||!res.ok){
-      let errMsg=res?.error;
-      if(errMsg==='illegal_move')errMsg={ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang];
-      setStatus('⚠️ '+(errMsg||t('error')),'');
-      stSelected=null;
-      stRenderBoard(stState);
-      return;
-    }
-    sfxHit();
-    stShowGame(res.state);
-    return;
-  }
-  const val=stState.board[r*10+c];
-  if(val===0||val===99)return;
-  if(val===-99)return;
-  const absVal=val>0?val:-val;
-  if(ST_MOVABLE[absVal]===false)return;
-  stSelected=[r,c];
-  stRenderBoard(stState);
-}
-
-function leaveStGame(){
-  if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
-  // st_game code stays in localStorage so the main menu's active-games bar can resume it
-  stCode=null;stState=null;
-  $('stArea').style.display='none';
-  showMainMenu();
-}
-
-function shareStGame(){
-  if(!stCode)return;
-  const url=`https://t.me/${botUsername||'...'}/app?startapp=${stCode}`;
-  const texts={ru:'🎮 Играй со мной в Стратего!',uk:'🎮 Грай зі мною в Стратего!',en:'🎮 Play Stratego with me!'};
-  const text=texts[lang];
-  copyToClipboard(url,{ru:'Ссылка скопирована ✅',uk:'Посилання скопійовано ✅',en:'Link copied ✅'}[lang]);
-  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`)}catch(e){}
-}
-
-async function stSurrender(){
-  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
-  if(!confirm(msg)) return;
-  if(stPollTimer){clearInterval(stPollTimer);stPollTimer=null}
-  const code = stCode;
-  stCode = null; stState = null;
-  $('stArea').style.display='none';
-  localStorage.removeItem('st_game');
-  await api('/api/stratego_surrender',{uid:getUid(),code});
-  showMainMenu();
-}
-
----- end of disabled Stratego block ---- */
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
   if(!cont)return;
@@ -2799,11 +2205,6 @@ async function fetchActiveGames(){
       var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
       html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
-    // Stratego disabled — see AUDIT.md.
-    // else if(g.type==='stratego'){
-    //   var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-    //   html+='<div class="active-game-row" onclick="resumeSt(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
-    // }
   }
   html+='</div>';
   cont.innerHTML=html;
@@ -2816,15 +2217,6 @@ function resumeSB(code){
   refreshState();
   setTimeout(pollGame,500);
 }
-
-// Stratego disabled — see AUDIT.md.
-// function resumeSt(code){
-//   stCode=code;
-//   localStorage.setItem('st_game',code);
-//   $('actions').innerHTML='';
-//   stRefreshState();
-//   stPoll();
-// }
 
 function resumeCk(code){
   ckCode=code;
@@ -2899,18 +2291,6 @@ async function checkStartParam(){
         return;
       }
     }
-    // Stratego disabled — see AUDIT.md.
-    // if(resolveRes.game === 'stratego'){
-    //   const stRes = await api('/api/stratego_join', {uid: getUid(), code});
-    //   if(stRes && stRes.ok){
-    //     stCode = code;
-    //     localStorage.setItem('st_game', code);
-    //     $('actions').innerHTML = '';
-    //     stShowGame(stRes.state);
-    //     stPoll();
-    //     return;
-    //   }
-    // }
     // Join failed – show error
     setStatus(t('joinError'), '');
   } catch(e){}
