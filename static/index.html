@@ -387,6 +387,7 @@ const LANG = {
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
     stripStakeBtn: '📸 Загрузи фото-ставку',
+    stripStart: '🍀 Удачи, начинаем',
     stripPlayAgain: '💪 Отыграться',
     checkers: 'Шашки',
     ckHint: '💡 Подсказка',
@@ -493,6 +494,7 @@ const LANG = {
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
     stripStakeBtn: '📸 Завантаж фото-ставку',
+    stripStart: '🍀 Удачі, починаємо',
     stripPlayAgain: '💪 Відігратись',
     checkers: 'Шашки',
     ckHint: '💡 Підказка',
@@ -599,6 +601,7 @@ const LANG = {
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
     stripStakeBtn: '📸 Upload stake photo',
+    stripStart: '🍀 Good luck, let\'s begin',
     stripPlayAgain: '💪 Redeem',
     checkers: 'Checkers',
     ckHint: '💡 Hint',
@@ -915,7 +918,7 @@ function updateUI(){
         $('actions').innerHTML=`
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? 'Удачи, начинаем' : t('confirm')}</button>`}
+           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? t('stripStart') : t('confirm')}</button>`}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
