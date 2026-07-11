@@ -137,6 +137,8 @@ class PokerDiceGame:
             'rolls': 3,
             'scored': False,
             'hand': None,
+            'last_scored_category': None,
+            'last_scored_score': None,
             'scorecard': {c: None for c in CATEGORY_IDS},
             'dice_history': [],
         }
@@ -147,6 +149,8 @@ class PokerDiceGame:
         p['rolls'] = 3
         p['scored'] = False
         p['hand'] = None
+        p['last_scored_category'] = None
+        p['last_scored_score'] = None
         p['dice_history'] = []
 
     def player_num(self, uid: int) -> Optional[int]:
@@ -199,8 +203,11 @@ class PokerDiceGame:
         if not _remaining_categories(p['scorecard']):
             return None
 
-        p['scorecard'][category] = score_for_category(p['dice'], category)
+        scored_points = score_for_category(p['dice'], category)
+        p['scorecard'][category] = scored_points
         p['hand'] = evaluate(p['dice'])
+        p['last_scored_category'] = category
+        p['last_scored_score'] = scored_points
         p['scored'] = True
 
         self._advance_turn(pnum)
@@ -267,6 +274,8 @@ class PokerDiceGame:
 
         p['scorecard'][best_cat] = best_score
         p['hand'] = evaluate(p['dice'])
+        p['last_scored_category'] = best_cat
+        p['last_scored_score'] = best_score
         p['scored'] = True
 
         self._advance_turn(2)
@@ -331,6 +340,8 @@ class PokerDiceGame:
             'opponent_hand_rank': opponent_hand['rank'] if opponent_hand else None,
             'opponent_hand_score': opponent_hand['score'] if opponent_hand else None,
             'opponent_hand_name': opponent_hand['name'] if opponent_hand else None,
+            'opponent_scored_category': opp['last_scored_category'] if opp['scored'] else None,
+            'opponent_scored_points': opp['last_scored_score'] if opp['scored'] else None,
             'winner': winner,
             'you_id': self.player1_id if pnum == 1 else self.player2_id,
             'scorecard': my_sc,
@@ -376,6 +387,8 @@ class PokerDiceGame:
                     'rolls': v['rolls'],
                     'scored': v['scored'],
                     'hand': v['hand'],
+                    'last_scored_category': v['last_scored_category'],
+                    'last_scored_score': v['last_scored_score'],
                     'scorecard': dict(v['scorecard']),
                     'dice_history': [list(h) for h in v['dice_history']],
                 }
@@ -401,6 +414,8 @@ class PokerDiceGame:
                 'rolls': v.get('rolls', 3),
                 'scored': v.get('scored', False),
                 'hand': v.get('hand'),
+                'last_scored_category': v.get('last_scored_category'),
+                'last_scored_score': v.get('last_scored_score'),
                 'scorecard': {c: v.get('scorecard', {}).get(c) for c in CATEGORY_IDS},
                 'dice_history': [list(h) for h in v.get('dice_history', [])],
             }

@@ -1597,7 +1597,7 @@ function pdRenderDice(st){
     let labelText = '';
     if(showOpp){
       labelColor = 'var(--color-hit)';
-      labelText = st.opponent_hand_name ? `${t('pdOppHand')}: ${pdHandName(st.opponent_hand_name)} (${diceTotal(st.opponent_dice||[])} ${t('pdPts')})` : t('pdOppHand');
+      labelText = st.opponent_scored_category ? `${t('pdOppHand')}: ${catName(st.opponent_scored_category)} — ${st.opponent_scored_points} ${t('pdPts')}` : t('pdOppHand');
     } else {
       labelText = st.hand_name ? `${t('pdYourHand')}: ${pdHandName(st.hand_name)} (${diceTotal(dice)} ${t('pdPts')})` : t('pdYourHand');
     }
