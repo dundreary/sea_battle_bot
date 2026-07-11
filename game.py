@@ -198,6 +198,9 @@ class Game:
         # Per-player "stake" photo, committed before the game starts
         # (both participants must upload one to confirm placement).
         self.strip_stakes = {1: "", 2: ""}
+        # Ephemeral delivery state: deliberately excluded from persistence.
+        self.last_activity = {}
+        self.notification_events = set()
         self.created_at = time.time()
 
     @property
@@ -308,6 +311,9 @@ class Game:
             game.bot_ai = None
         if game.solo and game.player2_id is None:
             game.player2_id = 0
+        # Notification activity is intentionally reset after a restart.
+        game.last_activity = {}
+        game.notification_events = set()
         return game
 
 def validate_ship_placement(cells, strip=False):

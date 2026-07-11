@@ -205,6 +205,9 @@ class CheckersGame:
         self.draw = False
         self.no_progress_plies = 0
         self.last_move = None
+        # Ephemeral notification state; it is not persisted.
+        self.last_activity = {}
+        self.notification_events = set()
         # Draw detection. `_seen` counts how many times each position (board +
         # side to move) has occurred, used for the threefold-repetition rule.
         self._seen = {}
@@ -374,4 +377,6 @@ class CheckersGame:
         else:
             game._seen = {}
             game._record_position()
+        game.last_activity = {}
+        game.notification_events = set()
         return game

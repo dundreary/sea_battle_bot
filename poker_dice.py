@@ -126,6 +126,9 @@ class PokerDiceGame:
         self.phase = 'playing'
         self.turn = 1
         self.surrendered = None
+        # Ephemeral notification state; it is not persisted.
+        self.last_activity = {}
+        self.notification_events = set()
         self.players = {
             1: self._fresh_player(),
             2: self._fresh_player(),
@@ -421,6 +424,8 @@ class PokerDiceGame:
             }
         if game.solo and game.player2_id is None:
             game.player2_id = 0
+        game.last_activity = {}
+        game.notification_events = set()
         return game
 
     @staticmethod

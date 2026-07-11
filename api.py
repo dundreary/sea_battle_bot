@@ -3,6 +3,8 @@ import base64
 import logging
 import secrets
 import threading
+import queue
+import time
 import urllib.request
 from typing import Dict, Any, Callable
 
@@ -14,6 +16,11 @@ from persist import save
 import config
 
 logger = logging.getLogger(__name__)
+
+# The browser polls every two seconds. A recent poll means the player is
+# already looking at the game, so a Telegram notification would be noise.
+NOTIFY_SKIP_IF_ACTIVE_WITHIN = 5.0
+_notification_queue = queue.Queue(maxsize=100)
 
 
 STRIP_LOSE_CAPTIONS = {
@@ -79,6 +86,47 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
         logger.error("Failed to send strip photo: %s", e)
         return False
 
+
+def send_telegram_message(chat_id, text: str) -> bool:
+    """Send a text notification; delivery failures never affect a game move."""
+    try:
+        req = urllib.request.Request(
+            f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage',
+            data=json.dumps({"chat_id": chat_id, "text": text}).encode('utf-8'),
+            headers={'Content-Type': 'application/json'},
+            method='POST',
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            if result.get('ok'):
+                return True
+            logger.error("Telegram API error: %s", result)
+            return False
+    except Exception as exc:
+        logger.error("Failed to send Telegram notification: %s", exc)
+        return False
+
+
+def _notification_worker():
+    while True:
+        chat_id, text = _notification_queue.get()
+        try:
+            send_telegram_message(chat_id, text)
+        finally:
+            _notification_queue.task_done()
+
+
+threading.Thread(target=_notification_worker, name="telegram-notifications", daemon=True).start()
+
+
+def _enqueue_notifications(pending):
+    """Queue delivery only after releasing the state lock."""
+    for chat_id, text in pending:
+        try:
+            _notification_queue.put_nowait((chat_id, text))
+        except queue.Full:
+            logger.warning("Telegram notification queue is full; dropping message for %s", chat_id)
+
 games: Dict[str, Game] = {}
 player_games: Dict[str, str] = {}
 
@@ -90,6 +138,38 @@ checkers_player_games: Dict[str, str] = {}
 # the bot's asyncio thread both access these, so mutations must be serialized to
 # avoid race conditions (see AUDIT.md, Potential Issue #4).
 _state_lock = threading.Lock()
+
+
+def _mark_active(game, uid):
+    """Record that ``uid`` has just received and is displaying game state."""
+    if uid:
+        if not hasattr(game, 'last_activity'):
+            game.last_activity = {}
+        game.last_activity[str(uid)] = time.time()
+
+
+def _notify_recipient(game, recipient, text, event_key, force=False):
+    """Return one deduplicated notification, unless its recipient is active."""
+    if getattr(game, 'solo', False) or not recipient:
+        return []
+    events = getattr(game, 'notification_events', None)
+    if events is None:
+        events = game.notification_events = set()
+    if event_key in events:
+        return []
+    events.add(event_key)
+    if not force:
+        last_seen = getattr(game, 'last_activity', {}).get(str(recipient), 0)
+        if time.time() - last_seen < NOTIFY_SKIP_IF_ACTIVE_WITHIN:
+            return []
+    return [(recipient, text)]
+
+
+def _notify_opponent(game, uid, text, event_key, force=False):
+    opponent_id = game.opponent_id(uid) if hasattr(game, 'opponent_id') else (
+        game.player2_id if uid == game.player1_id else game.player1_id
+    )
+    return _notify_recipient(game, opponent_id, text, event_key, force=force)
 
 
 def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) -> str:
@@ -311,14 +391,19 @@ def _handle_join(data, uid, code):
     game.player2_id = uid
     game.phase = "placing"
     player_games[str(uid)] = code
+    _mark_active(game, uid)
     save()
-    return {"ok": True, "state": as_dict(game, uid)}
+    return (
+        {"ok": True, "state": as_dict(game, uid)},
+        _notify_opponent(game, uid, "⚓ Друг подключился к игре. Расставьте корабли, чтобы начать.", "join", force=True),
+    )
 
 
 def _handle_state(data, uid, code):
     state = get_state(uid, code)
     if not state:
         return {"error": "no game"}
+    _mark_active(games[code], uid)
     return {"ok": True, "state": state}
 
 
@@ -333,6 +418,15 @@ def _handle_shoot(data, uid, code):
         return {"error": "invalid shot"}
     game = games.get(code)
     state = as_dict(game, uid) if game else None
+    pending_notifications = []
+    if game:
+        _mark_active(game, uid)
+        if game.phase == 'finished':
+            pending_notifications = _notify_opponent(
+                game, uid, "⚓ Игра в Морской бой окончена.", "finished", force=True)
+        elif game.current_player() != uid:
+            pending_notifications = _notify_opponent(
+                game, uid, "⚓ Ваш ход в Морском бое.", f"shoot:{uid}:{r}:{c}")
     pending_stake = None
     # When a strip game finishes, the loser's pre-committed stake photo
     # is delivered to the winner (the shooter). Strip games stay alive
@@ -347,7 +441,7 @@ def _handle_shoot(data, uid, code):
         else:
             _evict_game(code, games, player_games)
     save()
-    return {"ok": True, "result": result, "state": state}, pending_stake
+    return {"ok": True, "result": result, "state": state}, pending_stake, pending_notifications
 
 
 def _handle_place_auto(data, uid, code):
@@ -355,6 +449,7 @@ def _handle_place_auto(data, uid, code):
     if err: return err
     place_auto(uid, code)
     state = as_dict(game, uid)
+    _mark_active(game, uid)
     save()
     return {"ok": True, "state": state}
 
@@ -369,8 +464,12 @@ def _handle_confirm(data, uid, code):
             return {"ok": False, "error": "need_stake"}
         return {"ok": False, "error": "not_all_placed"}
     state = as_dict(game, uid)
+    _mark_active(game, uid)
     save()
-    return {"ok": True, "started": started, "state": state}
+    pending = []
+    if started:
+        pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
+    return {"ok": True, "started": started, "state": state}, pending
 
 
 def _handle_upload_photo(data, uid, code):
@@ -460,12 +559,14 @@ def _handle_surrender(data, uid, code):
         own._mark_dead_zone(ship)
     game.phase = "finished"
     state = as_dict(game, uid)
+    _mark_active(game, uid)
+    pending = _notify_opponent(game, uid, "⚓ Друг сдался в Морском бое.", "surrender", force=True)
     # Strip games stay alive after game-over so the loser can still upload
     # their forfeit photo via /api/upload_photo.
     if not game.strip:
         _evict_game(code, games, player_games)
     save()
-    return {"ok": True, "state": state}
+    return {"ok": True, "state": state}, pending
 
 
 def _handle_pd_join(data, uid, code):
@@ -479,8 +580,12 @@ def _handle_pd_join(data, uid, code):
         return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
     pd_player_games[str(uid)] = code
+    _mark_active(game, uid)
     save()
-    return {"ok": True, "state": game.get_state(2)}
+    return (
+        {"ok": True, "state": game.get_state(2)},
+        _notify_opponent(game, uid, "🎲 Друг подключился к игре. Ваш ход в Покерных костях.", "join", force=True),
+    )
 
 
 def _handle_pd_roll(data, uid, code):
@@ -490,6 +595,7 @@ def _handle_pd_roll(data, uid, code):
     st = game.roll(uid, keep)
     if st is None:
         return {"error": "invalid_roll"}
+    _mark_active(game, uid)
     save()
     return {"ok": True, "state": st}
 
@@ -501,10 +607,17 @@ def _handle_pd_score(data, uid, code):
     st = game.score(uid, category)
     if st is None:
         return {"error": "invalid_score"}
+    _mark_active(game, uid)
+    if game.phase == 'finished':
+        pending = _notify_opponent(game, uid, "🎲 Игра в Покерные кости окончена.", "finished", force=True)
+    elif game.player_num(uid) != game.turn:
+        pending = _notify_opponent(game, uid, "🎲 Ваш ход в Покерных костях.", f"score:{uid}:{category}")
+    else:
+        pending = []
     if game.phase == 'finished':
         _evict_game(code, pd_games, pd_player_games)
     save()
-    return {"ok": True, "state": st}
+    return {"ok": True, "state": st}, pending
 
 
 def _handle_pd_surrender(data, uid, code):
@@ -513,9 +626,11 @@ def _handle_pd_surrender(data, uid, code):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _mark_active(game, uid)
+    pending = _notify_opponent(game, uid, "🎲 Друг сдался в Покерных костях.", "surrender", force=True)
     _evict_game(code, pd_games, pd_player_games)
     save()
-    return {"ok": True, "state": st}
+    return {"ok": True, "state": st}, pending
 
 
 def _handle_pd_state(data, uid, code):
@@ -524,6 +639,7 @@ def _handle_pd_state(data, uid, code):
     pnum = game.player_num(uid)
     if pnum is None:
         return {"error": "not_in_game"}
+    _mark_active(game, uid)
     return {"ok": True, "state": game.get_state(pnum)}
 
 
@@ -629,13 +745,18 @@ def _handle_checkers_join(data, uid, code):
         return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
     checkers_player_games[str(uid)] = code
+    _mark_active(game, uid)
     save()
-    return {"ok": True, "state": game.get_state(uid)}
+    return (
+        {"ok": True, "state": game.get_state(uid)},
+        _notify_opponent(game, uid, "♟ Друг подключился к игре. Ваш ход в Шашках.", "join", force=True),
+    )
 
 
 def _handle_checkers_state(data, uid, code):
     game, err = _get_game(checkers_games, code, uid)
     if err: return err
+    _mark_active(game, uid)
     return {"ok": True, "state": game.get_state(uid)}
 
 
@@ -671,9 +792,11 @@ def _handle_checkers_move(data, uid, code):
             game.winner = opp_color
         game.phase = "finished"
         state = game.get_state(uid)
+        _mark_active(game, uid)
+        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
         _evict_game(code, checkers_games, checkers_player_games)
         save()
-        return {"ok": True, "state": state, "finished": True}
+        return {"ok": True, "state": state, "finished": True}, pending
 
     winning_move = None
     start = (start_r, start_c)
@@ -720,13 +843,20 @@ def _handle_checkers_move(data, uid, code):
 
     if finished:
         _evict_game(code, checkers_games, checkers_player_games)
+    _mark_active(game, uid)
+    if finished:
+        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
+    elif not game.solo and game.current_player != uid:
+        pending = _notify_opponent(game, uid, "♟ Ваш ход в Шашках.", f"move:{game.last_move}")
+    else:
+        pending = []
     save()
-    return {
+    return ({
         "ok": True,
         "state": game.get_state(uid),
         "finished": finished,
         "bot_move": bot_result,
-    }
+    }, pending)
 
 
 def _handle_checkers_surrender(data, uid, code):
@@ -735,9 +865,11 @@ def _handle_checkers_surrender(data, uid, code):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _mark_active(game, uid)
+    pending = _notify_opponent(game, uid, "♟ Друг сдался в Шашках.", "surrender", force=True)
     _evict_game(code, checkers_games, checkers_player_games)
     save()
-    return {"ok": True, "state": st}
+    return {"ok": True, "state": st}, pending
 
 
 def _handle_checkers_hint(data, uid, code):
@@ -785,6 +917,19 @@ _HANDLERS = {
     "/api/checkers_surrender": _handle_checkers_surrender,
 }
 
+NOTIFY_PATHS = {
+    "/api/join", "/api/confirm", "/api/surrender",
+    "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
+    "/api/checkers_join", "/api/checkers_move", "/api/checkers_surrender",
+}
+
+
+def _split_notification_result(out):
+    """Handlers with notifications return ``(response, pending_messages)``."""
+    if isinstance(out, tuple) and len(out) == 2 and isinstance(out[1], list):
+        return out
+    return out, []
+
 
 def handle_api(path, body):
     try:
@@ -816,12 +961,27 @@ def handle_api(path, body):
 
     if path == "/api/shoot":
         # The stake-photo delivery to the winner happens outside the lock.
-        with _state_lock:
-            response, pending_stake = _handle_shoot(data, uid, code)
+        try:
+            with _state_lock:
+                response, pending_stake, pending_notifications = _handle_shoot(data, uid, code)
+        except Exception as exc:
+            logger.exception("Unhandled error in %s: %s", path, exc)
+            return {"error": "internal"}
+        _enqueue_notifications(pending_notifications)
         if pending_stake:
             winner_id, photo, caption = pending_stake
             send_strip_photo_to_winner(winner_id, photo, caption)
         return response
+
+    if path in NOTIFY_PATHS:
+        try:
+            with _state_lock:
+                result, pending_notifications = _split_notification_result(handler(data, uid, code))
+        except Exception as exc:
+            logger.exception("Unhandled error in %s: %s", path, exc)
+            return {"error": "internal"}
+        _enqueue_notifications(pending_notifications)
+        return result
 
     with _state_lock:
         try:
