@@ -78,24 +78,26 @@ def evaluate(dice: List[int]) -> Dict[str, Any]:
     sorted_counts = sorted(counts.values(), reverse=True)
     unique = sorted(counts.keys())
 
-    rank = 7
+    rank = 8
     score = sum(dice)
     name = f"Nothing ({score})"
 
     if sorted_counts[0] == 5:
         rank, score, name = 0, 50, 'Five of a Kind'
     elif sorted_counts[0] == 4:
-        rank, score, name = 1, 40, 'Four of a Kind'
+        rank, score, name = 1, sum(dice), 'Four of a Kind'
     elif sorted_counts[0] == 3 and len(sorted_counts) > 1 and sorted_counts[1] >= 2:
-        rank, score, name = 2, 30, 'Full House'
+        rank, score, name = 2, 25, 'Full House'
     elif len(counts) == 5 and unique[-1] - unique[0] == 4:
-        rank, score, name = 3, 25, 'Straight'
+        rank, score, name = 3, 40, 'Large Straight'
+    elif any(unique[i + 3] - unique[i] == 3 for i in range(len(unique) - 3)):
+        rank, score, name = 4, 30, 'Small Straight'
     elif sorted_counts[0] == 3:
-        rank, score, name = 4, 20, 'Three of a Kind'
+        rank, score, name = 5, sum(dice), 'Three of a Kind'
     elif sorted_counts[0] == 2 and len(sorted_counts) > 1 and sorted_counts[1] == 2:
-        rank, score, name = 5, 15, 'Two Pair'
+        rank, score, name = 6, sum(dice), 'Two Pair'
     elif sorted_counts[0] == 2:
-        rank, score, name = 6, 10, 'One Pair'
+        rank, score, name = 7, sum(dice), 'One Pair'
 
     return {'rank': rank, 'score': score, 'name': name}
 
@@ -305,6 +307,10 @@ class PokerDiceGame:
                 opp_sc[c] = val
 
         my_turn = self.turn == pnum
+        # A saved hand describes the previous scored turn.  The UI needs the
+        # combination formed by the dice currently visible on the table.
+        my_hand = evaluate(p['dice']) if p['dice'] else None
+        opponent_hand = evaluate(opp['dice']) if opp['dice'] else None
 
         return {
             'code': self.code,
@@ -318,13 +324,13 @@ class PokerDiceGame:
             'my_dice': p['dice'],
             'rolls_left': p['rolls'] if my_turn else opp['rolls'],
             'scored': p['scored'],
-            'hand_rank': p['hand']['rank'] if p['hand'] else None,
-            'hand_score': p['hand']['score'] if p['hand'] else None,
-            'hand_name': p['hand']['name'] if p['hand'] else None,
+            'hand_rank': my_hand['rank'] if my_hand else None,
+            'hand_score': my_hand['score'] if my_hand else None,
+            'hand_name': my_hand['name'] if my_hand else None,
             'opponent_scored': opp['scored'],
-            'opponent_hand_rank': opp['hand']['rank'] if opp['hand'] else None,
-            'opponent_hand_score': opp['hand']['score'] if opp['hand'] else None,
-            'opponent_hand_name': opp['hand']['name'] if opp['hand'] else None,
+            'opponent_hand_rank': opponent_hand['rank'] if opponent_hand else None,
+            'opponent_hand_score': opponent_hand['score'] if opponent_hand else None,
+            'opponent_hand_name': opponent_hand['name'] if opponent_hand else None,
             'winner': winner,
             'you_id': self.player1_id if pnum == 1 else self.player2_id,
             'scorecard': my_sc,
