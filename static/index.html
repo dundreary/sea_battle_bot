@@ -908,16 +908,17 @@ function updateUI(){
           $('status').onclick=null;
         }
         // In strip mode each player must commit a stake photo before
-        // confirming. Show the upload button and keep Confirm disabled.
+        // starting. The upload button sits above the ship placement
+        // and replaces the "OK, start" button until a photo exists.
         const needStake = s.strip && !s.strip_stake;
         const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
         $('actions').innerHTML=`
+          ${stakeBtn}
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-           <button class="btn primary" onclick="confirmPlace()" ${needStake ? 'disabled style="opacity:0.5;cursor:default"' : ''}>${t('confirm')}</button>
+           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>`}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
-           ${stakeBtn}
         `;
       }
     setThemeSelectorVisibility(false);
