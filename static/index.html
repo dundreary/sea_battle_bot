@@ -913,10 +913,9 @@ function updateUI(){
         const needStake = s.strip && !s.strip_stake;
         const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
         $('actions').innerHTML=`
-          ${stakeBtn}
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${t('confirm')}</button>`}
+           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? 'Удачи, начинаем' : t('confirm')}</button>`}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
