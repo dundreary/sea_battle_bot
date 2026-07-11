@@ -893,9 +893,9 @@ function updateUI(){
       $('status').style.cursor='pointer';
       $('status').title=t('copyCode');
       $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
-      $('actions').innerHTML=`
+       $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
-        <button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>
+        ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
          <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
          <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
        `;
@@ -917,7 +917,7 @@ function updateUI(){
         const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
         $('actions').innerHTML=`
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
-          ${!s.solo ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
+          ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? t('stripStart') : t('confirm')}</button>`}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
@@ -963,18 +963,24 @@ function compressImage(dataUrl, maxW=800, quality=0.7){
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
-      const c = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      if(w > maxW || h > maxW){
-        const ratio = Math.min(maxW/w, maxW/h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL('image/jpeg', quality));
+      try {
+        const c = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if(w > maxW || h > maxW){
+          const ratio = Math.min(maxW/w, maxW/h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', quality));
+      } catch(e){ resolve(dataUrl); }
     };
+    // If the image cannot be decoded (e.g. an unsupported format like
+    // HEIC), never leave the promise hanging — fall back to the raw
+    // data URL so the upload can still proceed.
+    img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
 }
@@ -1052,8 +1058,12 @@ async function startStripCapture(){
 async function captureAndUploadStake(){
   const data = await captureStripPhoto();
   if(!data) return;
+  showLoadingOverlay(STRIP_LOADING_MSGS[lang].send);
   const res = await api('/api/upload_stake',{uid:getUid(),code:gameCode,photo:data,lang:lang});
-  if(!(res&&res.ok)){ setStatus(t('error')); return; }
+  hideLoadingOverlay();
+  if(!(res&&res.ok)){ setStatus(t('error')); }
+  // Always re-render from the server so the UI matches the real state
+  // (the upload button disappears once the stake is committed).
   await refreshState();
 }
 
