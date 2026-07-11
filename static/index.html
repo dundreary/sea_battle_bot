@@ -1146,11 +1146,6 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
-    <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
-    </div>
     <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
       <img src="/static/sb-navy.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
@@ -1165,6 +1160,11 @@ function showMainMenu(){
       <img src="/static/checkers-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:#D4A96A">${t('checkers')}</div>
       <div class="card-desc">${t('startBtn')}</div>
+    </div>
+    <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
+      <img src="/static/mode-join.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
+      <div class="card-desc">${t('joinBtn')}</div>
     </div>
   `;
   updateContinueButton();
