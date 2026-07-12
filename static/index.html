@@ -1319,7 +1319,15 @@ async function handleShot(r,c){
       else msg+=` ${t('botMiss')}`;
     }
   }
-  await refreshState();
+  // Render the final board from the shot response immediately. This avoids a
+  // race with polling and makes the win/loss result appear without delay.
+  if(res.state){
+    state=res.state;
+    updateUI();
+    if(state.all_sunk||state.my_all_sunk)return;
+  }else{
+    await refreshState();
+  }
   if(msg)setStatus(msg,'battle');
 }
 
