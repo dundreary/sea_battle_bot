@@ -85,7 +85,7 @@ def get_ai_move(board, color, difficulty=3, time_budget=1.5):
     if difficulty <= 1:
         return random.choice(moves)
 
-    max_depth = min(difficulty, 6)
+    max_depth = min(difficulty, 9)
     best = moves[0]
     start = time.time()
     # Iterative deepening: keep the result of the last fully searched depth and

@@ -1,4 +1,6 @@
+import math
 import random
+from itertools import combinations_with_replacement
 from typing import Dict, List, Optional, Any, Set
 
 from base_game import BaseGame
@@ -121,11 +123,14 @@ def _remaining_categories(scorecard: Dict[str, Optional[int]]) -> List[str]:
 # ---------------------------------------------------------------------------
 # Bot AI (difficulty-aware)
 #
-# Difficulty levels (mirrors the Checkers picker: 1=Easy, 2=Normal, 3=Hard):
+# Difficulty levels (mirrors the Checkers picker: 1=Easy, 2=Normal, 3=Hard, 4=Expert):
 #   1 Easy   - single roll, scores the highest raw category (legacy behaviour)
 #   2 Normal - up to 3 rolls with a simple keep heuristic, best raw category
 #   3 Hard   - up to 3 rolls with 2-ply Monte-Carlo expectimax keep decisions
 #             and marginal-value category choice with upper-bonus awareness
+#   4 Expert - up to 3 rolls with an EXACT expectimax solver: every one of the
+#             32 keep masks and the full reroll probability space is evaluated,
+#             so keep/category choices are mathematically near-optimal per turn
 # ---------------------------------------------------------------------------
 
 _KEEP_ALL = 0b11111
@@ -248,6 +253,124 @@ def _bot_best_keep(dice: List[int], rolls_left: int, remaining: List[str], r_sam
 
 
 def _bot_choose_category(dice: List[int], remaining: List[str], scorecard: Dict[str, Optional[int]]) -> str:
+    """Choose the category maximising marginal value, nudged toward the
+    upper-section bonus (>=63 gives +35) when still reachable."""
+    upper = ('ones', 'twos', 'threes', 'fours', 'fives', 'sixes')
+    upper_sum = _upper_sum(scorecard)
+    best_cat = remaining[0]
+    best_val = -1e18
+    for c in remaining:
+        val = score_for_category(dice, c) - _expected_value()[c]
+        if c in upper and upper_sum < 63:
+            gap = 63 - upper_sum
+            contrib = score_for_category(dice, c)
+            val += 35.0 * min(contrib, gap) / 63.0 * 0.5
+        if val > best_val:
+            best_val = val
+            best_cat = c
+    return best_cat
+
+
+def _expert_best_category(dice: List[int], remaining: List[str]) -> str:
+    """Exact best category for a fixed dice set: the one with the highest
+    score (upper-section bonus is already reflected because upper category
+    scores are forced by the dice faces)."""
+    return max(remaining, key=lambda c: score_for_category(dice, c))
+
+
+# Level 4 "Expert" uses an exact expectimax solver instead of Monte-Carlo
+# sampling. It enumerates all 32 keep masks and the full reroll probability
+# space, so its keep/category decisions are mathematically near-optimal per
+# turn (no sampling noise, no heuristic pruning).
+#
+# The reroll space is collapsed to dice *multisets* (at most 252 for 5 dice)
+# with exact multinomial weights, which is equivalent to enumerating all
+# 6**k ordered outcomes but ~30x cheaper. Leaves use a precomputed score
+# table so no dict is rebuilt mid-search, and results are cached globally
+# across turns keyed by (dice multiset, rolls left, remaining categories).
+_EXPERT_CACHE: Dict[Any, float] = {}
+
+_FAC = [math.factorial(i) for i in range(7)]
+
+# Precompute score_for_category for every 5-dice multiset x category once,
+# so the search's leaf evaluations are O(1) table lookups.
+_ALL5 = [tuple(sorted(c)) for c in combinations_with_replacement(range(1, 7), 5)]
+_SCORE_TABLE = {
+    ms: {c: score_for_category(list(ms), c) for c in CATEGORY_IDS} for ms in _ALL5
+}
+
+
+def _reroll_outcomes(reroll: int):
+    """Yield (multiset, probability) for every result of rerolling `reroll`
+    dice, using exact multinomial weights over the 6^reroll ordered space."""
+    total = 6 ** reroll
+    for combo in combinations_with_replacement(range(1, 7), reroll):
+        counts = [0] * 7
+        for v in combo:
+            counts[v] += 1
+        num = _FAC[reroll]
+        den = 1
+        for c in counts:
+            den *= _FAC[c]
+        yield combo, (num / den) / total
+
+
+def _expert_ev(dice: List[int], rolls_left: int, rem_key: frozenset) -> float:
+    key = (tuple(sorted(dice)), rolls_left, rem_key)
+    cached = _EXPERT_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    ms = tuple(sorted(dice))
+
+    # No rerolls left (or stop now): score the best available category.
+    if rolls_left <= 0:
+        val = max(_SCORE_TABLE[ms][c] for c in rem_key)
+        _EXPERT_CACHE[key] = val
+        return val
+
+    best = -1e18
+    for mask in range(32):
+        kept = [dice[i] for i in range(5) if (mask >> i) & 1]
+        reroll = 5 - len(kept)
+        # Keeping all dice means "stop and score now" in the real game loop
+        # (the caller breaks on the keep-all mask), so evaluate it as the
+        # immediate best-category value rather than as another reroll.
+        if reroll == 0:
+            val = max(_SCORE_TABLE[ms][c] for c in rem_key)
+        else:
+            total = 0.0
+            for combo, w in _reroll_outcomes(reroll):
+                new = tuple(sorted(kept + list(combo)))
+                total += w * _expert_ev(new, rolls_left - 1, rem_key)
+            val = total
+        if val > best:
+            best = val
+
+    _EXPERT_CACHE[key] = best
+    return best
+
+
+def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str]) -> int:
+    """Pick the keep-mask maximising the exact expected score."""
+    rem_key = frozenset(remaining)
+    best_mask = _KEEP_ALL
+    best_val = -1e18
+    for mask in range(32):
+        kept = [dice[i] for i in range(5) if (mask >> i) & 1]
+        reroll = 5 - len(kept)
+        if reroll == 0:
+            val = max(_SCORE_TABLE[tuple(sorted(dice))][c] for c in rem_key)
+        else:
+            total = 0.0
+            for combo, w in _reroll_outcomes(reroll):
+                new = tuple(sorted(kept + list(combo)))
+                total += w * _expert_ev(new, rolls_left - 1, rem_key)
+            val = total
+        if val > best_val:
+            best_val = val
+            best_mask = mask
+    return best_mask
     """Choose the category maximising marginal value, nudged toward the
     upper-section bonus (>=63 gives +35) when still reachable."""
     upper = ('ones', 'twos', 'threes', 'fours', 'fives', 'sixes')
@@ -420,17 +543,23 @@ class PokerDiceGame(BaseGame):
             _bot_roll(0)
             best_cat = max(remaining, key=lambda c: score_for_category(p['dice'], c))
         else:
-            # Normal / Hard: up to 3 rolls, choosing which dice to keep.
+            # Normal / Hard / Expert: up to 3 rolls, choosing which dice to keep.
             _bot_roll(0)
             while p['rolls'] > 0:
                 if diff == 2:
                     mask = _bot_keep_simple(p['dice'])
-                else:
+                elif diff == 3:
                     mask = _bot_best_keep(p['dice'], p['rolls'], remaining)
+                else:
+                    # Expert: exact expectimax over all 32 keep masks.
+                    mask = _expert_best_keep(p['dice'], p['rolls'], remaining)
                 if mask == _KEEP_ALL:
                     break
                 _bot_roll(mask)
-            best_cat = _bot_choose_category(p['dice'], remaining, p['scorecard'])
+            if diff >= 4:
+                best_cat = _expert_best_category(p['dice'], remaining)
+            else:
+                best_cat = _bot_choose_category(p['dice'], remaining, p['scorecard'])
 
         scored_points = score_for_category(p['dice'], best_cat)
         p['scorecard'][best_cat] = scored_points

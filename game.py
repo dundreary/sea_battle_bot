@@ -306,7 +306,26 @@ def auto_place_ships(board: Board) -> None:
             return
     raise RuntimeError("auto_place_ships: failed to place all ships after 100 attempts")
 
+# Cells a ship is still allowed to occupy when enumerating placements.
+# HIT is included: a known hit must belong to a remaining ship, so valid
+# placements are required to cover it (this is what makes the density
+# concentrate on a found ship instead of spreading randomly).
+_BOT_OPEN = (EMPTY, SHIP, MINE, HIT)
+# Cells that provably cannot hold a ship.
+_BOT_BLOCKED = (MISS, SUNK, DEAD)
+
+
 class BotAI:
+    """Difficulty-aware Sea Battle opponent.
+
+    Tiers (1=Easy, 2=Medium, 3=Hard):
+      1 Easy   - pure random shots, never hunts.  Weak but beatable.
+      2 Medium - random search with neighbour hunting around hits.
+      3 Hard   - probability-density solver over the *remaining* ships that
+                 accounts for known hits and sunk ships, so it finishes found
+                 ships quickly and avoids wasting shots elsewhere.
+    """
+
     def __init__(self, difficulty=2):
         self.difficulty = difficulty
         self.shots = set()
@@ -318,77 +337,120 @@ class BotAI:
         self.hunt_queue = []
         self.ship_mode = False
 
-    _VALID_TARGET = (EMPTY, SHIP, MINE)
+    # -- Easy ---------------------------------------------------------------
+    def _random_shot(self, enemy_board):
+        available = [
+            (r, c) for r in range(SIZE) for c in range(SIZE)
+            if (r, c) not in self.shots and enemy_board.grid[r][c] in _BOT_OPEN
+        ]
+        return random.choice(available) if available else None
 
-    def _probability_shot(self, enemy_board, strip=False):
-        ships_list = STRIP_SHIPS if strip else SHIPS
-        if strip:
-            return None
-        probs = [[0.0 for _ in range(SIZE)] for _ in range(SIZE)]
-        for length in ships_list:
-            for r in range(SIZE):
-                for c in range(SIZE - length + 1):
-                    cells = [(r, c + i) for i in range(length)]
-                    if all(enemy_board.grid[nr][nc] in self._VALID_TARGET for nr, nc in cells):
-                        for nr, nc in cells:
-                            probs[nr][nc] += 1.0
-            for r in range(SIZE - length + 1):
-                for c in range(SIZE):
-                    cells = [(r + i, c) for i in range(length)]
-                    if all(enemy_board.grid[nr][nc] in self._VALID_TARGET for nr, nc in cells):
-                        for nr, nc in cells:
-                            probs[nr][nc] += 1.0
-        best = -1.0
-        best_cell = None
-        for r in range(SIZE):
-            for c in range(SIZE):
-                if (r, c) not in self.shots and enemy_board.grid[r][c] in self._VALID_TARGET:
-                    if probs[r][c] > best:
-                        best = probs[r][c]
-                        best_cell = (r, c)
-        return best_cell
-
-    def choose_shot(self, enemy_board, strip=False):
-        if self.difficulty >= 3 and not self.hunt_queue:
-            result = self._probability_shot(enemy_board, strip=strip)
-            if result:
-                return result
-
+    # -- Medium -------------------------------------------------------------
+    def _hunt_shot(self, enemy_board):
         validated = []
         for r, c in self.hunt_queue:
-            if enemy_board.grid[r][c] in self._VALID_TARGET:
+            if enemy_board.grid[r][c] in _BOT_OPEN:
                 validated.append((r, c))
             else:
-                for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+                for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < SIZE and 0 <= nc < SIZE and (nr, nc) not in self.shots:
-                        if enemy_board.grid[nr][nc] not in (HIT, MISS, SUNK, DEAD):
-                            if (nr, nc) not in validated:
-                                validated.append((nr, nc))
+                        if enemy_board.grid[nr][nc] in _BOT_OPEN and (nr, nc) not in validated:
+                            validated.append((nr, nc))
         self.hunt_queue = validated
 
         while self.hunt_queue:
             r, c = self.hunt_queue.pop(0)
-            if enemy_board.grid[r][c] in self._VALID_TARGET:
+            if enemy_board.grid[r][c] in _BOT_OPEN:
                 return r, c
+        return self._random_shot(enemy_board)
 
-        available = [(r, c) for r in range(SIZE) for c in range(SIZE)
-                     if (r, c) not in self.shots and enemy_board.grid[r][c] not in (HIT, MISS, SUNK, DEAD)]
-        if not available:
-            return None
-        return random.choice(available)
+    # -- Hard ---------------------------------------------------------------
+    def _remaining_ship_lengths(self, enemy_board):
+        if enemy_board.ships:
+            return [len(s.cells) for s in enemy_board.ships if not s.sunk]
+        return list(SHIPS)
+
+    def _remaining_ship_shapes(self, enemy_board):
+        if enemy_board.ships:
+            return [list(s.cells) for s in enemy_board.ships if not s.sunk]
+        return [list(s) for s in STRIP_SHIP_SHAPES]
+
+    def _placements(self, enemy_board, strip):
+        """Yield every placement of the remaining ships that is still
+        consistent with the shots fired so far (no blocked cell covered)."""
+        if strip:
+            for shape in self._remaining_ship_shapes(enemy_board):
+                minr = min(r for r, c in shape)
+                maxr = max(r for r, c in shape)
+                minc = min(c for r, c in shape)
+                maxc = max(c for r, c in shape)
+                for r0 in range(-minr, SIZE - maxr):
+                    for c0 in range(-minc, SIZE - maxc):
+                        cells = [(r + r0, c + c0) for r, c in shape]
+                        if all(enemy_board.grid[r][c] in _BOT_OPEN for r, c in cells):
+                            yield cells
+        else:
+            for length in self._remaining_ship_lengths(enemy_board):
+                for r in range(SIZE):
+                    for c in range(SIZE - length + 1):
+                        cells = [(r, c + i) for i in range(length)]
+                        if all(enemy_board.grid[nr][nc] in _BOT_OPEN for nr, nc in cells):
+                            yield cells
+                for r in range(SIZE - length + 1):
+                    for c in range(SIZE):
+                        cells = [(r + i, c) for i in range(length)]
+                        if all(enemy_board.grid[nr][nc] in _BOT_OPEN for nr, nc in cells):
+                            yield cells
+
+    def _smart_shot(self, enemy_board, strip):
+        active_hits = [
+            (r, c) for r in range(SIZE) for c in range(SIZE)
+            if enemy_board.grid[r][c] == HIT
+        ]
+        probs = [[0.0] * SIZE for _ in range(SIZE)]
+        for cells in self._placements(enemy_board, strip):
+            # Focus fire: once a ship is found, only count placements that
+            # run through a known hit, so the solver finishes that ship fast
+            # instead of diluting effort across the whole board.
+            if active_hits and not any((r, c) in active_hits for r, c in cells):
+                continue
+            for r, c in cells:
+                if (r, c) not in self.shots:
+                    probs[r][c] += 1.0
+        best = -1.0
+        best_cell = None
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if (r, c) not in self.shots and enemy_board.grid[r][c] in _BOT_OPEN:
+                    if probs[r][c] > best:
+                        best = probs[r][c]
+                        best_cell = (r, c)
+        if best_cell is not None:
+            return best_cell
+        return self._hunt_shot(enemy_board)
+
+    def choose_shot(self, enemy_board, strip=False):
+        if self.difficulty <= 1:
+            return self._random_shot(enemy_board)
+        if self.difficulty == 2:
+            return self._hunt_shot(enemy_board)
+        return self._smart_shot(enemy_board, strip)
 
     def register_shot(self, r, c, result, enemy_board):
         self.shots.add((r, c))
         if result in ("hit", "sunk", "mine"):
-            for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < SIZE and 0 <= nc < SIZE:
-                    if (nr, nc) not in self.shots and enemy_board.grid[nr][nc] not in (HIT, MISS, SUNK, DEAD):
+                    if (nr, nc) not in self.shots and enemy_board.grid[nr][nc] in _BOT_OPEN:
                         if (nr, nc) not in self.hunt_queue:
                             self.hunt_queue.append((nr, nc))
             if result == "sunk":
-                self.hunt_queue = [q for q in self.hunt_queue if enemy_board.grid[q[0]][q[1]] not in (SUNK, DEAD)]
+                self.hunt_queue = [
+                    q for q in self.hunt_queue
+                    if enemy_board.grid[q[0]][q[1]] not in (SUNK, DEAD)
+                ]
 
     def to_dict(self):
         return {

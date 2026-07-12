@@ -720,8 +720,12 @@ def _handle_checkers_state(data, uid, code):
 
 
 def _checkers_ai_difficulty(game):
-    """Map the player's chosen difficulty to the AI search depth."""
-    return 6 if game.difficulty >= 3 else 3
+    """Map the player's chosen difficulty to the AI search depth.
+
+    Easy plays random (very beatable), Medium searches shallow, Hard searches
+    deep with iterative deepening bounded by the time budget.
+    """
+    return {1: 1, 2: 4, 3: 9}.get(game.difficulty, 4)
 
 
 def _handle_checkers_move(data, uid, code):
