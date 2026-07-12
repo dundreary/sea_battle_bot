@@ -531,7 +531,8 @@ def _handle_pd_new_solo(data, uid, code):
 
 def _do_pd_new_solo(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
-    game = PDGame(c, uid, solo=True)
+    difficulty = int(data.get('difficulty', 3))
+    game = PDGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
     pd_games[c] = game
     pd_player_games[str(uid)] = c

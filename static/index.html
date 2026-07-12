@@ -1587,7 +1587,7 @@ function showPokerDice(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
-    <div class="game-card" onclick="pdStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" onclick="showPdBotDifficulty()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('pdSolo')}</div>
       <div class="card-desc">${t('withBot')}</div>
@@ -1603,8 +1603,30 @@ function showPokerDice(){
   `;
 }
 
+let pdDifficulty = 3;
+
+function showPdBotDifficulty(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  document.title=t('pdTitle');
+  setStatus(t('selectDifficulty'));
+  $('gameInfo').textContent='';
+  $('header').classList.remove('in-game');
+  $('actions').className='btn-row stack';
+  $('actions').innerHTML=`
+    <button class="btn success" onclick="pdStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn primary" onclick="pdStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="pdStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn outline quit-btn" onclick="showPokerDice()" style="margin-top:8px">${t('quit')}</button>
+  `;
+}
+
+function pdStartWithDifficulty(diff){
+  pdDifficulty = diff;
+  pdStartSolo();
+}
+
 async function pdStartSolo(){
-  const res=await api('/api/pd_new_solo',{uid:getUid()});
+  const res=await api('/api/pd_new_solo',{uid:getUid(), difficulty: pdDifficulty});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
   localStorage.setItem('pd_game',pdCode);

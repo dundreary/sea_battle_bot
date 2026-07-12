@@ -117,12 +117,152 @@ def _remaining_categories(scorecard: Dict[str, Optional[int]]) -> List[str]:
     return [c for c in CATEGORY_IDS if scorecard.get(c) is None]
 
 
+# ---------------------------------------------------------------------------
+# Bot AI (difficulty-aware)
+#
+# Difficulty levels (mirrors the Checkers picker: 1=Easy, 2=Normal, 3=Hard):
+#   1 Easy   - single roll, scores the highest raw category (legacy behaviour)
+#   2 Normal - up to 3 rolls with a simple keep heuristic, best raw category
+#   3 Hard   - up to 3 rolls with 2-ply Monte-Carlo expectimax keep decisions
+#             and marginal-value category choice with upper-bonus awareness
+# ---------------------------------------------------------------------------
+
+_KEEP_ALL = 0b11111
+
+
+def _keep_candidates(dice: List[int]) -> List[int]:
+    """Small set of realistic keep-masks (avoids the full 32-mask search).
+
+    Covers: keep everything, keep the modal group, keep all non-singles
+    (pursues two pairs / full house), and keep the longest consecutive run.
+    This is both far faster and almost always contains the optimal keep.
+    """
+    counts: Dict[int, int] = {}
+    for d in dice:
+        counts[d] = counts.get(d, 0) + 1
+    masks = {_KEEP_ALL}
+    maxc = max(counts.values())
+    if maxc >= 2:
+        mode = [d for d, c in counts.items() if c == maxc][0]
+        masks.add(sum(1 << i for i, d in enumerate(dice) if d == mode))
+        masks.add(sum(1 << i for i, d in enumerate(dice) if counts[d] >= 2))
+    uniq = sorted(set(dice))
+    best: List[int] = []
+    cur = [uniq[0]]
+    for x in uniq[1:]:
+        if x == cur[-1] + 1:
+            cur.append(x)
+        else:
+            cur = [x]
+        if len(cur) > len(best):
+            best = list(cur)
+    if len(best) >= 2:
+        masks.add(sum(1 << i for i, d in enumerate(dice) if d in best))
+    return list(masks)
+
+
+def _compute_expected_values(samples: int = 20000) -> Dict[str, float]:
+    ev: Dict[str, float] = {}
+    for c in CATEGORY_IDS:
+        total = 0
+        for _ in range(samples):
+            dice = [random.randint(1, 6) for _ in range(5)]
+            total += score_for_category(dice, c)
+        ev[c] = total / samples
+    return ev
+
+
+EXPECTED_VALUE: Dict[str, float] = _compute_expected_values()
+
+
+def _bot_keep_simple(dice: List[int]) -> int:
+    """Greedy keep heuristic for Normal difficulty.
+
+    Keeps the largest matching group (pair/triple/...), or the longest
+    consecutive run when there is no group.
+    """
+    counts: Dict[int, int] = {}
+    for d in dice:
+        counts[d] = counts.get(d, 0) + 1
+    max_count = max(counts.values())
+    if max_count >= 2:
+        mode = [d for d, c in counts.items() if c == max_count][0]
+        return sum(1 << i for i, d in enumerate(dice) if d == mode)
+    uniq = sorted(set(dice))
+    best_run: List[int] = []
+    cur: List[int] = [uniq[0]]
+    for x in uniq[1:]:
+        if x == cur[-1] + 1:
+            cur.append(x)
+        else:
+            cur = [x]
+        if len(cur) > len(best_run):
+            best_run = list(cur)
+    return sum(1 << i for i, d in enumerate(dice) if d in best_run)
+
+
+def _bot_ev(dice: List[int], rolls_left: int, remaining: List[str], r_samples: int = 16) -> float:
+    """Expected marginal value of the best play from this dice state.
+
+    Leaf (rolls_left <= 0): best category value minus its baseline expected
+    value, so the bot does not waste a high-value category on a weak roll.
+    """
+    if rolls_left <= 0:
+        return max(score_for_category(dice, c) - EXPECTED_VALUE[c] for c in remaining)
+    best = -1e18
+    for mask in _keep_candidates(dice):
+        s = 0.0
+        for _ in range(r_samples):
+            nd = [dice[i] if (mask >> i) & 1 else random.randint(1, 6) for i in range(5)]
+            s += _bot_ev(nd, rolls_left - 1, remaining, r_samples)
+        val = s / r_samples
+        if val > best:
+            best = val
+    return best
+
+
+def _bot_best_keep(dice: List[int], rolls_left: int, remaining: List[str], r_samples: int = 16) -> int:
+    """Pick the keep-mask that maximises expected marginal value."""
+    best_mask = _KEEP_ALL
+    best_val = -1e18
+    for mask in _keep_candidates(dice):
+        s = 0.0
+        for _ in range(r_samples):
+            nd = [dice[i] if (mask >> i) & 1 else random.randint(1, 6) for i in range(5)]
+            s += _bot_ev(nd, rolls_left - 1, remaining, r_samples)
+        val = s / r_samples
+        if val > best_val:
+            best_val = val
+            best_mask = mask
+    return best_mask
+
+
+def _bot_choose_category(dice: List[int], remaining: List[str], scorecard: Dict[str, Optional[int]]) -> str:
+    """Choose the category maximising marginal value, nudged toward the
+    upper-section bonus (>=63 gives +35) when still reachable."""
+    upper = ('ones', 'twos', 'threes', 'fours', 'fives', 'sixes')
+    upper_sum = _upper_sum(scorecard)
+    best_cat = remaining[0]
+    best_val = -1e18
+    for c in remaining:
+        val = score_for_category(dice, c) - EXPECTED_VALUE[c]
+        if c in upper and upper_sum < 63:
+            gap = 63 - upper_sum
+            contrib = score_for_category(dice, c)
+            val += 35.0 * min(contrib, gap) / 63.0 * 0.5
+        if val > best_val:
+            best_val = val
+            best_cat = c
+    return best_cat
+
+
 class PokerDiceGame:
-    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False):
+    def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False, difficulty: int = 3):
         self.code = code
         self.player1_id = player1_id
         self.player2_id = player2_id
         self.solo = solo
+        self.difficulty = difficulty
         self.phase = 'playing'
         self.turn = 1
         self.surrendered = None
@@ -262,23 +402,45 @@ class PokerDiceGame:
             self._advance_turn(2)
             return
 
-        p['dice'] = [random.randint(1, 6) for _ in range(5)]
-        p['rolls'] = 0
-        p['dice_history'] = [list(p['dice'])]
-
+        # Player 2 is never reset by _advance_turn, so reset it each bot turn.
+        self._reset_player(2)
         remaining = _remaining_categories(p['scorecard'])
-        best_cat = remaining[0]
-        best_score = -1
-        for cat in remaining:
-            s = score_for_category(p['dice'], cat)
-            if s > best_score:
-                best_score = s
-                best_cat = cat
+        diff = self.difficulty
 
-        p['scorecard'][best_cat] = best_score
+        def _bot_roll(keep_mask: int):
+            fresh = []
+            for i in range(5):
+                if (keep_mask >> i) & 1 and len(p['dice']) == 5:
+                    fresh.append(p['dice'][i])
+                else:
+                    fresh.append(random.randint(1, 6))
+            p['dice'] = fresh
+            if p['rolls'] > 0:
+                p['rolls'] -= 1
+            p['dice_history'].append(list(fresh))
+
+        if diff <= 1:
+            # Easy: one roll, score the highest raw category (legacy behaviour).
+            _bot_roll(0)
+            best_cat = max(remaining, key=lambda c: score_for_category(p['dice'], c))
+        else:
+            # Normal / Hard: up to 3 rolls, choosing which dice to keep.
+            _bot_roll(0)
+            while p['rolls'] > 0:
+                if diff == 2:
+                    mask = _bot_keep_simple(p['dice'])
+                else:
+                    mask = _bot_best_keep(p['dice'], p['rolls'], remaining)
+                if mask == _KEEP_ALL:
+                    break
+                _bot_roll(mask)
+            best_cat = _bot_choose_category(p['dice'], remaining, p['scorecard'])
+
+        scored_points = score_for_category(p['dice'], best_cat)
+        p['scorecard'][best_cat] = scored_points
         p['hand'] = evaluate(p['dice'])
         p['last_scored_category'] = best_cat
-        p['last_scored_score'] = best_score
+        p['last_scored_score'] = scored_points
         p['scored'] = True
 
         self._advance_turn(2)
@@ -381,6 +543,7 @@ class PokerDiceGame:
             'player1_id': self.player1_id,
             'player2_id': self.player2_id,
             'solo': self.solo,
+            'difficulty': self.difficulty,
             'phase': self.phase,
             'turn': self.turn,
             'surrendered': self.surrendered,
@@ -406,6 +569,7 @@ class PokerDiceGame:
         game.player1_id = data['player1_id']
         game.player2_id = data.get('player2_id')
         game.solo = data.get('solo', False)
+        game.difficulty = data.get('difficulty', 3)
         game.phase = data.get('phase', 'playing')
         game.turn = data.get('turn', 1)
         game.surrendered = data.get('surrendered')
