@@ -2483,6 +2483,7 @@ function bgShowGame(st){
   $('gameInfo').textContent='';
   $('actions').innerHTML='';
   $('actions').className='btn-row';
+  $('bgActions').innerHTML='';
   bgRenderBoard(st);
   if(st.phase==='finished'){
     if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
@@ -2686,7 +2687,7 @@ function bgRenderActions(st){
     <button class="theme-btn snd-btn" id="sndBtnBg" onclick="toggleSnd()">${sndIcon}</button>
     <button class="theme-btn snd-btn" id="vibeBtnBg" onclick="toggleVibe()">${vibeIcon}</button>
   </div>`;
-  el.innerHTML+=html;
+  el.insertAdjacentHTML('beforeend', html);
 }
 
 async function bgDoRoll(){
