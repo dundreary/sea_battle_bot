@@ -207,42 +207,57 @@ class BackgammonGame:
         color = self.player_color(uid)
         if color is None or color != self.turn or self.phase != 'playing':
             return None
+        if not self.solo and self.player2_id is None:
+            return None
         if self.dice:
             return None
         self.dice = roll_dice()
         self.used_dice = 0
         return self.get_state(uid)
 
+    def _skip_blocked_dice(self):
+        """Skip dice that have no legal moves, so dice[used_dice] is always a playable die."""
+        while self.used_dice < len(self.dice):
+            die_val = self.dice[self.used_dice]
+            if legal_moves_for_die(self.board, self.bar, self.off, self.turn, die_val):
+                break
+            self.used_dice += 1
+
     def _make_single_move(self, from_idx: int, to_idx: int) -> bool:
         """Apply one die move. Returns True if the move was valid and applied."""
         if not self.dice or self.used_dice >= len(self.dice):
             return False
-        die_idx = self.used_dice
-        die_val = self.dice[die_idx]
-        allowed = legal_moves_for_die(self.board, self.bar, self.off, self.turn, die_val)
-        if (from_idx, to_idx) not in allowed:
-            return False
-        apply_move(self.board, self.bar, self.off, self.turn, from_idx, to_idx)
-        self.used_dice += 1
-        return True
+        for i in range(self.used_dice, len(self.dice)):
+            die_val = self.dice[i]
+            allowed = legal_moves_for_die(self.board, self.bar, self.off, self.turn, die_val)
+            if (from_idx, to_idx) in allowed:
+                apply_move(self.board, self.bar, self.off, self.turn, from_idx, to_idx)
+                self.dice[i], self.dice[self.used_dice] = self.dice[self.used_dice], self.dice[i]
+                self.used_dice += 1
+                return True
+        return False
 
     def _remaining_dice(self) -> List[int]:
         return self.dice[self.used_dice:]
 
     def _auto_pass(self):
-        """Skip remaining dice if no legal moves are possible."""
-        for die in self._remaining_dice():
-            if legal_moves_for_die(self.board, self.bar, self.off, self.turn, die):
-                return False
-        self.used_dice = len(self.dice)
-        return True
+        """Skip dice that have no legal moves. Returns True if no playable dice remain."""
+        self._skip_blocked_dice()
+        return self.used_dice >= len(self.dice)
 
     def move(self, uid: int, from_idx: int, to_idx: int) -> Optional[Dict]:
         color = self.player_color(uid)
         if color is None or color != self.turn or self.phase != 'playing':
             return None
+        if not self.solo and self.player2_id is None:
+            return None
         if not self.dice:
             return None
+
+        self._skip_blocked_dice()
+        if self.used_dice >= len(self.dice):
+            self._finish_turn()
+            return self.get_state(uid)
 
         ok = self._make_single_move(from_idx, to_idx)
         if not ok:
@@ -263,6 +278,10 @@ class BackgammonGame:
             self._switch_turn()
             if self.phase == 'playing' and self.turn == BLACK:
                 self._bot_play()
+                if self.off[0] >= 15 or self.off[1] >= 15:
+                    self.phase = 'finished'
+                    self.winner = self.player1_id if self.turn == WHITE else self.player2_id
+                    return
                 if self.phase == 'playing':
                     self._switch_turn()
         else:
@@ -296,6 +315,8 @@ class BackgammonGame:
         color = self.player_color(uid)
         if color is None or color != self.turn or self.phase != 'playing':
             return None
+        if not self.solo and self.player2_id is None:
+            return None
         self._finish_turn()
         return self.get_state(uid)
 
@@ -303,7 +324,7 @@ class BackgammonGame:
         color = self.player_color(uid)
         if color is None or self.phase != 'playing':
             return None
-        self.winner = self.player1_id if color == BLACK else self.player2_id
+        self.winner = self.player1_id if color == BLACK else (self.player2_id or 0)
         self.phase = 'finished'
         return self.get_state(uid)
 

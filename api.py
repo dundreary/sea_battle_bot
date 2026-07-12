@@ -970,6 +970,7 @@ def _do_bg_new_solo(data, uid):
     difficulty = data.get("difficulty", 2)
     c = generate_unique_code(BGGame.generate_code, bg_games)
     game = BGGame(c, uid, solo=True, difficulty=difficulty)
+    game.player2_id = 0
     bg_games[c] = game
     bg_player_games[str(uid)] = c
     save()

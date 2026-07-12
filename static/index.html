@@ -2614,7 +2614,7 @@ function bgRenderDice(st){
   const cont=$('bgActions');
   const dice=st.dice||[];
   if(!dice.length){
-    if(st.my_turn && st.phase==='playing'){
+    if(st.my_turn && st.phase==='playing' && (st.solo || st.opponent_joined)){
       const rollBtn=document.createElement('button');
       rollBtn.className='btn success';
       rollBtn.style.cssText='width:100%;margin:8px 0';
@@ -2656,7 +2656,9 @@ function bgRenderActions(st){
   const el=$('bgActions');
   el.className='btn-col';
   let html='';
-  if(st.my_turn && st.phase==='playing'){
+  if(st.phase==='playing' && !st.solo && !st.opponent_joined){
+    setStatus({ru:'🔄 Ожидание друга...',uk:'🔄 Очікування друга...',en:'🔄 Waiting for opponent...'}[lang],'');
+  }else if(st.my_turn && st.phase==='playing'){
     setStatus(t('bgYourTurn'),'battle');
     const inviteBtn=st.solo||st.opponent_joined?'':`<button class="btn primary" onclick="shareBgGame()">📤 ${t('inviteFriend')}</button>`;
     if(inviteBtn) html+=`<div class="btn-row">${inviteBtn}</div>`;
