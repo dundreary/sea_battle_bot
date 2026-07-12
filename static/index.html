@@ -979,17 +979,19 @@ function updateUI(){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
-      ${s.solo ? '' : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`}
-      ${s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
-      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
+      ${s.solo
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>
+      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
-      ${s.solo ? '' : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`}
-      ${s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
-      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
+      ${s.solo
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>
+      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }
 }
