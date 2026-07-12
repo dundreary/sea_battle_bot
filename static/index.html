@@ -273,8 +273,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black.king{color:#FFD700}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
-.bg-board{display:flex;flex-direction:column;width:100%;max-width:360px;margin:4px auto;background:#2d1810;border:3px solid #5C3A1E;border-radius:10px;padding:4px;overflow:hidden}
-.bg-row{display:flex;height:28px;gap:1px}
+.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:4px;width:100%;max-width:700px;min-height:240px;margin:4px auto;background:#2d1810;border:3px solid #5C3A1E;border-radius:10px;padding:4px;overflow:visible}
+.bg-half{display:flex;flex-direction:column;flex:1;min-width:0}
+.bg-row{display:flex;gap:1px;flex:1;min-height:0}
 .bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0}
 .bg-point.top{justify-content:flex-start}
 .bg-point-inner{display:flex;flex-direction:column;align-items:center}
@@ -284,9 +285,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bg-checker.black{background:radial-gradient(circle at 35% 35%, #555, #1a1a1a);border:1.5px solid #000}
 .bg-checker.selected{outline:3px solid #FFD700;outline-offset:-2px;z-index:2}
 .bg-checker.highlight{outline:3px solid #66BB6A;outline-offset:-2px;z-index:2}
-.bg-bar{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60px;background:rgba(255,255,255,.05);border-radius:6px;margin:4px 0;padding:4px;gap:2px}
-.bg-bar-label{font-size:10px;color:var(--text-muted);text-transform:uppercase}
-.bg-off{text-align:center;font-size:13px;color:var(--accent-primary);padding:4px}
+.bg-bar-v{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:26px;background:rgba(255,255,255,.05);border-radius:6px;padding:4px;gap:3px}
+.bg-bar-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;writing-mode:vertical-rl;letter-spacing:1px}
+.bg-off-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;background:rgba(255,255,255,.04);border-radius:6px;padding:6px;gap:6px;font-size:13px;color:var(--accent-primary)}
 .bg-dice{display:flex;gap:12px;justify-content:center;margin:12px 0;flex-wrap:wrap}
 .bg-die{width:48px;height:48px;background:#fff;color:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .bg-die.used{opacity:.3}
@@ -2527,15 +2528,15 @@ function bgRenderBoard(st){
   }
 
   const wrap=document.createElement('div');
-  wrap.className='bg-board';
+  wrap.className='bg-board-h';
 
-  const renderRow=(start,end,top)=>{
+  const renderRow=(start,end)=>{
     const row=document.createElement('div');
     row.className='bg-row';
     for(let i=start;i!==end;i+=end>start?1:-1){
       const idx=flip?23-i:i;
       const pt=document.createElement('div');
-      pt.className='bg-point'+(top?' top':'');
+      pt.className='bg-point'+(start>=12?' top':'');
       const inner=document.createElement('div');
       inner.className='bg-point-inner';
       const count=Math.abs(board[idx]);
@@ -2567,45 +2568,48 @@ function bgRenderBoard(st){
     return row;
   };
 
-  // Top row: points 12-23 (display depends on flip)
-  wrap.appendChild(renderRow(12,24,true));
+  // Left half: top points 12-17, bottom points 11-6
+  const leftHalf=document.createElement('div');
+  leftHalf.className='bg-half';
+  leftHalf.appendChild(renderRow(12,18));
+  leftHalf.appendChild(renderRow(11,5));
 
-  // Home labels
-  const homeRow=document.createElement('div');
-  homeRow.style.cssText='display:flex;justify-content:space-between;padding:0 4px';
-  homeRow.innerHTML=`<span class="bg-home-label">${flip?'':'HOME'}</span><span class="bg-home-label">${flip?'HOME':''}</span>`;
-  wrap.appendChild(homeRow);
-
-  // Bar between rows
-  const barRow=document.createElement('div');
-  barRow.className='bg-bar';
+  // Center bar
+  const barCol=document.createElement('div');
+  barCol.className='bg-bar-v';
   if(bar[0]>0||bar[1]>0){
-    barRow.innerHTML=`<div class="bg-bar-label">BAR</div>`;
+    barCol.innerHTML=`<div class="bg-bar-label">BAR</div>`;
     for(let j=0;j<bar[0];j++){
       const ch=document.createElement('div');
       ch.className='bg-checker white';
       if(myTurn && bgSelected===null && moveMap[-1]) ch.style.cursor='pointer';
       if(myTurn && bgSelected===null && moveMap[-1]) ch.onclick=()=>bgSelectSource(-1);
-      barRow.appendChild(ch);
+      barCol.appendChild(ch);
     }
     for(let j=0;j<bar[1];j++){
       const ch=document.createElement('div');
       ch.className='bg-checker black';
-      barRow.appendChild(ch);
+      barCol.appendChild(ch);
     }
   }
-  wrap.appendChild(barRow);
 
-  // Bottom row: points 11-0
-  wrap.appendChild(renderRow(11,-1,false));
+  // Right half: top points 18-23, bottom points 5-0
+  const rightHalf=document.createElement('div');
+  rightHalf.className='bg-half';
+  rightHalf.appendChild(renderRow(18,24));
+  rightHalf.appendChild(renderRow(5,-1));
 
-  // Off display
+  // Off (bear-off) column on the right
+  const offCol=document.createElement('div');
+  offCol.className='bg-off-col';
   if(off[0]>0||off[1]>0){
-    const offRow=document.createElement('div');
-    offRow.className='bg-off';
-    offRow.textContent = `⬜ ${off[0]}  ⬛ ${off[1]}`;
-    wrap.appendChild(offRow);
+    offCol.innerHTML=`<div>⬜ ${off[0]}</div><div>⬛ ${off[1]}</div>`;
   }
+
+  wrap.appendChild(leftHalf);
+  wrap.appendChild(barCol);
+  wrap.appendChild(rightHalf);
+  wrap.appendChild(offCol);
 
   cont.innerHTML='';
   cont.appendChild(wrap);
