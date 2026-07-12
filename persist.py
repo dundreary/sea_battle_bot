@@ -1,10 +1,11 @@
 import os
 import json
 import time
-import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 PERSIST_PATH = os.path.join(os.path.dirname(__file__), 'data', 'persist.json')
-_lock = threading.Lock()
 
 
 def _write(data):
@@ -32,7 +33,7 @@ def _serialize_games(games_dict, to_dict_fn):
         try:
             result[code] = to_dict_fn(game)
         except Exception:
-            pass
+            logger.exception("Failed to serialize game %s", code)
     return result
 
 
@@ -46,12 +47,10 @@ def _deserialize_games(data_dict, from_dict_fn, check_age=True):
                 games[code] = game
             else:
                 created = getattr(game, 'created_at', 0)
-                # Only finished games are dropped when stale; in-progress games
-                # are kept so a long game (or one left paused) is not lost.
                 if now - created < MAX_AGE or gdata.get('phase') != 'finished':
                     games[code] = game
         except Exception:
-            pass
+            logger.exception("Failed to deserialize game %s", code)
     return games
 
 
@@ -64,20 +63,19 @@ def _cleanup_stale_player_games(player_games, valid_codes):
 def save():
     import api
 
-    with _lock:
-        data = {
-            'version': 1,
-            'saved_at': time.time(),
-            'api_games': _serialize_games(api.games, lambda g: g.to_dict()),
-            'api_player_games': {str(k): v for k, v in api.player_games.items()},
-            'checkers_games': _serialize_games(api.checkers_games, lambda g: g.to_dict()),
-            'checkers_player_games': {str(k): v for k, v in api.checkers_player_games.items()},
-            'poker_dice_games': _serialize_games(api.pd_games, lambda g: g.to_dict()),
-            'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
-            'backgammon_games': _serialize_games(api.bg_games, lambda g: g.to_dict()),
-            'backgammon_player_games': {str(k): v for k, v in api.bg_player_games.items()},
-        }
-        _write(data)
+    data = {
+        'version': 1,
+        'saved_at': time.time(),
+        'api_games': _serialize_games(api.games, lambda g: g.to_dict()),
+        'api_player_games': {str(k): v for k, v in api.player_games.items()},
+        'checkers_games': _serialize_games(api.checkers_games, lambda g: g.to_dict()),
+        'checkers_player_games': {str(k): v for k, v in api.checkers_player_games.items()},
+        'poker_dice_games': _serialize_games(api.pd_games, lambda g: g.to_dict()),
+        'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
+        'backgammon_games': _serialize_games(api.bg_games, lambda g: g.to_dict()),
+        'backgammon_player_games': {str(k): v for k, v in api.bg_player_games.items()},
+    }
+    _write(data)
 
 
 def load():
@@ -91,37 +89,34 @@ def load():
     if not data:
         return
 
-    with _lock:
-        api.games.clear()
-        api.games.update(_deserialize_games(data.get('api_games', {}), Game.from_dict))
-        api.player_games.clear()
-        api.player_games.update(data.get('api_player_games', {}))
-        _cleanup_stale_player_games(api.player_games, set(api.games.keys()))
+    api.games.clear()
+    api.games.update(_deserialize_games(data.get('api_games', {}), Game.from_dict))
+    api.player_games.clear()
+    api.player_games.update(data.get('api_player_games', {}))
+    _cleanup_stale_player_games(api.player_games, set(api.games.keys()))
 
-        api.checkers_games.clear()
-        api.checkers_games.update(_deserialize_games(data.get('checkers_games', {}), CheckersGame.from_dict))
-        api.checkers_player_games.clear()
-        api.checkers_player_games.update(data.get('checkers_player_games', {}))
-        _cleanup_stale_player_games(api.checkers_player_games, set(api.checkers_games.keys()))
+    api.checkers_games.clear()
+    api.checkers_games.update(_deserialize_games(data.get('checkers_games', {}), CheckersGame.from_dict))
+    api.checkers_player_games.clear()
+    api.checkers_player_games.update(data.get('checkers_player_games', {}))
+    _cleanup_stale_player_games(api.checkers_player_games, set(api.checkers_games.keys()))
 
-        api.pd_games.clear()
-        api.pd_games.update(_deserialize_games(
-            data.get('poker_dice_games', {}),
-            PokerDiceGame.from_dict,
-            check_age=False,
-        ))
-        api.pd_player_games.clear()
-        api.pd_player_games.update(data.get('poker_dice_player_games', {}))
-        _cleanup_stale_player_games(api.pd_player_games, set(api.pd_games.keys()))
+    api.pd_games.clear()
+    api.pd_games.update(_deserialize_games(
+        data.get('poker_dice_games', {}),
+        PokerDiceGame.from_dict,
+    ))
+    api.pd_player_games.clear()
+    api.pd_player_games.update(data.get('poker_dice_player_games', {}))
+    _cleanup_stale_player_games(api.pd_player_games, set(api.pd_games.keys()))
 
-        api.bg_games.clear()
-        api.bg_games.update(_deserialize_games(
-            data.get('backgammon_games', {}),
-            BackgammonGame.from_dict,
-            check_age=False,
-        ))
-        api.bg_player_games.clear()
-        api.bg_player_games.update(data.get('backgammon_player_games', {}))
-        _cleanup_stale_player_games(api.bg_player_games, set(api.bg_games.keys()))
+    api.bg_games.clear()
+    api.bg_games.update(_deserialize_games(
+        data.get('backgammon_games', {}),
+        BackgammonGame.from_dict,
+    ))
+    api.bg_player_games.clear()
+    api.bg_player_games.update(data.get('backgammon_player_games', {}))
+    _cleanup_stale_player_games(api.bg_player_games, set(api.bg_games.keys()))
 
 

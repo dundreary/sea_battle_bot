@@ -109,41 +109,6 @@ def board_copy(board: List[int], bar: List[int], off: List[int]) -> Tuple[List[i
     return list(board), list(bar), list(off)
 
 
-def generate_move_sequences(board: List[int], bar: List[int], off: List[int], player: int, dice: List[int]) -> List[List[Tuple[int, int]]]:
-    """Generate all possible move sequences for a dice roll."""
-    results: List[List[Tuple[int, int]]] = []
-
-    def _gen(b, ba, o, remaining_dice, seq):
-        if not remaining_dice:
-            results.append(list(seq))
-            return
-        die = remaining_dice[0]
-        rest = remaining_dice[1:]
-        moves = legal_moves_for_die(b, ba, o, player, die)
-        if not moves:
-            _gen(b, ba, o, rest, seq)
-            return
-        moved = False
-        for f, t in moves:
-            nb, nba, no = board_copy(b, ba, o)
-            apply_move(nb, nba, no, player, f, t)
-            _gen(nb, nba, no, rest, seq + [(f, t)])
-            moved = True
-        if not moved:
-            _gen(b, ba, o, rest, seq)
-
-    _gen(list(board), list(bar), list(off), sorted(dice, reverse=(player == WHITE)), [])
-    # Remove duplicates
-    seen = set()
-    uniq = []
-    for seq in results:
-        key = tuple(seq)
-        if key not in seen:
-            seen.add(key)
-            uniq.append(seq)
-    return uniq
-
-
 def evaluate_move(board: List[int], bar: List[int], off: List[int], player: int, from_idx: int, to_idx: int) -> int:
     """Score a single move for AI selection."""
     score = 0
@@ -317,6 +282,13 @@ class BackgammonGame:
             return None
         if not self.solo and self.player2_id is None:
             return None
+        if not self.dice:
+            return None
+        if self.used_dice < len(self.dice):
+            remaining = self._remaining_dice()
+            for die_val in remaining:
+                if legal_moves_for_die(self.board, self.bar, self.off, self.turn, die_val):
+                    return None
         self._finish_turn()
         return self.get_state(uid)
 

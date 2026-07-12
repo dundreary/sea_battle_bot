@@ -473,7 +473,7 @@ def _handle_shoot(data, uid, code):
             loser_stake = game.strip_stakes.get(game.player_num(loser_id), "")
             if loser_stake:
                 caption = STRIP_LOSE_CAPTIONS['ru']
-                pending_stake = (loser_id, loser_stake, caption)
+                pending_stake = (uid, loser_stake, caption)
     save()
     return {"ok": True, "result": result, "state": state}, pending_stake, pending_notifications
 
