@@ -953,20 +953,16 @@ function updateUI(){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
-      <div class="btn-row">
-        <button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button>
-        <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
-      </div>
+      ${s.solo ? '' : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`}
+      ${s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
       <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
     `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
-      <div class="btn-row">
-        <button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button>
-        <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
-      </div>
+      ${s.solo ? '' : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`}
+      ${s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
       <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
     `;
   }
@@ -1357,13 +1353,13 @@ async function handleShot(r,c){
   if(msg)setStatus(msg,'battle');
 }
 
-async function sendOpponentMessage(){
-  if(!state || state.solo || !gameCode)return;
+async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=state){
+  if(!gameState || gameState.solo || !code)return;
   const message = window.prompt(t('messagePrompt'));
   if(message === null)return;
   const text = message.trim();
   if(!text)return;
-  const res = await api('/api/message_opponent',{uid:getUid(),code:gameCode,message:text});
+  const res = await api('/api/message_opponent',{uid:getUid(),code,message:text,game});
   setStatus(res && res.ok ? t('messageSent') : t('messageError'), res && res.ok ? '' : 'battle');
 }
 
@@ -1783,11 +1779,19 @@ function pdRenderActions(st){
       html += `<button class="btn primary" onclick="sharePdGame()">📤 ${t('inviteFriend')}</button>`;
     }
   }
-  // Minimize + Surrender always shown (for both my turn and opponent's turn)
-   html += `<div class="btn-row" style="margin-top:8px">
-    <button class="btn outline danger" onclick="pdSurrender()">${t('surrender')}</button>
-    <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
-  </div>`;
+  // Messaging is available only in a multiplayer game.
+  if(!st.solo){
+    html += `<div class="btn-row" style="margin-top:8px">
+      <button class="btn outline" onclick="sendOpponentMessage('poker_dice',pdCode,pdState)">${t('message')}</button>
+      <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
+    </div>`;
+    html += `<button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>`;
+  }else{
+    html += `<div class="btn-row" style="margin-top:8px">
+      <button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>
+      <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
+    </div>`;
+  }
 
   // Theme / sound controls at the bottom
   const sndIcon = typeof _snd !== 'undefined' && !_snd ? '🔇' : '🔊';
@@ -2128,10 +2132,18 @@ function ckShowGame(st){
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
-   html+=`<div class="btn-row" style="margin-top:8px">
-    <button class="btn outline danger" onclick="ckSurrender()">${t('surrender')}</button>
-    <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
-  </div>`;
+  if(!st.solo){
+    html+=`<div class="btn-row" style="margin-top:8px">
+      <button class="btn outline" onclick="sendOpponentMessage('checkers',ckCode,ckState)">${t('message')}</button>
+      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+    </div>
+    <button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+  }else{
+    html+=`<div class="btn-row" style="margin-top:8px">
+      <button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+    </div>`;
+  }
   const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
   const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
   html+=`<div class="pd-theme-bar">

@@ -570,7 +570,16 @@ def _handle_surrender(data, uid, code):
 
 def _handle_message_opponent(data, uid, code):
     """Send a short Telegram notification to the opponent in a live game."""
-    game, err = _get_game(games, code, uid)
+    game_type = data.get("game", "sea_battle")
+    game_sets = {
+        "sea_battle": games,
+        "poker_dice": pd_games,
+        "checkers": checkers_games,
+    }
+    games_dict = game_sets.get(game_type)
+    if games_dict is None:
+        return {"error": "unknown_game"}
+    game, err = _get_game(games_dict, code, uid)
     if err:
         return err
     if uid not in (game.player1_id, game.player2_id):
