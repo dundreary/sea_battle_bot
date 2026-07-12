@@ -11,6 +11,7 @@ import notifications
 # Never touch disk (persist.json) or the network during the test.
 api.save = lambda: None
 persist.save = lambda: None
+persist.flush = lambda: None
 notifications.send_telegram_message = lambda *a, **k: True
 
 

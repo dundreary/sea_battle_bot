@@ -118,6 +118,11 @@ def run_bot():
 
 def main():
     load_state()
+    # Persist any in-memory state on exit so the last mutations are not lost
+    # (the background persistence worker otherwise flushes on its own cadence).
+    import atexit
+    import persist
+    atexit.register(persist.flush)
 
     # HTTP server in background (can run any thread)
     t = threading.Thread(target=run_http, daemon=True)

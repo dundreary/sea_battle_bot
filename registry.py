@@ -1,3 +1,4 @@
+import threading
 from typing import Any, Dict
 
 
@@ -47,3 +48,7 @@ REGISTRIES: Dict[str, GameRegistry] = {
     "checkers": GameRegistry(),
     "backgammon": GameRegistry(),
 }
+
+# Guards all shared in-memory game state. Re-entrant so a handler that already
+# holds it can also trigger a synchronous flush() without deadlocking.
+STATE_LOCK = threading.RLock()

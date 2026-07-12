@@ -1,4 +1,5 @@
 import random
+import time
 from checkers import (
     BOARD_SIZE, EMPTY, WHITE,
     get_legal_moves, apply_move, has_pieces,
@@ -74,7 +75,7 @@ def alpha_beta(board, depth, alpha, beta, maximizing, ai_color):
         return min_eval, best_move
 
 
-def get_ai_move(board, color, difficulty=3):
+def get_ai_move(board, color, difficulty=3, time_budget=1.5):
     moves = get_legal_moves(board, color)
     if not moves:
         return None
@@ -84,6 +85,16 @@ def get_ai_move(board, color, difficulty=3):
     if difficulty <= 1:
         return random.choice(moves)
 
-    depth = min(difficulty, 6)
-    _, best = alpha_beta(board, depth, float("-inf"), float("inf"), True, color)
-    return best if best else random.choice(moves)
+    max_depth = min(difficulty, 6)
+    best = moves[0]
+    start = time.time()
+    # Iterative deepening: keep the result of the last fully searched depth and
+    # stop early if the search runs past the time budget, so a single AI move
+    # can never block the (single-threaded) server for long.
+    for depth in range(1, max_depth + 1):
+        _, move = alpha_beta(board, depth, float("-inf"), float("inf"), True, color)
+        if move:
+            best = move
+        if time.time() - start > time_budget:
+            break
+    return best

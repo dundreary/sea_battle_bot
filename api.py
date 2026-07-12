@@ -1,6 +1,5 @@
 import json
 import logging
-import threading
 import time
 from typing import Dict, Any, Callable
 
@@ -9,11 +8,11 @@ from poker_dice import PokerDiceGame as PDGame
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from backgammon import BackgammonGame as BGGame
 from checkers_ai import get_ai_move
-from persist import save
+from persist import save, flush
 from auth import validate_init_data
 import config
 
-from registry import REGISTRIES
+from registry import REGISTRIES, STATE_LOCK as _state_lock
 
 from notifications import (
     _enqueue_notifications,
@@ -42,10 +41,10 @@ pd_player_games = pd.player_games
 bg_games = bg.games
 bg_player_games = bg.player_games
 
-# Guards all shared in-memory game dictionaries below. The HTTP server thread and
+# Guards all shared in-memory game dictionaries. The HTTP server thread and
 # the bot's asyncio thread both access these, so mutations must be serialized to
-# avoid race conditions.
-_state_lock = threading.Lock()
+# avoid race conditions. Provided by the registry as a re-entrant lock so a
+# handler that already holds it can trigger a synchronous flush() safely.
 
 
 def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) -> str:
@@ -123,7 +122,7 @@ def _surrender_game(games_dict, player_games_dict, code, uid, text, event):
     _mark_active(game, uid)
     pending = _notify_opponent(game, uid, text, event, force=True)
     _evict_game(code, games_dict, player_games_dict)
-    save()
+    flush()
     return {"ok": True, "state": st}, pending
 
 
@@ -756,7 +755,7 @@ def _handle_checkers_move(data, uid, code):
         _mark_active(game, uid)
         pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
         _evict_game(code, checkers_games, checkers_player_games)
-        save()
+        flush()
         return {"ok": True, "state": state, "finished": True}, pending
 
     winning_move = None
@@ -1018,7 +1017,7 @@ def handle_api(path, body):
             send_strip_photo_to_winner(winner_id, photo, caption)
             with _state_lock:
                 _evict_game(code, games, player_games)
-                save()
+            flush()
         return response
 
     if path in NOTIFY_PATHS:

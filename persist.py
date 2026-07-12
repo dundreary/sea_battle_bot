@@ -2,8 +2,9 @@ import os
 import json
 import time
 import logging
+import threading
 
-from registry import REGISTRIES
+from registry import REGISTRIES, STATE_LOCK
 
 logger = logging.getLogger(__name__)
 
@@ -70,19 +71,62 @@ def _cleanup_stale_player_games(player_games, valid_codes):
 
 
 def save():
-    data = {
-        'version': 1,
-        'saved_at': time.time(),
-        'api_games': _serialize_games(sb.games, lambda g: g.to_dict()),
-        'api_player_games': {str(k): v for k, v in sb.player_games.items()},
-        'checkers_games': _serialize_games(ck.games, lambda g: g.to_dict()),
-        'checkers_player_games': {str(k): v for k, v in ck.player_games.items()},
-        'poker_dice_games': _serialize_games(pd.games, lambda g: g.to_dict()),
-        'poker_dice_player_games': {str(k): v for k, v in pd.player_games.items()},
-        'backgammon_games': _serialize_games(bg.games, lambda g: g.to_dict()),
-        'backgammon_player_games': {str(k): v for k, v in bg.player_games.items()},
-    }
+    """Mark state dirty; a background thread persists it shortly.
+
+    Keeping the serialization + disk write off the request path means a single
+    HTTP handler never blocks on dumping every active game.
+    """
+    global _dirty
+    with _dirty_lock:
+        _dirty = True
+    _flush_event.set()
+
+
+def flush():
+    """Synchronously persist current state.
+
+    Use before evicting a game or shutting down, where the on-disk state must
+    be up to date immediately (e.g. so a surrendered game does not reappear).
+    """
+    global _dirty
+    with _dirty_lock:
+        _dirty = False
+    _dump()
+
+
+def _dump():
+    with STATE_LOCK:
+        data = {
+            'version': 1,
+            'saved_at': time.time(),
+            'api_games': _serialize_games(sb.games, lambda g: g.to_dict()),
+            'api_player_games': {str(k): v for k, v in sb.player_games.items()},
+            'checkers_games': _serialize_games(ck.games, lambda g: g.to_dict()),
+            'checkers_player_games': {str(k): v for k, v in ck.player_games.items()},
+            'poker_dice_games': _serialize_games(pd.games, lambda g: g.to_dict()),
+            'poker_dice_player_games': {str(k): v for k, v in pd.player_games.items()},
+            'backgammon_games': _serialize_games(bg.games, lambda g: g.to_dict()),
+            'backgammon_player_games': {str(k): v for k, v in bg.player_games.items()},
+        }
     _write(data)
+
+
+_dirty = False
+_dirty_lock = threading.Lock()
+_flush_event = threading.Event()
+PERSIST_INTERVAL = 1.5
+
+
+def _persistence_worker():
+    while True:
+        _flush_event.wait(PERSIST_INTERVAL)
+        with _dirty_lock:
+            if not _dirty:
+                continue
+        flush()
+
+
+threading.Thread(target=_persistence_worker, name="persistence", daemon=True).start()
 
 
 def load():

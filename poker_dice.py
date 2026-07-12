@@ -173,7 +173,16 @@ def _compute_expected_values(samples: int = 20000) -> Dict[str, float]:
     return ev
 
 
-EXPECTED_VALUE: Dict[str, float] = _compute_expected_values()
+# Lazily computed on first use (Hard difficulty only) and cached, instead of
+# blocking module import with 300k rolls. See _expected_value().
+_EXPECTED_VALUE_CACHE: Dict[str, float] = {}
+
+
+def _expected_value() -> Dict[str, float]:
+    global _EXPECTED_VALUE_CACHE
+    if not _EXPECTED_VALUE_CACHE:
+        _EXPECTED_VALUE_CACHE = _compute_expected_values()
+    return _EXPECTED_VALUE_CACHE
 
 
 def _bot_keep_simple(dice: List[int]) -> int:
@@ -209,7 +218,7 @@ def _bot_ev(dice: List[int], rolls_left: int, remaining: List[str], r_samples: i
     value, so the bot does not waste a high-value category on a weak roll.
     """
     if rolls_left <= 0:
-        return max(score_for_category(dice, c) - EXPECTED_VALUE[c] for c in remaining)
+        return max(score_for_category(dice, c) - _expected_value()[c] for c in remaining)
     best = -1e18
     for mask in _keep_candidates(dice):
         s = 0.0
@@ -246,7 +255,7 @@ def _bot_choose_category(dice: List[int], remaining: List[str], scorecard: Dict[
     best_cat = remaining[0]
     best_val = -1e18
     for c in remaining:
-        val = score_for_category(dice, c) - EXPECTED_VALUE[c]
+        val = score_for_category(dice, c) - _expected_value()[c]
         if c in upper and upper_sum < 63:
             gap = 63 - upper_sum
             contrib = score_for_category(dice, c)
