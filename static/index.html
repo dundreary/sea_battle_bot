@@ -123,12 +123,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
  .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
 .btn-row.stack{flex-direction:column;gap:8px}
 .btn-row.stack .btn{padding:16px 12px;font-size:16px}
+.btn-col{display:flex;flex-direction:column;gap:8px;width:100%;max-width:340px;margin-top:8px}
 .btn{flex:1 1 0;min-width:0;padding:12px 8px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn-icon{width:20px;height:20px;flex-shrink:0}
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--color-btn-primary-1),var(--color-btn-primary-2));color:#fff}
   .btn.success{background:linear-gradient(135deg,var(--color-btn-success-1),var(--color-btn-success-2));color:#fff}
   .btn.outline{background:transparent;border:1px solid var(--color-btn-outline-border);color:var(--accent-primary)}
+  .btn.danger{background:transparent;border:1px solid #e53935;color:#e53935}
   .btn.strip-btn{background:linear-gradient(135deg,#e91e63,#d81b60);color:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(233,30,99,0.3)}
   .btn.quit-btn{background:transparent;border:1px solid #c62828;color:#c62828}
   .btn.quit-btn:hover{background:#c62828;color:#fff;transition:all 0.2s}
@@ -424,7 +426,7 @@ const LANG = {
     pdCategoriesLeft: 'Осталось',
     pdMe: 'Я',
     continue: '▶ Продолжить',
-    minimize: '🔽 Свернуть',
+    minimize: 'Свернуть',
     activeGames: '▶ Активные игры',
   },
   uk: {
@@ -531,7 +533,7 @@ const LANG = {
     pdCategoriesLeft: 'Залишилось',
     pdMe: 'Я',
     continue: '▶ Продовжити',
-    minimize: '🔽 Згорнути',
+    minimize: 'Згорнути',
     activeGames: '▶ Активні ігри',
   },
   en: {
@@ -638,7 +640,7 @@ const LANG = {
     pdCategoriesLeft: 'Left',
     pdMe: 'Me',
     continue: '▶ Continue',
-    minimize: '🔽 Minimize',
+    minimize: 'Minimize',
     activeGames: '▶ Active games',
   }
 };
@@ -889,7 +891,7 @@ function updateUI(){
     const alreadyConfirmed = s.ready && s.pnum && s.ready[s.pnum];
     const c = s.code;
     $('oppBoardWrap').style.display='none';
-    $('actions').className = 'btn-row stack';
+    $('actions').className = 'btn-col';
     if(alreadyConfirmed && !s.solo){
       setStatus(`📋 <b>${c}</b> — ${t('waitOpp')} ✅`, '');
       $('status').style.cursor='pointer';
@@ -898,7 +900,7 @@ function updateUI(){
        $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-         <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
+         <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
          <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
        `;
       }else{
@@ -921,7 +923,7 @@ function updateUI(){
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? t('stripStart') : t('confirm')}</button>`}
-           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
+           ${!s.solo ? `<button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
       }
@@ -939,14 +941,14 @@ function updateUI(){
     setStatus(t('yourTurn'),'battle');
     $('actions').className='btn-row';
     $('actions').innerHTML=`
-      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
+      <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
     `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-row';
     $('actions').innerHTML=`
-      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
+      <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
       <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
     `;
   }
@@ -1732,7 +1734,7 @@ function pdRenderActions(st){
   $('actions').innerHTML = '';
   $('actions').className = 'btn-row';
   const el = $('pdActions');
-  el.className = 'btn-row stack';
+  el.className = 'btn-col';
   let html = '';
 
   if(st.my_turn && !st.scored){
@@ -1750,7 +1752,7 @@ function pdRenderActions(st){
   }
   // Minimize + Surrender always shown (for both my turn and opponent's turn)
    html += `<div class="btn-row" style="margin-top:8px">
-    <button class="btn outline" onclick="pdSurrender()">${t('surrender')}</button>
+    <button class="btn outline danger" onclick="pdSurrender()">${t('surrender')}</button>
     <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
   </div>`;
 
@@ -1898,7 +1900,7 @@ function pdRenderResult(st){
 
   // Action buttons right below the table
   const playAgainFn = st.solo ? 'pdStartSolo()' : 'pdNewMulti()';
-  html += `<div class="btn-row stack" style="margin-top:12px">
+  html += `<div class="btn-col" style="margin-top:12px">
     <button class="btn success" onclick="${playAgainFn}">🔄 ${t('pdPlayAgain')}</button>
     <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
   </div>`;
@@ -2071,7 +2073,7 @@ function ckShowGame(st){
     const desc=t('checkers');
     showResult(icon,title,desc,false);
     const el=$('ckActions');
-    el.className='btn-row stack';
+    el.className='btn-col';
     el.innerHTML=`
       <button class="btn success" onclick="ckStartSolo()">${t('playAgain')}</button>
       <button class="btn outline" onclick="showCheckers()">${t('close')}</button>
@@ -2079,7 +2081,7 @@ function ckShowGame(st){
     return;
   }
   const el=$('ckActions');
-  el.className='btn-row stack';
+   el.className='btn-col';
   let html='';
   if(st.my_turn){
     setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
@@ -2094,7 +2096,7 @@ function ckShowGame(st){
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
    html+=`<div class="btn-row" style="margin-top:8px">
-    <button class="btn outline" onclick="ckSurrender()">${t('surrender')}</button>
+    <button class="btn outline danger" onclick="ckSurrender()">${t('surrender')}</button>
     <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
   </div>`;
   const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
