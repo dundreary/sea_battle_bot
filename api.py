@@ -200,9 +200,9 @@ def _authenticate(data):
     auth.py). Without this, knowing someone's game code and their uid was
     enough to act as them.
 
-    ``config.SKIP_TELEGRAM_AUTH`` is an explicit, off-by-default opt-out for
-    local development/testing outside of a real Telegram client; it must
-    stay unset in production.
+    A regular browser has no signed Telegram payload. When browser access is
+    enabled, it falls back to the locally generated uid only if ``init_data``
+    is entirely absent; malformed Telegram payloads are still rejected.
     """
     if getattr(config, "SKIP_TELEGRAM_AUTH", False):
         uid = data.get("uid")
@@ -210,7 +210,16 @@ def _authenticate(data):
             return int(uid) if uid else None
         except (TypeError, ValueError):
             return None
-    return validate_init_data(data.get("init_data", ""), config.BOT_TOKEN)
+    init_data = data.get("init_data", "")
+    if init_data:
+        return validate_init_data(init_data, config.BOT_TOKEN)
+    if getattr(config, "ALLOW_BROWSER_AUTH", True):
+        try:
+            uid = data.get("uid")
+            return int(uid) if uid else None
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def as_dict(game, uid):

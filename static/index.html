@@ -93,6 +93,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .main{flex:1;width:100%;max-width:480px;padding:8px 12px 80px;display:flex;flex-direction:column;align-items:center}
 .status{text-align:center;padding:6px 0;font-size:14px;color:var(--text-secondary);min-height:28px}
 .status.battle{color:var(--color-warning);font-weight:600}
+.result-notice{width:100%;padding:14px;border-radius:10px;text-align:center;font-size:16px;font-weight:700;border:1px solid var(--border-color)}
+.result-notice.win{background:rgba(76,175,80,.18);color:#81c784;border-color:#4caf50}
+.result-notice.lose{background:rgba(229,57,53,.16);color:#ef9a9a;border-color:#e53935}
 .board-wrap{width:100%;max-width:340px;margin:4px 0}
 .board-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);padding:2px 0 4px;text-align:center}
 .board{display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr);gap:1px;width:100%;aspect-ratio:1;background:var(--bg-board);padding:2px;border-radius:8px;border:1px solid var(--border-color)}
@@ -887,10 +890,16 @@ function updateUI(){
       return;
     }
     if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+    const won = s.all_sunk;
+    const resultTitle = won ? t('win') : t('lose');
+    const resultDesc = won ? t('winDesc') : t('loseDesc');
+    setStatus(`${resultTitle} ${resultDesc}`, 'battle');
+    $('actions').className = 'btn-col';
+    $('actions').innerHTML = `<div class="result-notice ${won ? 'win' : 'lose'}">${resultTitle}<br><span style="font-size:13px;font-weight:400">${resultDesc}</span></div>`;
     localStorage.removeItem('sb_game');
     $('app').insertBefore($('status'), $('app').firstChild);
-    if(s.all_sunk)showResult('🏆',t('win'),t('winDesc'),s.strip);
-    else if(s.my_all_sunk)showResult('💔',t('lose'),t('loseDesc'),s.strip);
+    if(won)showResult('🏆',resultTitle,resultDesc,s.strip);
+    else if(s.my_all_sunk)showResult('💔',resultTitle,resultDesc,s.strip);
     return;
   }
 

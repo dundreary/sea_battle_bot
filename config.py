@@ -13,3 +13,8 @@ BOT_ID = 0
 # Telegram client, where there's no signed init_data to verify -- see auth.py
 # and api.py:_authenticate(). Must stay unset/"0" in production.
 SKIP_TELEGRAM_AUTH = os.getenv("SKIP_TELEGRAM_AUTH", "0") == "1"
+
+# A regular browser has no signed Telegram WebApp payload. Keep that mode
+# available for sharing games outside Telegram; set to "0" to require Telegram
+# authentication on every request.
+ALLOW_BROWSER_AUTH = os.getenv("ALLOW_BROWSER_AUTH", "1") == "1"
