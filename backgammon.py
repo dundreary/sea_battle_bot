@@ -2,6 +2,8 @@ import random
 import time
 from typing import Dict, List, Optional, Any, Tuple
 
+from utils import make_game_code
+
 POINTS = 24
 WHITE = 1
 BLACK = -1
@@ -235,22 +237,25 @@ class BackgammonGame:
         return self.get_state(uid)
 
     def _finish_turn(self):
-        if self.off[0] >= 15 or self.off[1] >= 15:
-            self.phase = 'finished'
-            self.winner = self.player1_id if self.turn == WHITE else self.player2_id
+        if self._finalize_if_won():
             return
         if self.solo:
             self._switch_turn()
             if self.phase == 'playing' and self.turn == BLACK:
                 self._bot_play()
-                if self.off[0] >= 15 or self.off[1] >= 15:
-                    self.phase = 'finished'
-                    self.winner = self.player1_id if self.turn == WHITE else self.player2_id
+                if self._finalize_if_won():
                     return
                 if self.phase == 'playing':
                     self._switch_turn()
         else:
             self._switch_turn()
+
+    def _finalize_if_won(self) -> bool:
+        if self.off[0] >= 15 or self.off[1] >= 15:
+            self.phase = 'finished'
+            self.winner = self.player1_id if self.turn == WHITE else self.player2_id
+            return True
+        return False
 
     def _switch_turn(self):
         self.dice = []
@@ -329,7 +334,7 @@ class BackgammonGame:
 
     @staticmethod
     def generate_code() -> str:
-        return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ', k=6))
+        return make_game_code()
 
     def to_dict(self) -> Dict[str, Any]:
         return {

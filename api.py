@@ -1,14 +1,10 @@
 import json
-import base64
 import logging
-import secrets
 import threading
-import queue
 import time
-import urllib.request
 from typing import Dict, Any, Callable
 
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
+from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, EMPTY, auto_place_ships, auto_place_strip_ships
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from backgammon import BackgammonGame as BGGame, games as bg_games, player_games as bg_player_games
@@ -17,117 +13,20 @@ from persist import save
 from auth import validate_init_data
 import config
 
+from notifications import (
+    _enqueue_notifications,
+    mark_active as _mark_active,
+    notify_recipient as _notify_recipient,
+    notify_opponent as _notify_opponent,
+)
+from strip import send_strip_photo_to_winner, STRIP_LOSE_CAPTIONS
+
 logger = logging.getLogger(__name__)
 
-# The browser polls every two seconds. A recent poll means the player is
-# already looking at the game, so a Telegram notification would be noise.
-NOTIFY_SKIP_IF_ACTIVE_WITHIN = 5.0
-_notification_queue = queue.Queue(maxsize=100)
-
-
-STRIP_LOSE_CAPTIONS = {
-    'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-    'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-    'en': '👗 Your friend lost in Strip Mode!',
-}
-
-STRIP_PHOTO_BOUNDARY = '----StripPhotoBoundary'
-
-
-def _strip_photo_mime(photo_data: str) -> str:
-    if ',' in photo_data:
-        header = photo_data.split(',', 1)[0].lower()
-        if 'png' in header:
-            return 'image/png'
-        if 'gif' in header:
-            return 'image/gif'
-        if 'webp' in header:
-            return 'image/webp'
-    return 'image/jpeg'
-
-
-def _strip_photo_multipart(boundary: str, winner_id: int, photo_bytes: bytes, caption: str, mime: str) -> bytes:
-    body = b''
-    body += f'--{boundary}\r\n'.encode()
-    body += 'Content-Disposition: form-data; name="chat_id"\r\n\r\n'.encode()
-    body += f'{winner_id}\r\n'.encode()
-    body += f'--{boundary}\r\n'.encode()
-    body += 'Content-Disposition: form-data; name="caption"\r\n\r\n'.encode()
-    body += f'{caption}\r\n'.encode()
-    body += f'--{boundary}\r\n'.encode()
-    body += 'Content-Disposition: form-data; name="photo"; filename="strip_photo.jpg"\r\n'.encode()
-    body += f'Content-Type: {mime}\r\n\r\n'.encode()
-    body += photo_bytes + b'\r\n'
-    body += f'--{boundary}--\r\n'.encode()
-    return body
-
-
-def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) -> bool:
-    try:
-        mime = _strip_photo_mime(photo_data)
-        b64_data = photo_data.split(',', 1)[1] if ',' in photo_data else photo_data
-        photo_bytes = base64.b64decode(b64_data)
-        # A unique boundary per request removes any chance of the binary
-        # photo bytes being mistaken for a multipart boundary.
-        boundary = STRIP_PHOTO_BOUNDARY + secrets.token_hex(16)
-        body = _strip_photo_multipart(boundary, winner_id, photo_bytes, caption, mime)
-
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendPhoto',
-            data=body,
-            headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            if result.get('ok'):
-                return True
-            logger.error("Telegram API error: %s", result)
-            return False
-    except Exception as e:
-        logger.error("Failed to send strip photo: %s", e)
-        return False
-
-
-def send_telegram_message(chat_id, text: str) -> bool:
-    """Send a text notification; delivery failures never affect a game move."""
-    try:
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{config.BOT_TOKEN}/sendMessage',
-            data=json.dumps({"chat_id": chat_id, "text": text}).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST',
-        )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            if result.get('ok'):
-                return True
-            logger.error("Telegram API error: %s", result)
-            return False
-    except Exception as exc:
-        logger.error("Failed to send Telegram notification: %s", exc)
-        return False
-
-
-def _notification_worker():
-    while True:
-        chat_id, text = _notification_queue.get()
-        try:
-            send_telegram_message(chat_id, text)
-        finally:
-            _notification_queue.task_done()
-
-
-threading.Thread(target=_notification_worker, name="telegram-notifications", daemon=True).start()
-
-
-def _enqueue_notifications(pending):
-    """Queue delivery only after releasing the state lock."""
-    for chat_id, text in pending:
-        try:
-            _notification_queue.put_nowait((chat_id, text))
-        except queue.Full:
-            logger.warning("Telegram notification queue is full; dropping message for %s", chat_id)
+# Notification delivery (see notifications.py) and strip-mode stake-photo
+# delivery (see strip.py) are extracted into their own modules. The helpers
+# below are re-exported under their historical names so call sites in this
+# file are unchanged.
 
 games: Dict[str, Game] = {}
 player_games: Dict[str, str] = {}
@@ -138,40 +37,8 @@ checkers_player_games: Dict[str, str] = {}
 
 # Guards all shared in-memory game dictionaries below. The HTTP server thread and
 # the bot's asyncio thread both access these, so mutations must be serialized to
-# avoid race conditions (see AUDIT.md, Potential Issue #4).
+# avoid race conditions.
 _state_lock = threading.Lock()
-
-
-def _mark_active(game, uid):
-    """Record that ``uid`` has just received and is displaying game state."""
-    if uid:
-        if not hasattr(game, 'last_activity'):
-            game.last_activity = {}
-        game.last_activity[str(uid)] = time.time()
-
-
-def _notify_recipient(game, recipient, text, event_key, force=False):
-    """Return one deduplicated notification, unless its recipient is active."""
-    if getattr(game, 'solo', False) or not recipient:
-        return []
-    events = getattr(game, 'notification_events', None)
-    if events is None:
-        events = game.notification_events = set()
-    if event_key in events:
-        return []
-    events.add(event_key)
-    if not force:
-        last_seen = getattr(game, 'last_activity', {}).get(str(recipient), 0)
-        if time.time() - last_seen < NOTIFY_SKIP_IF_ACTIVE_WITHIN:
-            return []
-    return [(recipient, text)]
-
-
-def _notify_opponent(game, uid, text, event_key, force=False):
-    opponent_id = game.opponent_id(uid) if hasattr(game, 'opponent_id') else (
-        game.player2_id if uid == game.player1_id else game.player1_id
-    )
-    return _notify_recipient(game, opponent_id, text, event_key, force=force)
 
 
 def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) -> str:
@@ -190,6 +57,67 @@ def _get_game(games_dict, code, uid):
     if not game:
         return None, {"error": "not_found"}
     return game, None
+
+
+def _register_new_game(games_dict, player_games_dict, game, state):
+    """Store a freshly created game, map its creator, persist, and return it."""
+    games_dict[game.code] = game
+    player_games_dict[str(game.player1_id)] = game.code
+    save()
+    return {"ok": True, "code": game.code, "state": state}
+
+
+def _join_game(games_dict, player_games_dict, code, uid, text, event, state_fn):
+    """Shared join logic for the method-based games (checkers/poker/backgammon).
+
+    ``state_fn(game, uid)`` produces the state object returned to the joiner,
+    because each game exposes its state under a different key (uid vs pnum).
+    """
+    game, err = _get_game(games_dict, code, uid)
+    if err:
+        return err
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    if game.player2_id == uid:
+        return {"ok": False, "error": "already_joined"}
+    game.player2_id = uid
+    player_games_dict[str(uid)] = code
+    _mark_active(game, uid)
+    save()
+    return (
+        {"ok": True, "state": state_fn(game, uid)},
+        _notify_opponent(game, uid, text, event, force=True),
+    )
+
+
+def _state_game(games_dict, code, uid, state_fn):
+    """Shared state lookup that also delivers queued in-game messages."""
+    game, err = _get_game(games_dict, code, uid)
+    if err:
+        return err
+    _mark_active(game, uid)
+    state = state_fn(game, uid)
+    if state is None:
+        return {"error": "not_in_game"}
+    state["messages"] = _pop_in_game_messages(game, uid)
+    return {"ok": True, "state": state}
+
+
+def _surrender_game(games_dict, player_games_dict, code, uid, text, event):
+    """Shared surrender logic that notifies the opponent and evicts the game."""
+    game, err = _get_game(games_dict, code, uid)
+    if err:
+        return err
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    _mark_active(game, uid)
+    pending = _notify_opponent(game, uid, text, event, force=True)
+    _evict_game(code, games_dict, player_games_dict)
+    save()
+    return {"ok": True, "state": st}, pending
 
 
 def _authenticate(data):
@@ -270,7 +198,6 @@ def new_solo(uid, strip=False, difficulty=2):
     code = generate_unique_code(Game.generate_code, games)
     game = Game(code, uid, solo=True, strip=strip, difficulty=difficulty)
     game.player2_id = 0
-    games[code] = game
     game.phase = "placing"
     if strip:
         auto_place_strip_ships(game.board2)
@@ -343,7 +270,7 @@ def shoot(uid, code, r, c):
 def place_auto(uid, code):
     game = games.get(code)
     board = game.board_for(uid)
-    board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
+    board.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
     board.ships = []
     board.mines = []
     if game.strip:
@@ -380,7 +307,6 @@ def confirm_placement(uid, code):
 def new_multi(uid, strip=False):
     code = generate_unique_code(Game.generate_code, games)
     game = Game(code, uid, strip=strip)
-    games[code] = game
     return game
 
 def _with_uid(uid, fn):
@@ -397,9 +323,7 @@ def _do_new_solo(data, uid):
     strip = data.get("strip", False)
     difficulty = data.get("difficulty", 2)
     game = new_solo(uid, strip=strip, difficulty=difficulty)
-    player_games[str(uid)] = game.code
-    save()
-    return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+    return _register_new_game(games, player_games, game, as_dict(game, uid))
 
 
 def _handle_new_multi(data, uid, code):
@@ -409,9 +333,7 @@ def _handle_new_multi(data, uid, code):
 def _do_new_multi(data, uid):
     strip = data.get("strip", False)
     game = new_multi(uid, strip=strip)
-    player_games[str(uid)] = game.code
-    save()
-    return {"ok": True, "code": game.code, "state": as_dict(game, uid)}
+    return _register_new_game(games, player_games, game, as_dict(game, uid))
 
 
 def _handle_join(data, uid, code):
@@ -480,7 +402,8 @@ def _handle_shoot(data, uid, code):
 
 def _handle_place_auto(data, uid, code):
     game, err = _get_game(games, code, uid)
-    if err: return err
+    if err:
+        return err
     place_auto(uid, code)
     state = as_dict(game, uid)
     _mark_active(game, uid)
@@ -490,7 +413,8 @@ def _handle_place_auto(data, uid, code):
 
 def _handle_confirm(data, uid, code):
     game, err = _get_game(games, code, uid)
-    if err: return err
+    if err:
+        return err
     started = confirm_placement(uid, code)
     if started is None:
         game = games.get(code)
@@ -511,7 +435,8 @@ def _handle_upload_stake(data, uid, code):
     before the game starts (during placement) so a participant cannot
     join a strip game and then refuse the forfeit."""
     game, err = _get_game(games, code, uid)
-    if err: return err
+    if err:
+        return err
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}
     photo = data.get("photo")
@@ -534,10 +459,7 @@ def _do_pd_new_solo(data, uid):
     difficulty = int(data.get('difficulty', 3))
     game = PDGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
-    pd_games[c] = game
-    pd_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(1)}
+    return _register_new_game(pd_games, pd_player_games, game, game.get_state(1))
 
 
 def _handle_pd_new_multi(data, uid, code):
@@ -547,15 +469,13 @@ def _handle_pd_new_multi(data, uid, code):
 def _do_pd_new_multi(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
     game = PDGame(c, uid)
-    pd_games[c] = game
-    pd_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(1)}
+    return _register_new_game(pd_games, pd_player_games, game, game.get_state(1))
 
 
 def _handle_surrender(data, uid, code):
     game, err = _get_game(games, code, uid)
-    if err: return err, None, []
+    if err:
+        return err, None, []
     if uid != game.player1_id and uid != game.player2_id:
         return {"error": "not_in_game"}, None, []
     # Sink the surrendering player's ships so the opponent sees a clean result,
@@ -634,27 +554,17 @@ def _handle_message_opponent(data, uid, code):
 
 
 def _handle_pd_join(data, uid, code):
-    game, err = _get_game(pd_games, code, uid)
-    if err: return err
-    if game.player1_id == uid:
-        return {"ok": False, "error": "cannot_join_own_game"}
-    if game.player2_id is not None:
-        return {"ok": False, "error": "full"}
-    if game.player2_id == uid:
-        return {"ok": False, "error": "already_joined"}
-    game.player2_id = uid
-    pd_player_games[str(uid)] = code
-    _mark_active(game, uid)
-    save()
-    return (
-        {"ok": True, "state": game.get_state(2)},
-        _notify_opponent(game, uid, "🎲 Друг подключился к игре. Ваш ход в Покерных костях.", "join", force=True),
+    return _join_game(
+        pd_games, pd_player_games, code, uid,
+        "🎲 Друг подключился к игре. Ваш ход в Покерных костях.", "join",
+        lambda g, u: g.get_state(g.player_num(u)),
     )
 
 
 def _handle_pd_roll(data, uid, code):
     game, err = _get_game(pd_games, code, uid)
-    if err: return err
+    if err:
+        return err
     keep = data.get("keep", [])
     st = game.roll(uid, keep)
     if st is None:
@@ -666,7 +576,8 @@ def _handle_pd_roll(data, uid, code):
 
 def _handle_pd_score(data, uid, code):
     game, err = _get_game(pd_games, code, uid)
-    if err: return err
+    if err:
+        return err
     category = data.get("category", "")
     st = game.score(uid, category)
     if st is None:
@@ -685,28 +596,17 @@ def _handle_pd_score(data, uid, code):
 
 
 def _handle_pd_surrender(data, uid, code):
-    game, err = _get_game(pd_games, code, uid)
-    if err: return err
-    st = game.surrender(uid)
-    if st is None:
-        return {"error": "invalid_surrender"}
-    _mark_active(game, uid)
-    pending = _notify_opponent(game, uid, "🎲 Друг сдался в Покерных костях.", "surrender", force=True)
-    _evict_game(code, pd_games, pd_player_games)
-    save()
-    return {"ok": True, "state": st}, pending
+    return _surrender_game(
+        pd_games, pd_player_games, code, uid,
+        "🎲 Друг сдался в Покерных костях.", "surrender",
+    )
 
 
 def _handle_pd_state(data, uid, code):
-    game, err = _get_game(pd_games, code, uid)
-    if err: return err
-    pnum = game.player_num(uid)
-    if pnum is None:
-        return {"error": "not_in_game"}
-    _mark_active(game, uid)
-    state = game.get_state(pnum)
-    state["messages"] = _pop_in_game_messages(game, uid)
-    return {"ok": True, "state": state}
+    return _state_game(
+        pd_games, code, uid,
+        lambda g, u: g.get_state(g.player_num(u)) if g.player_num(u) is not None else None,
+    )
 
 
 def _add_active_game(games_list, gtype, code, game, my_turn):
@@ -782,10 +682,7 @@ def _do_checkers_new_solo(data, uid):
     difficulty = data.get("difficulty", 2)
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
-    checkers_games[c] = game
-    checkers_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
+    return _register_new_game(checkers_games, checkers_player_games, game, game.get_state(uid))
 
 
 def _handle_checkers_new_multi(data, uid, code):
@@ -795,10 +692,7 @@ def _handle_checkers_new_multi(data, uid, code):
 def _do_checkers_new_multi(data, uid):
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid)
-    checkers_games[c] = game
-    checkers_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
+    return _register_new_game(checkers_games, checkers_player_games, game, game.get_state(uid))
 
 
 def _evict_game(code, games_dict, player_games_dict):
@@ -808,31 +702,15 @@ def _evict_game(code, games_dict, player_games_dict):
 
 
 def _handle_checkers_join(data, uid, code):
-    game, err = _get_game(checkers_games, code, uid)
-    if err: return err
-    if game.player1_id == uid:
-        return {"ok": False, "error": "cannot_join_own_game"}
-    if game.player2_id is not None:
-        return {"ok": False, "error": "full"}
-    if game.player2_id == uid:
-        return {"ok": False, "error": "already_joined"}
-    game.player2_id = uid
-    checkers_player_games[str(uid)] = code
-    _mark_active(game, uid)
-    save()
-    return (
-        {"ok": True, "state": game.get_state(uid)},
-        _notify_opponent(game, uid, "♟ Друг подключился к игре. Ваш ход в Шашках.", "join", force=True),
+    return _join_game(
+        checkers_games, checkers_player_games, code, uid,
+        "♟ Друг подключился к игре. Ваш ход в Шашках.", "join",
+        lambda g, u: g.get_state(u),
     )
 
 
 def _handle_checkers_state(data, uid, code):
-    game, err = _get_game(checkers_games, code, uid)
-    if err: return err
-    _mark_active(game, uid)
-    state = game.get_state(uid)
-    state["messages"] = _pop_in_game_messages(game, uid)
-    return {"ok": True, "state": state}
+    return _state_game(checkers_games, code, uid, lambda g, u: g.get_state(u))
 
 
 def _checkers_ai_difficulty(game):
@@ -842,7 +720,8 @@ def _checkers_ai_difficulty(game):
 
 def _handle_checkers_move(data, uid, code):
     game, err = _get_game(checkers_games, code, uid)
-    if err: return err
+    if err:
+        return err
     if game.phase != "playing":
         return {"error": "not_playing"}
 
@@ -935,21 +814,16 @@ def _handle_checkers_move(data, uid, code):
 
 
 def _handle_checkers_surrender(data, uid, code):
-    game, err = _get_game(checkers_games, code, uid)
-    if err: return err
-    st = game.surrender(uid)
-    if st is None:
-        return {"error": "invalid_surrender"}
-    _mark_active(game, uid)
-    pending = _notify_opponent(game, uid, "♟ Друг сдался в Шашках.", "surrender", force=True)
-    _evict_game(code, checkers_games, checkers_player_games)
-    save()
-    return {"ok": True, "state": st}, pending
+    return _surrender_game(
+        checkers_games, checkers_player_games, code, uid,
+        "♟ Друг сдался в Шашках.", "surrender",
+    )
 
 
 def _handle_checkers_hint(data, uid, code):
     game, err = _get_game(checkers_games, code, uid)
-    if err: return err
+    if err:
+        return err
     if game.phase != "playing":
         return {"error": "not_playing"}
     color = game.player_color(uid)
@@ -972,10 +846,7 @@ def _do_bg_new_solo(data, uid):
     c = generate_unique_code(BGGame.generate_code, bg_games)
     game = BGGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
-    bg_games[c] = game
-    bg_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
+    return _register_new_game(bg_games, bg_player_games, game, game.get_state(uid))
 
 def _handle_bg_new_multi(data, uid, code):
     return _with_uid(uid, lambda: _do_bg_new_multi(data, uid))
@@ -983,38 +854,22 @@ def _handle_bg_new_multi(data, uid, code):
 def _do_bg_new_multi(data, uid):
     c = generate_unique_code(BGGame.generate_code, bg_games)
     game = BGGame(c, uid)
-    bg_games[c] = game
-    bg_player_games[str(uid)] = c
-    save()
-    return {"ok": True, "code": c, "state": game.get_state(uid)}
+    return _register_new_game(bg_games, bg_player_games, game, game.get_state(uid))
 
 def _handle_bg_join(data, uid, code):
-    game, err = _get_game(bg_games, code, uid)
-    if err: return err
-    if game.player1_id == uid:
-        return {"ok": False, "error": "cannot_join_own_game"}
-    if game.player2_id is not None:
-        return {"ok": False, "error": "full"}
-    game.player2_id = uid
-    bg_player_games[str(uid)] = code
-    _mark_active(game, uid)
-    save()
-    return (
-        {"ok": True, "state": game.get_state(uid)},
-        _notify_opponent(game, uid, "🎲 Друг подключился к игре. Ваш ход в Нардах.", "join", force=True),
+    return _join_game(
+        bg_games, bg_player_games, code, uid,
+        "🎲 Друг подключился к игре. Ваш ход в Нардах.", "join",
+        lambda g, u: g.get_state(u),
     )
 
 def _handle_bg_state(data, uid, code):
-    game, err = _get_game(bg_games, code, uid)
-    if err: return err
-    _mark_active(game, uid)
-    state = game.get_state(uid)
-    state["messages"] = _pop_in_game_messages(game, uid)
-    return {"ok": True, "state": state}
+    return _state_game(bg_games, code, uid, lambda g, u: g.get_state(u))
 
 def _handle_bg_roll(data, uid, code):
     game, err = _get_game(bg_games, code, uid)
-    if err: return err
+    if err:
+        return err
     st = game.roll(uid)
     if st is None:
         return {"error": "invalid_roll"}
@@ -1024,7 +879,8 @@ def _handle_bg_roll(data, uid, code):
 
 def _handle_bg_move(data, uid, code):
     game, err = _get_game(bg_games, code, uid)
-    if err: return err
+    if err:
+        return err
     from_idx = data.get("from")
     to_idx = data.get("to")
     if from_idx is None and to_idx is None:
@@ -1053,16 +909,10 @@ def _handle_bg_move(data, uid, code):
     return {"ok": True, "state": st}, pending
 
 def _handle_bg_surrender(data, uid, code):
-    game, err = _get_game(bg_games, code, uid)
-    if err: return err
-    st = game.surrender(uid)
-    if st is None:
-        return {"error": "invalid_surrender"}
-    _mark_active(game, uid)
-    pending = _notify_opponent(game, uid, "🎲 Друг сдался в Нардах.", "surrender", force=True)
-    _evict_game(code, bg_games, bg_player_games)
-    save()
-    return {"ok": True, "state": st}, pending
+    return _surrender_game(
+        bg_games, bg_player_games, code, uid,
+        "🎲 Друг сдался в Нардах.", "surrender",
+    )
 
 
 _HANDLERS = {

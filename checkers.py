@@ -1,5 +1,6 @@
-import random
 import time
+
+from utils import make_game_code
 
 BOARD_SIZE = 8
 EMPTY = 0
@@ -332,7 +333,7 @@ class CheckersGame:
 
     @staticmethod
     def generate_code():
-        return "".join(random.choices("ABCDEFGHIJKLMNOPQRSTUVWXYZ", k=6))
+        return make_game_code()
 
     def to_dict(self):
         return {

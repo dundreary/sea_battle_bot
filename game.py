@@ -1,6 +1,7 @@
 import random
-import string
 import time
+
+from utils import make_game_code
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
@@ -54,7 +55,6 @@ class Board:
         self.grid = [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
         self.ships = []
         self.mines = []
-        self.placement_mode = True
 
     def _neighbors_occupied(self, r, c):
         """True if any cell in the 3x3 area around (r, c) holds a ship or mine."""
@@ -164,7 +164,6 @@ class Board:
             'grid': self.grid,
             'ships': [s.to_dict() for s in self.ships],
             'mines': [list(m) for m in self.mines],
-            'placement_mode': self.placement_mode,
         }
 
     @staticmethod
@@ -173,7 +172,6 @@ class Board:
         board.grid = data['grid']
         board.ships = [Ship.from_dict(s) for s in data['ships']]
         board.mines = [tuple(m) for m in data.get('mines', [])]
-        board.placement_mode = data.get('placement_mode', True)
         return board
 
 class Game:
@@ -190,7 +188,6 @@ class Game:
         self.turn = 1
         self.phase = "placing1"
         self.ready = {1: False, 2: False}
-        self.strip_photo = ""
         # Per-player "stake" photo, committed before the game starts
         # (both participants must upload one to confirm placement).
         self.strip_stakes = {1: "", 2: ""}
@@ -232,7 +229,7 @@ class Game:
 
     @staticmethod
     def generate_code():
-        return "".join(random.choices(string.ascii_uppercase, k=6))
+        return make_game_code()
 
     def to_dict(self):
         return {
@@ -242,7 +239,6 @@ class Game:
             'solo': self.solo,
             'strip': self.strip,
             'difficulty': self.difficulty,
-            'strip_photo': self.strip_photo,
             'strip_stakes': {str(k): v for k, v in self.strip_stakes.items()},
             'created_at': self.created_at,
             'board1': self.board1.to_dict(),
@@ -262,7 +258,6 @@ class Game:
         game.solo = data.get('solo', False)
         game.strip = data.get('strip', False)
         game.difficulty = data.get('difficulty', 2)
-        game.strip_photo = data.get('strip_photo', "")
         game.strip_stakes = {int(k): v for k, v in data.get('strip_stakes', {1: "", 2: ""}).items()}
         game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
@@ -283,23 +278,6 @@ class Game:
         game.notification_events = set()
         return game
 
-CLOTHING_SHAPES = {
-    4: [
-        [(0,0), (0,1), (1,0), (1,1)],  # 2x2 square
-        [(0,1), (0,2), (1,0), (1,1)],  # shifted square (S-shape)
-    ],
-    3: [
-        [(0,0), (1,0), (1,1)],  # L-shape (angle)
-        [(0,0), (0,1), (0,2)],  # straight stick
-    ],
-    2: [
-        [(0,0), (0,1)],  # horizontal pair
-        [(0,0), (1,1)],  # diagonal pair
-    ],
-    1: [
-        [(0,0)],  # single cell
-    ],
-}
 
 def auto_place_strip_ships(board: Board) -> None:
     for _ in range(100):

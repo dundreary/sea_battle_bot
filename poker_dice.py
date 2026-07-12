@@ -1,6 +1,7 @@
 import random
-import string
 from typing import Dict, List, Optional, Any, Set
+
+from utils import make_game_code
 
 
 CATEGORY_IDS = [
@@ -594,7 +595,7 @@ class PokerDiceGame:
 
     @staticmethod
     def generate_code() -> str:
-        return ''.join(random.choices(string.ascii_uppercase, k=6))
+        return make_game_code()
 
 
 games: Dict[str, PokerDiceGame] = {}
