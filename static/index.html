@@ -192,6 +192,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-dot-die .dot{width:9px;height:9px;background:var(--accent-primary-light);border-radius:50%;justify-self:center;align-self:center}
 .pd-dot-die:hover{transform:scale(1.08)}
 .pd-dot-die.kept{box-shadow:0 0 0 3px #ffd700,0 0 10px rgba(255,215,0,.35);background:var(--color-btn-primary-1)}
+.pd-dot-die.discarded{opacity:.38;filter:grayscale(.6)}
+.pd-dot-die.discarded::after{content:'↺';position:absolute;top:-8px;right:-4px;font-size:13px;line-height:1;color:var(--color-miss,#7fd)}
+.pd-opp-history{margin:6px auto 4px;width:100%;max-width:340px;text-align:center}
+.pd-opp-history-title{font-size:12px;font-weight:700;color:var(--text-hint);margin:8px 0 4px;letter-spacing:.3px;text-transform:uppercase}
+.pd-opp-history-row{margin:6px 0}
+.pd-opp-history-label{font-size:11px;color:var(--text-hint);margin-bottom:3px}
+.pd-opp-history-dice{margin:2px auto;min-height:0;width:100%;max-width:340px}
 .pd-dot-die:active{transform:scale(.88)}
 @keyframes pd-roll-spin{0%{transform:rotate(0deg)}25%{transform:rotate(180deg)}50%{transform:rotate(360deg)}75%{transform:rotate(540deg)}100%{transform:rotate(720deg)}}
 .pd-dot-die.rolling{animation:pd-roll-spin 1.2s ease-out}
@@ -332,6 +339,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
    <div id="pdArea" style="display:none">
     <div id="pdScorecardContainer"></div>
     <div class="pd-dice" id="pdDice"></div>
+    <div id="pdOppHistory"></div>
     <div class="pd-result" id="pdResult"></div>
     <div class="btn-row" id="pdActions" style="margin-top:14px"></div>
   </div>
@@ -466,6 +474,10 @@ const LANG = {
     pdChooseCat: 'Выбери категорию',
     pdCategoriesLeft: 'Осталось',
     pdMe: 'Я',
+    pdOppMoves: 'Ходы соперника',
+    pdThrow: 'Бросок',
+    pdKept: 'оставил',
+    pdDiscarded: 'сбросил',
     continue: '▶ Продолжить',
     minimize: 'Свернуть',
     activeGames: '▶ Активные игры',
@@ -588,6 +600,10 @@ const LANG = {
     pdChooseCat: 'Обери категорію',
     pdCategoriesLeft: 'Залишилось',
     pdMe: 'Я',
+    pdOppMoves: 'Ходи суперника',
+    pdThrow: 'Кидок',
+    pdKept: 'залишив',
+    pdDiscarded: 'скинув',
     continue: '▶ Продовжити',
     minimize: 'Згорнути',
     activeGames: '▶ Активні ігри',
@@ -710,6 +726,10 @@ const LANG = {
     pdChooseCat: 'Choose category',
     pdCategoriesLeft: 'Left',
     pdMe: 'Me',
+    pdOppMoves: "Opponent's Moves",
+    pdThrow: 'Throw',
+    pdKept: 'kept',
+    pdDiscarded: 'discarded',
     continue: '▶ Continue',
     minimize: 'Minimize',
     activeGames: '▶ Active games',
@@ -1698,6 +1718,7 @@ function pdShowGame(st){
   $('pdDice').style.minHeight = '';
   $('pdScorecardContainer').style.minHeight = '420px';
   $('pdResult').innerHTML='';
+  $('pdOppHistory').innerHTML='';
 
   if(st.phase==='finished'){
     if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
@@ -1713,6 +1734,7 @@ function pdShowGame(st){
 
   pdRenderScorecard(st);
   pdRenderDice(st);
+  pdRenderOpponentHistory(st);
   pdRenderActions(st);
   pdRenderInfo(st);
 }
@@ -1855,10 +1877,79 @@ function pdRenderDice(st){
     }
   }
 
+   }
+
+  function pdRenderOpponentHistory(st){
+    const cont = $('pdOppHistory');
+    if(!cont) return;
+    cont.innerHTML = '';
+
+    // Show the opponent's rolls only while their turn is in progress, or
+    // right after they scored (before you start your own turn), so you can
+    // review what they kept and discarded on the 2nd and 3rd throw.
+    const showOpp = st.opponent_scored && !st.scored && st.rolls_left === 3;
+    if(st.my_turn && !showOpp) return;
+
+    const hist = st.opponent_roll_history || [];
+    if(!hist.length) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'pd-opp-history';
+
+    const title = document.createElement('div');
+    title.className = 'pd-opp-history-title';
+    title.textContent = t('pdOppMoves');
+    wrap.appendChild(title);
+
+    hist.forEach((entry, idx) => {
+      const rollNum = idx + 1;
+      const row = document.createElement('div');
+      row.className = 'pd-opp-history-row';
+
+      const label = document.createElement('div');
+      label.className = 'pd-opp-history-label';
+      if(rollNum === 1){
+        label.textContent = `${t('pdThrow')} 1`;
+      } else {
+        const kept = entry.kept || [];
+        const rerolled = entry.rerolled || [];
+        label.textContent = `${t('pdThrow')} ${rollNum} · ${t('pdKept')} ${kept.length}, ${t('pdDiscarded')} ${rerolled.length}`;
+      }
+      row.appendChild(label);
+
+      const diceWrap = document.createElement('div');
+      diceWrap.className = 'pd-dice pd-opp-history-dice';
+      for(let i = 0; i < 5; i++){
+        const die = document.createElement('div');
+        die.className = 'pd-dot-die';
+        die.style.cursor = 'default';
+        const val = entry.dice[i] || 0;
+        if(val){
+          const dots = PD_DOTS[val - 1] || [];
+          for(const [r, c] of dots){
+            const dot = document.createElement('div');
+            dot.className = 'dot';
+            dot.style.gridRow = r + 1;
+            dot.style.gridColumn = c + 1;
+            die.appendChild(dot);
+          }
+        }
+        if(rollNum > 1){
+          if((entry.kept || []).includes(i)) die.classList.add('kept');
+          else die.classList.add('discarded');
+        }
+        diceWrap.appendChild(die);
+      }
+      row.appendChild(diceWrap);
+      wrap.appendChild(row);
+    });
+
+    cont.appendChild(wrap);
   }
 
-function pdToggleKeep(idx){
-  if(pdKept.has(idx)) pdKept.delete(idx);
+
+  function pdToggleKeep(idx){
+    if(pdKept.has(idx)) pdKept.delete(idx);
   else pdKept.add(idx);
   sfxClick();
   const dice=$('pdDice').children;

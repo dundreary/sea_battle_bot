@@ -410,6 +410,7 @@ class PokerDiceGame(BaseGame):
             'last_scored_score': None,
             'scorecard': {c: None for c in CATEGORY_IDS},
             'dice_history': [],
+            'roll_history': [],
         }
 
     def _reset_player(self, pnum: int):
@@ -421,6 +422,7 @@ class PokerDiceGame(BaseGame):
         p['last_scored_category'] = None
         p['last_scored_score'] = None
         p['dice_history'] = []
+        p['roll_history'] = []
 
     def roll(self, uid: int, keep_indices: Optional[List[int]] = None) -> Optional[Dict]:
         pnum = self.player_num(uid)
@@ -448,6 +450,18 @@ class PokerDiceGame(BaseGame):
         p['dice'] = dice
         p['rolls'] -= 1
         p['dice_history'].append(list(dice))
+
+        # Record which dice were kept (carried over) vs. discarded (rerolled)
+        # so the opponent/AI's moves can be replayed for the viewer. On the
+        # first roll nothing is kept yet, so kept is empty and all are rerolled.
+        keep_set = set(keep)
+        kept = sorted(i for i in range(5) if i in keep_set)
+        rerolled = [i for i in range(5) if i not in keep_set]
+        p['roll_history'].append({
+            'dice': list(dice),
+            'kept': kept,
+            'rerolled': rerolled,
+        })
 
         return self.get_state(pnum)
 
@@ -537,6 +551,15 @@ class PokerDiceGame(BaseGame):
             if p['rolls'] > 0:
                 p['rolls'] -= 1
             p['dice_history'].append(list(fresh))
+
+            kept = [i for i in range(5)
+                    if (keep_mask >> i) & 1 and len(p['dice']) == 5]
+            rerolled = [i for i in range(5) if i not in set(kept)]
+            p['roll_history'].append({
+                'dice': list(fresh),
+                'kept': kept,
+                'rerolled': rerolled,
+            })
 
         if diff <= 1:
             # Easy: one roll, score the highest raw category (legacy behaviour).
@@ -649,6 +672,8 @@ class PokerDiceGame(BaseGame):
             'opponent_categories_left': _remaining_categories(opp['scorecard']),
             'max_categories': len(CATEGORY_IDS),
             'dice_history': p['dice_history'] if my_turn else opp['dice_history'],
+            'my_roll_history': p['roll_history'],
+            'opponent_roll_history': opp['roll_history'],
         }
 
     def surrender(self, uid: int) -> Optional[Dict]:
@@ -682,6 +707,11 @@ class PokerDiceGame(BaseGame):
                     'last_scored_score': v['last_scored_score'],
                     'scorecard': dict(v['scorecard']),
                     'dice_history': [list(h) for h in v['dice_history']],
+                    'roll_history': [
+                        {'dice': list(h['dice']), 'kept': list(h['kept']),
+                         'rerolled': list(h['rerolled'])}
+                        for h in v.get('roll_history', [])
+                    ],
                 }
                 for k, v in self.players.items()
             },
@@ -706,6 +736,11 @@ class PokerDiceGame(BaseGame):
                 'last_scored_score': v.get('last_scored_score'),
                 'scorecard': {c: v.get('scorecard', {}).get(c) for c in CATEGORY_IDS},
                 'dice_history': [list(h) for h in v.get('dice_history', [])],
+                'roll_history': [
+                    {'dice': list(h['dice']), 'kept': list(h['kept']),
+                     'rerolled': list(h['rerolled'])}
+                    for h in v.get('roll_history', [])
+                ],
             }
         if game.solo and game.player2_id is None:
             game.player2_id = 0
