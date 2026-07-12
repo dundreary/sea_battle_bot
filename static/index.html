@@ -335,6 +335,10 @@ const LANG = {
     again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
     yourTurn: '⚓ ТВОЙ ХОД!',
     oppTurn: '⏳ ХОД СОПЕРНИКА...',
+    message: 'Сообщение',
+    messagePrompt: 'Сообщение сопернику (до 280 символов):',
+    messageSent: 'Сообщение отправлено ✅',
+    messageError: 'Не удалось отправить сообщение',
     surrender: 'Сдаться',
     quit: '🚪 Выйти',
     quitConfirm: 'Выйти из игры?',
@@ -442,6 +446,10 @@ const LANG = {
     again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
     yourTurn: '⚓ ТВІЙ ХІД!',
     oppTurn: '⏳ ХІД СУПЕРНИКА...',
+    message: 'Повідомлення',
+    messagePrompt: 'Повідомлення супернику (до 280 символів):',
+    messageSent: 'Повідомлення надіслано ✅',
+    messageError: 'Не вдалося надіслати повідомлення',
     surrender: 'Здатися',
     quit: '🚪 Вийти',
     quitConfirm: 'Вийти з гри?',
@@ -549,6 +557,10 @@ const LANG = {
     again: '🔄 Again? Press «OK» when ready',
     yourTurn: '⚓ YOUR TURN!',
     oppTurn: '⏳ OPPONENT\'S TURN...',
+    message: 'Message',
+    messagePrompt: 'Message to your opponent (up to 280 characters):',
+    messageSent: 'Message sent ✅',
+    messageError: 'Could not send message',
     surrender: 'Surrender',
     quit: '🚪 Quit',
     quitConfirm: 'Leave the game?',
@@ -939,17 +951,23 @@ function updateUI(){
 
   if(s.my_turn){
     setStatus(t('yourTurn'),'battle');
-    $('actions').className='btn-row';
+    $('actions').className='btn-col';
     $('actions').innerHTML=`
-      <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+      <div class="btn-row">
+        <button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button>
+        <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+      </div>
+      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
     `;
   }else{
     setStatus(t('oppTurn'),'');
-    $('actions').className='btn-row';
+    $('actions').className='btn-col';
     $('actions').innerHTML=`
-      <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+      <div class="btn-row">
+        <button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button>
+        <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+      </div>
+      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>
     `;
   }
 }
@@ -1327,11 +1345,26 @@ async function handleShot(r,c){
   if(res.state){
     state=res.state;
     updateUI();
-    if(state.all_sunk||state.my_all_sunk)return;
+    if(state.all_sunk||state.my_all_sunk){
+      if(!document.querySelector('.overlay')){
+        showResult(state.all_sunk ? '🏆' : '💔', state.all_sunk ? t('win') : t('lose'), state.all_sunk ? t('winDesc') : t('loseDesc'), state.strip);
+      }
+      return;
+    }
   }else{
     await refreshState();
   }
   if(msg)setStatus(msg,'battle');
+}
+
+async function sendOpponentMessage(){
+  if(!state || state.solo || !gameCode)return;
+  const message = window.prompt(t('messagePrompt'));
+  if(message === null)return;
+  const text = message.trim();
+  if(!text)return;
+  const res = await api('/api/message_opponent',{uid:getUid(),code:gameCode,message:text});
+  setStatus(res && res.ok ? t('messageSent') : t('messageError'), res && res.ok ? '' : 'battle');
 }
 
 function showResult(icon,title,desc,strip){

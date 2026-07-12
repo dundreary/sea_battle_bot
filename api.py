@@ -568,6 +568,37 @@ def _handle_surrender(data, uid, code):
     return {"ok": True, "state": state}, pending_stake, pending
 
 
+def _handle_message_opponent(data, uid, code):
+    """Send a short Telegram notification to the opponent in a live game."""
+    game, err = _get_game(games, code, uid)
+    if err:
+        return err
+    if uid not in (game.player1_id, game.player2_id):
+        return {"error": "not_in_game"}
+    if game.solo or game.phase != "playing":
+        return {"error": "message_unavailable"}
+
+    message = data.get("message", "")
+    if not isinstance(message, str):
+        return {"error": "invalid_message"}
+    message = " ".join(message.split())[:280]
+    if not message:
+        return {"error": "empty_message"}
+
+    last_sent = getattr(game, "last_message_sent", {})
+    now = time.time()
+    if now - last_sent.get(str(uid), 0) < 3:
+        return {"error": "message_rate_limited"}
+    last_sent[str(uid)] = now
+    game.last_message_sent = last_sent
+
+    pending = _notify_opponent(
+        game, uid, f"💬 Сообщение от соперника:\n{message}",
+        f"message:{uid}:{time.time_ns()}", force=True,
+    )
+    return {"ok": True}, pending
+
+
 def _handle_pd_join(data, uid, code):
     game, err = _get_game(pd_games, code, uid)
     if err: return err
@@ -896,6 +927,7 @@ _HANDLERS = {
     "/api/confirm": _handle_confirm,
     "/api/upload_stake": _handle_upload_stake,
     "/api/surrender": _handle_surrender,
+    "/api/message_opponent": _handle_message_opponent,
     "/api/active_games": _handle_active_games,
     "/api/pd_new_solo": _handle_pd_new_solo,
     "/api/pd_new_multi": _handle_pd_new_multi,
@@ -916,7 +948,7 @@ _HANDLERS = {
 }
 
 NOTIFY_PATHS = {
-    "/api/join", "/api/confirm",
+    "/api/join", "/api/confirm", "/api/message_opponent",
     "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
     "/api/checkers_join", "/api/checkers_move", "/api/checkers_surrender",
 }
