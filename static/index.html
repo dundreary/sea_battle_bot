@@ -238,7 +238,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 
 
-.theme-selector{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-wrap:wrap;width:100%;max-width:340px;margin:8px 0}
+.theme-selector{display:flex;gap:6px;justify-content:center;padding:8px 0;flex-wrap:wrap;width:100%;max-width:340px;margin:8px 0;border-top:1px solid var(--border-color);padding-top:10px;margin-top:10px}
 .theme-btn{padding:10px 16px;border:2px solid var(--border-color);background:transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:.15s}
 .theme-btn:hover{border-color:var(--accent-primary);color:var(--accent-primary)}
 .theme-btn.active{background:var(--accent-primary);color:var(--bg-dark);border-color:var(--accent-primary)}
@@ -333,7 +333,7 @@ const LANG = {
     again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
     yourTurn: '⚓ ТВОЙ ХОД!',
     oppTurn: '⏳ ХОД СОПЕРНИКА...',
-    surrender: '🚪 Сдаться',
+    surrender: 'Сдаться',
     quit: '🚪 Выйти',
     quitConfirm: 'Выйти из игры?',
     hit: '🔥 Попадание!',
@@ -440,7 +440,7 @@ const LANG = {
     again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
     yourTurn: '⚓ ТВІЙ ХІД!',
     oppTurn: '⏳ ХІД СУПЕРНИКА...',
-    surrender: '🚪 Здатися',
+    surrender: 'Здатися',
     quit: '🚪 Вийти',
     quitConfirm: 'Вийти з гри?',
     hit: '🔥 Влучив!',
@@ -547,7 +547,7 @@ const LANG = {
     again: '🔄 Again? Press «OK» when ready',
     yourTurn: '⚓ YOUR TURN!',
     oppTurn: '⏳ OPPONENT\'S TURN...',
-    surrender: '🚪 Surrender',
+    surrender: 'Surrender',
     quit: '🚪 Quit',
     quitConfirm: 'Leave the game?',
     hit: '🔥 Hit!',
@@ -898,7 +898,7 @@ function updateUI(){
        $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-         <button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>
+         <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>
          <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
        `;
       }else{
@@ -921,7 +921,7 @@ function updateUI(){
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? t('stripStart') : t('confirm')}</button>`}
-           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)" style="border-color:var(--color-hit);color:var(--color-hit)">${t('surrender')}</button>` : ''}
+           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
       }
@@ -1749,8 +1749,8 @@ function pdRenderActions(st){
     }
   }
   // Minimize + Surrender always shown (for both my turn and opponent's turn)
-  html += `<div class="btn-row" style="flex-wrap:nowrap;margin-top:${st.my_turn && !st.scored ? '0' : '8px'}">
-    <button class="btn outline quit-btn" onclick="pdSurrender()">🏳️ ${t('surrender')}</button>
+   html += `<div class="btn-row" style="margin-top:8px">
+    <button class="btn outline" onclick="pdSurrender()">${t('surrender')}</button>
     <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
   </div>`;
 
@@ -2093,8 +2093,8 @@ function ckShowGame(st){
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
-  html+=`<div class="btn-row" style="flex-wrap:nowrap;margin-top:${st.my_turn?'0':'8px'}">
-    <button class="btn outline quit-btn" onclick="ckSurrender()">🏳️ ${t('surrender')}</button>
+   html+=`<div class="btn-row" style="margin-top:8px">
+    <button class="btn outline" onclick="ckSurrender()">${t('surrender')}</button>
     <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
   </div>`;
   const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
