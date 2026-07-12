@@ -189,10 +189,6 @@ class Game:
         self.bot_ai = BotAI(difficulty=difficulty) if solo else None
         self.turn = 1
         self.phase = "placing1"
-        self.placing = {
-            1: {"ship_idx": 0, "cells": []},
-            2: {"ship_idx": 0, "cells": []},
-        }
         self.ready = {1: False, 2: False}
         self.strip_photo = ""
         # Per-player "stake" photo, committed before the game starts
@@ -202,10 +198,6 @@ class Game:
         self.last_activity = {}
         self.notification_events = set()
         self.created_at = time.time()
-
-    @property
-    def both_placed(self):
-        return self.phase == "playing"
 
     def player_num(self, user_id):
         return 1 if user_id == self.player1_id else 2
@@ -224,17 +216,6 @@ class Game:
 
     def opponent_board(self, player_id):
         return self.board2 if player_id == self.player1_id else self.board1
-
-    def needs_ship_of_length(self, pnum=None):
-        if pnum is None:
-            pnum = self.player_num(self.current_player())
-        idx = self.placing[pnum]["ship_idx"]
-        ships_list = STRIP_SHIPS if self.strip else SHIPS
-        if idx >= len(ships_list):
-            if self.strip and idx == len(ships_list):
-                return 0  # 0 means "place the mine"
-            return None
-        return ships_list[idx]
 
     def trigger_mine_explosion(self, shooter_uid):
         board = self.board_for(shooter_uid)
@@ -268,13 +249,6 @@ class Game:
             'board2': self.board2.to_dict(),
             'turn': self.turn,
             'phase': self.phase,
-            'placing': {
-                str(k): {
-                    'ship_idx': v['ship_idx'],
-                    'cells': [list(c) for c in v['cells']],
-                }
-                for k, v in self.placing.items()
-            },
             'ready': {str(k): v for k, v in self.ready.items()},
             'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
         }
@@ -295,13 +269,6 @@ class Game:
         game.board2 = Board.from_dict(data['board2'])
         game.turn = data['turn']
         game.phase = data['phase']
-        game.placing = {
-            int(k): {
-                'ship_idx': v['ship_idx'],
-                'cells': [tuple(c) for c in v.get('cells', [])],
-            }
-            for k, v in data.get('placing', {}).items()
-        }
         game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
         if data.get('bot_ai'):
             game.bot_ai = BotAI.from_dict(data['bot_ai'])
@@ -315,45 +282,6 @@ class Game:
         game.last_activity = {}
         game.notification_events = set()
         return game
-
-def validate_ship_placement(cells, strip=False):
-    if len(cells) < 2:
-        return True, ""
-    if strip:
-        # In strip mode, allow any shape connected by edge or corner
-        cell_set = set(cells)
-        start = cells[0]
-        visited = set()
-        stack = [start]
-        while stack:
-            r, c = stack.pop()
-            if (r, c) in visited:
-                continue
-            visited.add((r, c))
-            for dr in (-1, 0, 1):
-                for dc in (-1, 0, 1):
-                    if dr == 0 and dc == 0:
-                        continue
-                    nr, nc = r + dr, c + dc
-                    if (nr, nc) in cell_set and (nr, nc) not in visited:
-                        stack.append((nr, nc))
-        if len(visited) == len(cell_set):
-            return True, ""
-        return False, "Корабль должен быть связным (все клетки соединены)."
-    sorted_cells = sorted(cells)
-    rows = sorted([r for r, c in cells])
-    cols = sorted([c for r, c in cells])
-    if rows[0] == rows[-1]:
-        expected = sorted([(rows[0], c) for c in range(cols[0], cols[-1] + 1)])
-        if sorted_cells != expected:
-            return False, "Корабль должен быть прямой линией (все клетки подряд по горизонтали)."
-        return True, ""
-    if cols[0] == cols[-1]:
-        expected = sorted([(r, cols[0]) for r in range(rows[0], rows[-1] + 1)])
-        if sorted_cells != expected:
-            return False, "Корабль должен быть прямой линией (все клетки подряд по вертикали)."
-        return True, ""
-    return False, "Корабль должен быть прямой линией (горизонтально или вертикально)."
 
 CLOTHING_SHAPES = {
     4: [

@@ -13,6 +13,7 @@ from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games 
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from checkers_ai import get_ai_move
 from persist import save
+from auth import validate_init_data
 import config
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,28 @@ def _get_game(games_dict, code, uid):
     return game, None
 
 
+def _authenticate(data):
+    """Return a verified Telegram user id for this request, or None if it
+    can't be authenticated.
+
+    The client-supplied ``uid`` field is NEVER trusted by itself -- it must
+    match the user embedded in a Telegram-signed ``init_data`` string (see
+    auth.py). Without this, knowing someone's game code and their uid was
+    enough to act as them.
+
+    ``config.SKIP_TELEGRAM_AUTH`` is an explicit, off-by-default opt-out for
+    local development/testing outside of a real Telegram client; it must
+    stay unset in production.
+    """
+    if getattr(config, "SKIP_TELEGRAM_AUTH", False):
+        uid = data.get("uid")
+        try:
+            return int(uid) if uid else None
+        except (TypeError, ValueError):
+            return None
+    return validate_init_data(data.get("init_data", ""), config.BOT_TOKEN)
+
+
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
     own = game.board_for(uid)
@@ -218,7 +241,6 @@ def as_dict(game, uid):
         "opp": opp.to_flat_list(hide_ships=True),
         "all_sunk": opp.all_sunk(),
         "my_all_sunk": own.all_sunk(),
-        "ship_len": game.needs_ship_of_length(pnum) if game.phase != "playing" else None,
         "ships_placed": len(own.ships),
         "ships_list": list(ships_list),
         "own_mines": [list(m) for m in own.mines],
@@ -233,10 +255,8 @@ def new_solo(uid, strip=False, difficulty=2):
     game.phase = "placing"
     if strip:
         auto_place_strip_ships(game.board2)
-        game.placing[2]["ship_idx"] = len(STRIP_SHIPS) + 1  # ships + mine
     else:
         auto_place_ships(game.board2)
-        game.placing[2]["ship_idx"] = len(SHIPS)
     game.ready[2] = True
     return game
 
@@ -303,17 +323,14 @@ def shoot(uid, code, r, c):
 
 def place_auto(uid, code):
     game = games.get(code)
-    pnum = game.player_num(uid)
     board = game.board_for(uid)
     board.grid = [[0 for _ in range(SIZE)] for _ in range(SIZE)]
     board.ships = []
     board.mines = []
     if game.strip:
         auto_place_strip_ships(board)
-        game.placing[pnum]["ship_idx"] = len(STRIP_SHIPS) + 1  # ships + mine
     else:
         auto_place_ships(board)
-        game.placing[pnum]["ship_idx"] = len(SHIPS)
     return True
 
 def confirm_placement(uid, code):
@@ -428,9 +445,9 @@ def _handle_shoot(data, uid, code):
             pending_notifications = _notify_opponent(
                 game, uid, "⚓ Ваш ход в Морском бое.", f"shoot:{uid}:{r}:{c}")
     pending_stake = None
-    # When a strip game finishes, the loser's pre-committed stake photo
-    # is delivered to the winner (the shooter). Strip games stay alive
-    # past game-over until that send completes.
+    # When a strip game finishes, deliver the loser's pre-committed stake
+    # photo to the winner. Regular finished games are retained for up to a
+    # day so both players can retrieve the final board and see the result.
     if game and game.phase == 'finished':
         if game.strip:
             loser_id = game.opponent_id(uid)
@@ -438,8 +455,6 @@ def _handle_shoot(data, uid, code):
             if loser_stake:
                 caption = STRIP_LOSE_CAPTIONS['ru']
                 pending_stake = (loser_id, loser_stake, caption)
-        else:
-            _evict_game(code, games, player_games)
     save()
     return {"ok": True, "result": result, "state": state}, pending_stake, pending_notifications
 
@@ -470,30 +485,6 @@ def _handle_confirm(data, uid, code):
     if started:
         pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
     return {"ok": True, "started": started, "state": state}, pending
-
-
-def _handle_upload_photo(data, uid, code):
-    """Persist the strip photo. Returns ``(result, pending_send)`` where
-    ``pending_send`` is ``(winner_id, photo, caption)`` when a photo must still
-    be delivered to the opponent (the actual network send happens outside the
-    state lock in :func:`handle_api`)."""
-    game, err = _get_game(games, code, uid)
-    if err: return err, None
-    if uid != game.player1_id and uid != game.player2_id:
-        return {"error": "not_in_game"}, None
-    photo = data.get("photo")
-    if not photo:
-        return {"error": "no photo"}, None
-    game.strip_photo = photo
-    save()
-    winner_id = game.opponent_id(uid)
-    if game.solo or not winner_id or winner_id == 0:
-        # No opponent to deliver to; the game is fully finished now.
-        _evict_game(code, games, player_games)
-        return {"ok": True}, None
-    user_lang = data.get("lang", "ru")
-    caption = STRIP_LOSE_CAPTIONS.get(user_lang, STRIP_LOSE_CAPTIONS['ru'])
-    return {"ok": True}, (winner_id, photo, caption)
 
 
 def _handle_upload_stake(data, uid, code):
@@ -544,9 +535,9 @@ def _do_pd_new_multi(data, uid):
 
 def _handle_surrender(data, uid, code):
     game, err = _get_game(games, code, uid)
-    if err: return err
+    if err: return err, None, []
     if uid != game.player1_id and uid != game.player2_id:
-        return {"error": "not_in_game"}
+        return {"error": "not_in_game"}, None, []
     # Sink the surrendering player's ships so the opponent sees a clean result,
     # whether this is an in-progress surrender, a surrender during placement, or
     # a repeat call on an already-finished game. We return a state snapshot
@@ -561,12 +552,20 @@ def _handle_surrender(data, uid, code):
     state = as_dict(game, uid)
     _mark_active(game, uid)
     pending = _notify_opponent(game, uid, "⚓ Друг сдался в Морском бое.", "surrender", force=True)
-    # Strip games stay alive after game-over so the loser can still upload
-    # their forfeit photo via /api/upload_photo.
-    if not game.strip:
-        _evict_game(code, games, player_games)
+    pending_stake = None
+    if game.strip:
+        # The surrendering player (uid) is the loser; deliver their
+        # pre-committed stake photo to the winner, same as a normal finish
+        # via /api/shoot. The game is evicted by the caller once that
+        # delivery attempt (best-effort) completes.
+        winner_id = game.opponent_id(uid)
+        loser_stake = game.strip_stakes.get(game.player_num(uid), "")
+        if loser_stake and winner_id:
+            user_lang = data.get("lang", "ru")
+            caption = STRIP_LOSE_CAPTIONS.get(user_lang, STRIP_LOSE_CAPTIONS['ru'])
+            pending_stake = (winner_id, loser_stake, caption)
     save()
-    return {"ok": True, "state": state}, pending
+    return {"ok": True, "state": state}, pending_stake, pending
 
 
 def _handle_pd_join(data, uid, code):
@@ -895,7 +894,6 @@ _HANDLERS = {
     "/api/shoot": _handle_shoot,
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
-    "/api/upload_photo": _handle_upload_photo,
     "/api/upload_stake": _handle_upload_stake,
     "/api/surrender": _handle_surrender,
     "/api/active_games": _handle_active_games,
@@ -918,10 +916,19 @@ _HANDLERS = {
 }
 
 NOTIFY_PATHS = {
-    "/api/join", "/api/confirm", "/api/surrender",
+    "/api/join", "/api/confirm",
     "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
     "/api/checkers_join", "/api/checkers_move", "/api/checkers_surrender",
 }
+
+# Handlers on these paths can end a strip game and must deliver the loser's
+# pre-committed stake photo to the winner before the game is evicted. They
+# return a 3-tuple: (response, pending_stake_or_None, pending_notifications).
+STAKE_PATHS = {"/api/shoot", "/api/surrender"}
+
+# Endpoints that don't act on behalf of a specific authenticated player and
+# so don't need init_data verification.
+_NO_AUTH_PATHS = {"/api/bot_info", "/api/resolve_code"}
 
 
 def _split_notification_result(out):
@@ -936,34 +943,27 @@ def handle_api(path, body):
         data = json.loads(body) if body else {}
     except json.JSONDecodeError:
         data = {}
-    uid = data.get("uid")
     code = data.get("code")
 
     handler = _HANDLERS.get(path)
     if not handler:
         return {"error": "unknown path"}
 
-    if path == "/api/upload_photo":
-        # The state mutation runs under the lock, but the (slow) network send to
-        # Telegram must happen outside it so other requests are not blocked.
-        # Strip games stay alive until the photo is delivered, then are evicted.
-        with _state_lock:
-            result, pending_send = _handle_upload_photo(data, uid, code)
-        if pending_send:
-            winner_id, photo, caption = pending_send
-            if send_strip_photo_to_winner(winner_id, photo, caption):
-                with _state_lock:
-                    _evict_game(code, games, player_games)
-                    save()
-                return result
-            return {"ok": False, "error": "send_failed"}
-        return result
+    if path in _NO_AUTH_PATHS:
+        uid = data.get("uid")
+    else:
+        uid = _authenticate(data)
+        if uid is None:
+            return {"error": "auth_failed"}
 
-    if path == "/api/shoot":
-        # The stake-photo delivery to the winner happens outside the lock.
+    if path in STAKE_PATHS:
+        # The state mutation runs under the lock; the (slow) network send to
+        # Telegram happens outside it so other requests are not blocked. The
+        # game is evicted right after that delivery attempt (success or not)
+        # instead of being left in memory/persist.json indefinitely.
         try:
             with _state_lock:
-                response, pending_stake, pending_notifications = _handle_shoot(data, uid, code)
+                response, pending_stake, pending_notifications = handler(data, uid, code)
         except Exception as exc:
             logger.exception("Unhandled error in %s: %s", path, exc)
             return {"error": "internal"}
@@ -971,6 +971,9 @@ def handle_api(path, body):
         if pending_stake:
             winner_id, photo, caption = pending_stake
             send_strip_photo_to_winner(winner_id, photo, caption)
+            with _state_lock:
+                _evict_game(code, games, player_games)
+                save()
         return response
 
     if path in NOTIFY_PATHS:
