@@ -11,6 +11,7 @@ from typing import Dict, Any, Callable
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, auto_place_ships, auto_place_strip_ships
 from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
+from backgammon import BackgammonGame as BGGame, games as bg_games, player_games as bg_player_games
 from checkers_ai import get_ai_move
 from persist import save
 from auth import validate_init_data
@@ -593,6 +594,7 @@ def _handle_message_opponent(data, uid, code):
         "sea_battle": games,
         "poker_dice": pd_games,
         "checkers": checkers_games,
+        "backgammon": bg_games,
     }
     games_dict = game_sets.get(game_type)
     if games_dict is None:
@@ -742,6 +744,11 @@ def _handle_active_games(data, uid, code):
         if color is not None:
             _add_active_game(games_list, 'checkers', ck_code, g, g.turn == color)
 
+    for bg_code, g in bg_games.items():
+        color = g.player_color(uid)
+        if color is not None:
+            _add_active_game(games_list, 'backgammon', bg_code, g, g.turn == color)
+
     return {"ok": True, "games": games_list}
 
 
@@ -759,6 +766,8 @@ def _handle_resolve_code(data, uid, code):
         return {"ok": True, "game": "poker_dice", "code": c}
     if c in checkers_games:
         return {"ok": True, "game": "checkers", "code": c}
+    if c in bg_games:
+        return {"ok": True, "game": "backgammon", "code": c}
     return {"ok": False, "error": "not_found"}
 
 
@@ -952,6 +961,108 @@ def _handle_checkers_hint(data, uid, code):
     return {"ok": True, "hint": {"start": list(move[0]), "end": list(move[1][-1])}}
 
 
+# ---- Backgammon handlers ----
+
+def _handle_bg_new_solo(data, uid, code):
+    return _with_uid(uid, lambda: _do_bg_new_solo(data, uid))
+
+def _do_bg_new_solo(data, uid):
+    difficulty = data.get("difficulty", 2)
+    c = generate_unique_code(BGGame.generate_code, bg_games)
+    game = BGGame(c, uid, solo=True, difficulty=difficulty)
+    bg_games[c] = game
+    bg_player_games[str(uid)] = c
+    save()
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
+
+def _handle_bg_new_multi(data, uid, code):
+    return _with_uid(uid, lambda: _do_bg_new_multi(data, uid))
+
+def _do_bg_new_multi(data, uid):
+    c = generate_unique_code(BGGame.generate_code, bg_games)
+    game = BGGame(c, uid)
+    bg_games[c] = game
+    bg_player_games[str(uid)] = c
+    save()
+    return {"ok": True, "code": c, "state": game.get_state(uid)}
+
+def _handle_bg_join(data, uid, code):
+    game, err = _get_game(bg_games, code, uid)
+    if err: return err
+    if game.player1_id == uid:
+        return {"ok": False, "error": "cannot_join_own_game"}
+    if game.player2_id is not None:
+        return {"ok": False, "error": "full"}
+    game.player2_id = uid
+    bg_player_games[str(uid)] = code
+    _mark_active(game, uid)
+    save()
+    return (
+        {"ok": True, "state": game.get_state(uid)},
+        _notify_opponent(game, uid, "🎲 Друг подключился к игре. Ваш ход в Нардах.", "join", force=True),
+    )
+
+def _handle_bg_state(data, uid, code):
+    game, err = _get_game(bg_games, code, uid)
+    if err: return err
+    _mark_active(game, uid)
+    state = game.get_state(uid)
+    state["messages"] = _pop_in_game_messages(game, uid)
+    return {"ok": True, "state": state}
+
+def _handle_bg_roll(data, uid, code):
+    game, err = _get_game(bg_games, code, uid)
+    if err: return err
+    st = game.roll(uid)
+    if st is None:
+        return {"error": "invalid_roll"}
+    _mark_active(game, uid)
+    save()
+    return {"ok": True, "state": st}
+
+def _handle_bg_move(data, uid, code):
+    game, err = _get_game(bg_games, code, uid)
+    if err: return err
+    from_idx = data.get("from")
+    to_idx = data.get("to")
+    if from_idx is None and to_idx is None:
+        st = game.get_state(uid) if game else None
+        if st:
+            _mark_active(game, uid)
+        return {"ok": True, "state": st}
+    if from_idx == -1 and to_idx == -1:
+        st = game.pass_turn(uid)
+        if st is None:
+            return {"error": "invalid_pass"}
+    else:
+        st = game.move(uid, from_idx, to_idx if to_idx is not None else -1)
+        if st is None:
+            return {"error": "invalid_move"}
+    _mark_active(game, uid)
+    if game.phase == 'finished':
+        pending = _notify_opponent(game, uid, "🎲 Игра в Нарды окончена.", "finished", force=True)
+    elif game.turn != (1 if uid == game.player1_id else -1):
+        pending = _notify_opponent(game, uid, "🎲 Ваш ход в Нардах.", f"move:{uid}")
+    else:
+        pending = []
+    if game.phase == 'finished':
+        _evict_game(code, bg_games, bg_player_games)
+    save()
+    return {"ok": True, "state": st}, pending
+
+def _handle_bg_surrender(data, uid, code):
+    game, err = _get_game(bg_games, code, uid)
+    if err: return err
+    st = game.surrender(uid)
+    if st is None:
+        return {"error": "invalid_surrender"}
+    _mark_active(game, uid)
+    pending = _notify_opponent(game, uid, "🎲 Друг сдался в Нардах.", "surrender", force=True)
+    _evict_game(code, bg_games, bg_player_games)
+    save()
+    return {"ok": True, "state": st}, pending
+
+
 _HANDLERS = {
     "/api/new_solo": _handle_new_solo,
     "/api/new_multi": _handle_new_multi,
@@ -980,12 +1091,20 @@ _HANDLERS = {
     "/api/checkers_move": _handle_checkers_move,
     "/api/checkers_hint": _handle_checkers_hint,
     "/api/checkers_surrender": _handle_checkers_surrender,
+    "/api/bg_new_solo": _handle_bg_new_solo,
+    "/api/bg_new_multi": _handle_bg_new_multi,
+    "/api/bg_join": _handle_bg_join,
+    "/api/bg_state": _handle_bg_state,
+    "/api/bg_roll": _handle_bg_roll,
+    "/api/bg_move": _handle_bg_move,
+    "/api/bg_surrender": _handle_bg_surrender,
 }
 
 NOTIFY_PATHS = {
     "/api/join", "/api/confirm", "/api/message_opponent",
     "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
     "/api/checkers_join", "/api/checkers_move", "/api/checkers_surrender",
+    "/api/bg_join", "/api/bg_move", "/api/bg_surrender",
 }
 
 # Handlers on these paths can end a strip game and must deliver the loser's

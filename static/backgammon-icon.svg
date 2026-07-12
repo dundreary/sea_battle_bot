@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="5" y="10" width="90" height="80" rx="10" fill="#2d1810" stroke="#8B5C2A" stroke-width="3"/>
+  <line x1="50" y1="10" x2="50" y2="90" stroke="#8B5C2A" stroke-width="3"/>
+  <line x1="5" y1="50" x2="95" y2="50" stroke="#8B5C2A" stroke-width="2" stroke-dasharray="4,4"/>
+  <polygon points="50,50 10,15 10,45" fill="#fff" opacity="0.8"/>
+  <polygon points="50,50 90,15 90,45" fill="#fff" opacity="0.8"/>
+  <polygon points="50,50 10,55 10,85" fill="#222" opacity="0.8"/>
+  <polygon points="50,50 90,55 90,85" fill="#222" opacity="0.8"/>
+  <circle cx="25" cy="30" r="4" fill="#fff"/>
+  <circle cx="38" cy="35" r="4" fill="#fff"/>
+  <circle cx="25" cy="70" r="4" fill="#222"/>
+  <circle cx="38" cy="65" r="4" fill="#222"/>
+  <circle cx="75" cy="30" r="4" fill="#222"/>
+  <circle cx="62" cy="35" r="4" fill="#222"/>
+  <circle cx="75" cy="70" r="4" fill="#fff"/>
+  <circle cx="62" cy="65" r="4" fill="#fff"/>
+  <text x="50" y="95" text-anchor="middle" font-size="10" fill="#8B5C2A" font-weight="bold">HƏRDƏL</text>
+</svg>

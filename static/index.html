@@ -273,7 +273,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black.king{color:#FFD700}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
-
+.bg-board{display:flex;flex-direction:column;width:100%;max-width:360px;margin:4px auto;background:#2d1810;border:3px solid #5C3A1E;border-radius:10px;padding:4px;overflow:hidden}
+.bg-row{display:flex;height:28px;gap:1px}
+.bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0}
+.bg-point.top{justify-content:flex-start}
+.bg-point-inner{display:flex;flex-direction:column;align-items:center}
+.bg-checker{width:22px;height:22px;border-radius:50%;margin:1px 0;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.4);transition:transform .12s;cursor:pointer}
+.bg-checker:hover{transform:scale(1.15)}
+.bg-checker.white{background:radial-gradient(circle at 35% 35%, #fff, #ddd);border:1.5px solid #999}
+.bg-checker.black{background:radial-gradient(circle at 35% 35%, #555, #1a1a1a);border:1.5px solid #000}
+.bg-checker.selected{outline:3px solid #FFD700;outline-offset:-2px;z-index:2}
+.bg-checker.highlight{outline:3px solid #66BB6A;outline-offset:-2px;z-index:2}
+.bg-bar{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60px;background:rgba(255,255,255,.05);border-radius:6px;margin:4px 0;padding:4px;gap:2px}
+.bg-bar-label{font-size:10px;color:var(--text-muted);text-transform:uppercase}
+.bg-off{text-align:center;font-size:13px;color:var(--accent-primary);padding:4px}
+.bg-dice{display:flex;gap:12px;justify-content:center;margin:12px 0;flex-wrap:wrap}
+.bg-die{width:48px;height:48px;background:#fff;color:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.bg-die.used{opacity:.3}
+.bg-info{text-align:center;font-size:13px;color:var(--text-secondary);padding:4px 0;width:100%;max-width:360px;margin:0 auto}
+.bg-home-label{font-size:9px;color:var(--text-hint);text-align:center;padding:1px 0;width:100%}
 
 
 </style>
@@ -319,6 +337,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div id="ckArea" style="display:none">
     <div class="ck-board" id="ckBoard"></div>
     <div class="btn-row" id="ckActions" style="margin-top:14px;min-height:120px"></div>
+  </div>
+  <div id="bgArea" style="display:none">
+    <div id="bgBoard"></div>
+    <div class="btn-row" id="bgActions" style="margin-top:14px;min-height:120px"></div>
   </div>
   </div>
 
@@ -402,6 +424,16 @@ const LANG = {
     checkers: 'Шашки',
     ckHint: '💡 Подсказка',
     ckNoMoves: 'Нет ходов',
+    backgammon: 'Нарды',
+    bgSolo: '🕹️ Соло',
+    bgFriend: '👤 С другом',
+    bgRoll: '🎲 Бросить',
+    bgWaiting: '⏳ Ожидаем соперника...',
+    bgWin: '🏆 Ты победил!',
+    bgLose: '💔 Ты проиграл',
+    bgPlayAgain: '🔄 Играть ещё',
+    bgYourTurn: '♟ ТВОЙ ХОД!',
+    bgOppTurn: '♟ ХОД СОПЕРНИКА...',
     stEasy: 'Легко',
     stMedium: 'Средне',
     stHard: 'Сложно',
@@ -513,6 +545,16 @@ const LANG = {
     checkers: 'Шашки',
     ckHint: '💡 Підказка',
     ckNoMoves: 'Немає ходів',
+    backgammon: 'Нарди',
+    bgSolo: '🕹️ Соло',
+    bgFriend: '👤 З другом',
+    bgRoll: '🎲 Кинути',
+    bgWaiting: '⏳ Чекаємо суперника...',
+    bgWin: '🏆 Ти переміг!',
+    bgLose: '💔 Ти програв',
+    bgPlayAgain: '🔄 Грати ще',
+    bgYourTurn: '♟ ТВІЙ ХІД!',
+    bgOppTurn: '♟ ХІД СУПЕРНИКА...',
     stEasy: 'Легко',
     stMedium: 'Середньо',
     stHard: 'Складно',
@@ -624,6 +666,16 @@ const LANG = {
     checkers: 'Checkers',
     ckHint: '💡 Hint',
     ckNoMoves: 'No moves',
+    backgammon: 'Backgammon',
+    bgSolo: '🕹️ Solo',
+    bgFriend: '👤 With Friend',
+    bgRoll: '🎲 Roll',
+    bgWaiting: '⏳ Waiting for opponent...',
+    bgWin: '🏆 You Win!',
+    bgLose: '💔 You Lose',
+    bgPlayAgain: '🔄 Play again',
+    bgYourTurn: '♟ YOUR TURN!',
+    bgOppTurn: '♟ OPPONENT\'S TURN...',
     stEasy: 'Easy',
     stMedium: 'Medium',
     stHard: 'Hard',
@@ -671,6 +723,7 @@ function hideAllGameAreas(){
   $('oppBoardWrap').style.display='none';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
+  $('bgArea').style.display='none';
   $('shipHint').innerHTML = '';
 }
 
@@ -1190,6 +1243,14 @@ async function joinByCode(code){
     $('actions').innerHTML = '';
     ckShowGame(res.state);
     ckPoll();
+  } else if(gameType === 'backgammon'){
+    const res = await api('/api/bg_join', {uid: getUid(), code});
+    if(!res || !res.ok){ setStatus(t('joinError')); return; }
+    bgCode = code;
+    localStorage.setItem('bg_game', code);
+    $('actions').innerHTML = '';
+    bgShowGame(res.state);
+    bgPoll();
   }
 }
 
@@ -1215,9 +1276,11 @@ function showMainMenu(){
   gameCode=null;state=null;
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
+  bgCode=null;bgState=null;
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
   if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
   if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
   // Note: saved game codes (sb_game/pd_game/ck_game) are intentionally
   // NOT cleared here anymore — quitting a game only minimizes it, so it must
   // stay resumable from the active-games bar below.
@@ -1248,6 +1311,11 @@ function showMainMenu(){
     <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
       <img src="/static/checkers-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:#D4A96A">${t('checkers')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
+    </div>
+    <div class="game-card" onclick="showBackgammon()" style="margin-bottom:8px">
+      <img src="/static/backgammon-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
+      <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
     <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
@@ -2314,6 +2382,385 @@ async function ckSurrender(){
 }
 
 
+// ---- Backgammon ----
+let bgCode=null, bgState=null, bgPollTimer=null;
+let bgSelected=null, bgMoveTargets=[];
+
+const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
+
+function showBackgammon(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  hideAllGameAreas();
+  if($('legend'))$('legend').style.display='none';
+  document.title=t('backgammon');
+  $('gameInfo').textContent='';
+  setStatus('');
+  $('actions').className='btn-row stack';
+  var savedBg = localStorage.getItem('bg_game');
+  var resumeHtml = '';
+  if(savedBg){
+    resumeHtml = `<div class="active-game-row" onclick="resumeBg('${savedBg}')">
+      <div class="info"><span class="label">🎲 </span><span class="code">${savedBg}</span></div>
+      <span class="badge playing">▶ ${t('continue')}</span>
+    </div>`;
+  }
+  $('actions').innerHTML=`
+    ${resumeHtml}
+    <div class="game-card" onclick="bgStartSolo()" style="margin-bottom:8px">
+      <img src="/static/mode-bot.svg" class="card-icon">
+      <div class="name">${t('bgSolo')}</div>
+      <div class="card-desc">${t('withBot')}</div>
+    </div>
+    ${!savedBg ? `
+    <div class="game-card" onclick="bgNewMulti()" style="margin-bottom:8px">
+      <img src="/static/mode-friend.svg" class="card-icon">
+      <div class="name">${t('bgFriend')}</div>
+      <div class="card-desc">${t('withFriend')}</div>
+    </div>
+    ` : ''}
+    <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
+  `;
+}
+
+async function bgStartSolo(){
+  const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: 2});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  bgCode=res.code;
+  localStorage.setItem('bg_game',bgCode);
+  $('actions').innerHTML='';
+  bgShowGame(res.state);
+}
+
+async function bgNewMulti(){
+  const res=await api('/api/bg_new_multi',{uid:getUid()});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  bgCode=res.code;
+  localStorage.setItem('bg_game',bgCode);
+  bgShowGame(res.state);
+  bgPoll();
+}
+
+async function bgJoin(code){
+  const res=await api('/api/bg_join',{uid:getUid(),code:code.toUpperCase()});
+  if(!res||!res.ok){setStatus(t('joinError'));return}
+  bgCode=code.toUpperCase();
+  localStorage.setItem('bg_game',bgCode);
+  bgShowGame(res.state);
+  bgPoll();
+}
+
+function bgPoll(){
+  if(bgPollTimer)clearInterval(bgPollTimer);
+  bgPollTimer=setInterval(async()=>{
+    if(!bgCode){clearInterval(bgPollTimer);bgPollTimer=null;return}
+    await bgRefreshState();
+  },2000);
+}
+
+async function bgRefreshState(){
+  if(!bgCode)return;
+  const res=await api('/api/bg_state',{uid:getUid(),code:bgCode});
+  if(!res||!res.ok){
+    localStorage.removeItem('bg_game');
+    bgCode=null;
+    showBackgammon();
+    return;
+  }
+  if(!bgCode)return;
+  bgShowGame(res.state);
+}
+
+function bgShowGame(st){
+  bgState=st;
+  showIncomingMessages(st.messages);
+  bgSelected=null;
+  bgMoveTargets=[];
+  hideAllGameAreas();
+  $('bgArea').style.display='';
+  setThemeSelectorVisibility(false);
+  $('header').classList.add('in-game');
+  document.title=t('backgammon');
+  $('gameInfo').textContent='';
+  $('actions').innerHTML='';
+  $('actions').className='btn-row';
+  bgRenderBoard(st);
+  if(st.phase==='finished'){
+    if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+    localStorage.removeItem('bg_game');
+    const won = st.winner === st.you;
+    const icon=won?'🏆':'💔';
+    const title=won?t('bgWin'):t('bgLose');
+    const desc=t('backgammon');
+    showResult(icon,title,desc,false);
+    const el=$('bgActions');
+    el.className='btn-col';
+    el.innerHTML=`
+      <button class="btn success" onclick="bgStartSolo()">${t('bgPlayAgain')}</button>
+      <button class="btn outline" onclick="showBackgammon()">${t('close')}</button>
+    `;
+    return;
+  }
+  bgRenderDice(st);
+  bgRenderActions(st);
+}
+
+function bgRenderBoard(st){
+  const cont=$('bgBoard');
+  cont.innerHTML='';
+  const board=st.board;
+  const bar=st.bar||[0,0];
+  const off=st.off||[0,0];
+  const flip = st.my_color === -1;
+  const myTurn = st.my_turn;
+
+  // Build legal moves lookup: from -> Set<to>
+  const moveMap = {};
+  if(myTurn && st.legal_moves){
+    for(const seq of st.legal_moves){
+      for(const m of seq){
+        const f=m[0], t=m[1];
+        if(!moveMap[f]) moveMap[f]=new Set();
+        moveMap[f].add(t);
+      }
+    }
+  }
+
+  const wrap=document.createElement('div');
+  wrap.className='bg-board';
+
+  const renderRow=(start,end,top)=>{
+    const row=document.createElement('div');
+    row.className='bg-row';
+    for(let i=start;i!==end;i+=end>start?1:-1){
+      const idx=flip?23-i:i;
+      const pt=document.createElement('div');
+      pt.className='bg-point'+(top?' top':'');
+      const inner=document.createElement('div');
+      inner.className='bg-point-inner';
+      const count=Math.abs(board[idx]);
+      const color=board[idx]>0?1:-1;
+      for(let j=0;j<count;j++){
+        const ch=document.createElement('div');
+        ch.className='bg-checker '+BG_CHECKER_COLORS[color];
+        if(myTurn && bgSelected===null && moveMap[idx]){
+          ch.style.cursor='pointer';
+          ch.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+        }
+        if(bgSelected===idx && moveMap[idx] && moveMap[idx].has(-1)){
+          ch.style.cursor='pointer';
+          ch.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
+        }
+        inner.appendChild(ch);
+      }
+      pt.appendChild(inner);
+      // Click on empty point to move
+      if(myTurn && bgSelected!==null && bgSelected!==idx && moveMap[bgSelected] && (moveMap[bgSelected].has(idx))){
+        pt.style.cursor='pointer';
+        const hitArea=document.createElement('div');
+        hitArea.style.cssText='position:absolute;inset:0;z-index:1';
+        hitArea.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,idx);};
+        pt.appendChild(hitArea);
+      }
+      row.appendChild(pt);
+    }
+    return row;
+  };
+
+  // Top row: points 12-23 (display depends on flip)
+  wrap.appendChild(renderRow(12,24,true));
+
+  // Home labels
+  const homeRow=document.createElement('div');
+  homeRow.style.cssText='display:flex;justify-content:space-between;padding:0 4px';
+  homeRow.innerHTML=`<span class="bg-home-label">${flip?'':'HOME'}</span><span class="bg-home-label">${flip?'HOME':''}</span>`;
+  wrap.appendChild(homeRow);
+
+  // Bar between rows
+  const barRow=document.createElement('div');
+  barRow.className='bg-bar';
+  if(bar[0]>0||bar[1]>0){
+    barRow.innerHTML=`<div class="bg-bar-label">BAR</div>`;
+    for(let j=0;j<bar[0];j++){
+      const ch=document.createElement('div');
+      ch.className='bg-checker white';
+      if(myTurn && bgSelected===null && moveMap[-1]) ch.style.cursor='pointer';
+      if(myTurn && bgSelected===null && moveMap[-1]) ch.onclick=()=>bgSelectSource(-1);
+      barRow.appendChild(ch);
+    }
+    for(let j=0;j<bar[1];j++){
+      const ch=document.createElement('div');
+      ch.className='bg-checker black';
+      barRow.appendChild(ch);
+    }
+  }
+  wrap.appendChild(barRow);
+
+  // Bottom row: points 11-0
+  wrap.appendChild(renderRow(11,-1,false));
+
+  // Off display
+  if(off[0]>0||off[1]>0){
+    const offRow=document.createElement('div');
+    offRow.className='bg-off';
+    offRow.textContent = `⬜ ${off[0]}  ⬛ ${off[1]}`;
+    wrap.appendChild(offRow);
+  }
+
+  cont.innerHTML='';
+  cont.appendChild(wrap);
+}
+
+function bgRenderDice(st){
+  const cont=$('bgActions');
+  const dice=st.dice||[];
+  if(!dice.length){
+    if(st.my_turn && st.phase==='playing'){
+      const rollBtn=document.createElement('button');
+      rollBtn.className='btn success';
+      rollBtn.style.cssText='width:100%;margin:8px 0';
+      rollBtn.textContent='🎲 '+t('bgRoll');
+      rollBtn.onclick=()=>bgDoRoll();
+      cont.appendChild(rollBtn);
+    }
+    return;
+  }
+  if(!st.my_turn) return;
+  const diceDiv=document.createElement('div');
+  diceDiv.className='bg-dice';
+  for(let i=0;i<dice.length;i++){
+    const die=document.createElement('div');
+    die.className='bg-die';
+    die.textContent=dice[i];
+    diceDiv.appendChild(die);
+  }
+  cont.appendChild(diceDiv);
+  if(st.my_turn && bgSelected===null){
+    const moveHint=document.createElement('div');
+    moveHint.className='bg-info';
+    const noMoves = !st.legal_moves || !st.legal_moves.length;
+    if(noMoves){
+      moveHint.textContent={ru:'Нет доступных ходов',uk:'Немає доступних ходів',en:'No moves available'}[lang];
+      const passBtn=document.createElement('button');
+      passBtn.className='btn outline';
+      passBtn.textContent='⏭ '+{ru:'Пропустить',uk:'Пропустити',en:'Pass'}[lang];
+      passBtn.onclick=()=>bgPassTurn();
+      cont.appendChild(passBtn);
+    } else {
+      moveHint.textContent={ru:'Нажми на шашку',uk:'Натисни на шашку',en:'Tap a checker to move'}[lang];
+    }
+    cont.appendChild(moveHint);
+  }
+}
+
+function bgRenderActions(st){
+  const el=$('bgActions');
+  el.className='btn-col';
+  let html='';
+  if(st.my_turn && st.phase==='playing'){
+    setStatus(t('bgYourTurn'),'battle');
+    const inviteBtn=st.solo||st.opponent_joined?'':`<button class="btn primary" onclick="shareBgGame()">📤 ${t('inviteFriend')}</button>`;
+    if(inviteBtn) html+=`<div class="btn-row">${inviteBtn}</div>`;
+  }else if(st.phase==='playing'){
+    setStatus(t('bgOppTurn'),'');
+  }
+  if(!st.solo && st.phase==='playing'){
+    html+=`<div class="btn-row" style="margin-top:8px">
+      <button class="btn outline" onclick="sendOpponentMessage('backgammon',bgCode,bgState)">${t('message')}</button>
+      <button class="btn outline" onclick="leaveBgGame()">${t('minimize')}</button>
+    </div>
+    <button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
+  }else if(st.phase==='playing'){
+    html+=`<div class="btn-row" style="margin-top:8px">
+      <button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>
+      <button class="btn outline" onclick="leaveBgGame()">${t('minimize')}</button>
+    </div>`;
+  }
+  const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
+  const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
+  html+=`<div class="pd-theme-bar">
+    <button class="theme-btn ${localStorage.getItem('sb_theme')==='ocean'||!localStorage.getItem('sb_theme')?'active':''}" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
+    <button class="theme-btn ${localStorage.getItem('sb_theme')==='forest'?'active':''}" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
+    <div class="theme-divider"></div>
+    <button class="theme-btn snd-btn" id="sndBtnBg" onclick="toggleSnd()">${sndIcon}</button>
+    <button class="theme-btn snd-btn" id="vibeBtnBg" onclick="toggleVibe()">${vibeIcon}</button>
+  </div>`;
+  el.innerHTML+=html;
+}
+
+async function bgDoRoll(){
+  sfxRoll();
+  const res=await api('/api/bg_roll',{uid:getUid(),code:bgCode});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  bgShowGame(res.state);
+}
+
+async function bgSelectSource(idx){
+  bgSelected=idx;
+  bgMoveTargets=[];
+  if(bgState && bgState.legal_moves){
+    for(const seq of bgState.legal_moves){
+      for(const m of seq){
+        if(m[0]===idx && !bgMoveTargets.includes(m[1])) bgMoveTargets.push(m[1]);
+      }
+    }
+  }
+  // Re-render with visual feedback
+  bgShowGame(bgState);
+  // Show click hint on source
+  const cont=$('bgBoard');
+  const checkers=cont.querySelectorAll('.bg-checker');
+  // For simplicity we just show a brief status
+  setStatus('🎯 '+(bgMoveTargets.length ? {ru:'Выбери пункт назначения',uk:'Обери пункт призначення',en:'Choose destination'}[lang] : {ru:'Нет ходов этой шашкой',uk:'Немає ходів цією шашкою',en:'No moves for this checker'}[lang]),'battle');
+}
+
+async function bgDoMove(from,to){
+  bgSelected=null;
+  const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from,to:to>=0?to:null});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  sfxHit();
+  bgShowGame(res.state);
+}
+
+async function bgPassTurn(){
+  const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from:-1,to:-1});
+  if(!res||!res.ok){setStatus(t('error'));return}
+  bgSelected=null;
+  bgShowGame(res.state);
+}
+
+function leaveBgGame(){
+  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+  bgCode=null; bgState=null;
+  $('bgArea').style.display='none';
+  showMainMenu();
+}
+
+function shareBgGame(){
+  if(!bgCode)return;
+  copyToClipboard(bgCode,{ru:'Код скопирован ✅',uk:'Код скопійовано ✅',en:'Code copied ✅'}[lang]);
+  try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(bgCode)}`)}catch(e){}
+}
+
+async function bgSurrender(){
+  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  if(!confirm(msg)) return;
+  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+  const code = bgCode;
+  bgCode=null;bgState=null;
+  $('bgArea').style.display='none';
+  localStorage.removeItem('bg_game');
+  await api('/api/bg_surrender',{uid:getUid(),code});
+  showMainMenu();
+}
+
+function resumeBg(code){
+  bgCode=code;
+  localStorage.setItem('bg_game',code);
+  $('actions').innerHTML='';
+  bgRefreshState();
+  bgPoll();
+}
+
 async function fetchActiveGames(){
   const cont=$('activeGamesContainer');
   if(!cont)return;
@@ -2335,6 +2782,10 @@ async function fetchActiveGames(){
     else if(g.type==='checkers'){
       var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
       html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+    }
+    else if(g.type==='backgammon'){
+      var badge=g.my_turn?'<span class="badge playing">🎲 '+t('bgYourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumeBg(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
   }
   html+='</div>';

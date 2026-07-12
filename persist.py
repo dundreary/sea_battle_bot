@@ -74,6 +74,8 @@ def save():
             'checkers_player_games': {str(k): v for k, v in api.checkers_player_games.items()},
             'poker_dice_games': _serialize_games(api.pd_games, lambda g: g.to_dict()),
             'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
+            'backgammon_games': _serialize_games(api.bg_games, lambda g: g.to_dict()),
+            'backgammon_player_games': {str(k): v for k, v in api.bg_player_games.items()},
         }
         _write(data)
 
@@ -83,6 +85,7 @@ def load():
     from game import Game
     from checkers import CheckersGame
     from poker_dice import PokerDiceGame
+    from backgammon import BackgammonGame
 
     data = _read()
     if not data:
@@ -110,5 +113,15 @@ def load():
         api.pd_player_games.clear()
         api.pd_player_games.update(data.get('poker_dice_player_games', {}))
         _cleanup_stale_player_games(api.pd_player_games, set(api.pd_games.keys()))
+
+        api.bg_games.clear()
+        api.bg_games.update(_deserialize_games(
+            data.get('backgammon_games', {}),
+            BackgammonGame.from_dict,
+            check_age=False,
+        ))
+        api.bg_player_games.clear()
+        api.bg_player_games.update(data.get('backgammon_player_games', {}))
+        _cleanup_stale_player_games(api.bg_player_games, set(api.bg_games.keys()))
 
 
