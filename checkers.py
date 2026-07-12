@@ -310,6 +310,7 @@ class CheckersGame:
             "my_turn": my_turn,
             "you": uid,
             "solo": self.solo,
+            "opponent_joined": self.player2_id is not None,
             "winner": self.winner,
             "draw": self.draw,
             "last_move": self.last_move,

@@ -791,6 +791,22 @@ function getUid(){
 
 function setStatus(text,cls=''){const s=$('status');s.innerHTML=text;s.className='status'+(cls?' '+cls:'')}
 
+let gameMessageQueue=[];
+function showIncomingMessages(messages){
+  if(Array.isArray(messages)&&messages.length) gameMessageQueue.push(...messages);
+  if(document.querySelector('.game-message-overlay')||!gameMessageQueue.length)return;
+  const text=gameMessageQueue.shift();
+  const o=document.createElement('div');
+  o.className='overlay game-message-overlay';
+  const modal=document.createElement('div');
+  modal.className='modal';
+  const title=document.createElement('h2'); title.textContent='💬 '+t('message');
+  const body=document.createElement('p'); body.style.whiteSpace='pre-wrap'; body.textContent=text;
+  const close=document.createElement('button'); close.className='btn primary'; close.style.width='100%'; close.textContent='OK';
+  close.onclick=()=>{o.remove();showIncomingMessages([])};
+  modal.append(title,body,close); o.appendChild(modal); document.body.appendChild(o);
+}
+
 async function api(method,data){
   try{
     data = data || {};
@@ -854,6 +870,7 @@ function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
 function updateUI(){
   if(!state)return;
   const s=state;
+  showIncomingMessages(s.messages);
   const gameOver=s.all_sunk||s.my_all_sunk;
   const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
   $('pdArea').style.display='none';
@@ -1567,6 +1584,7 @@ async function pdRefreshState(){
 
 function pdShowGame(st){
   pdState = st;
+  showIncomingMessages(st.messages);
   hideAllGameAreas();
   $('pdArea').style.display='';
   setThemeSelectorVisibility(false);
@@ -2101,6 +2119,7 @@ async function ckRefreshState(){
 
 function ckShowGame(st){
   ckState=st;
+  showIncomingMessages(st.messages);
   ckSelected=null;
   hideAllGameAreas();
   $('ckArea').style.display='';
@@ -2131,16 +2150,14 @@ function ckShowGame(st){
   let html='';
   if(st.my_turn){
     setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
-    const inviteBtn=st.solo?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('ckInviteFriend')}</button>`;
+    const inviteBtn=st.solo||st.opponent_joined?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('ckInviteFriend')}</button>`;
     if(inviteBtn){
       html+=`<div class="btn-row">${inviteBtn}</div>`;
-    }
-    if(st.last_move || st.solo){
-      html+=`<div class="btn-row"><button class="btn success" onclick="ckGetHint()">💡 ${t('ckHint')}</button></div>`;
     }
   }else{
     setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
   }
+  html+=`<div class="btn-row"><button class="btn success" onclick="ckGetHint()" ${st.my_turn?'':'disabled style="opacity:0.45;cursor:default"'}>💡 ${t('ckHint')}</button></div>`;
   if(!st.solo){
     html+=`<div class="btn-row" style="margin-top:8px">
       <button class="btn outline" onclick="sendOpponentMessage('checkers',ckCode,ckState)">${t('message')}</button>

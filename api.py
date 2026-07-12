@@ -222,6 +222,14 @@ def _authenticate(data):
     return None
 
 
+def _pop_in_game_messages(game, uid):
+    """Return and consume messages addressed to a player in a game client."""
+    pending = getattr(game, "in_game_messages", [])
+    received = [item["text"] for item in pending if item["recipient"] == uid]
+    game.in_game_messages = [item for item in pending if item["recipient"] != uid]
+    return received
+
+
 def as_dict(game, uid):
     pnum = game.player_num(uid) if not game.solo else 1
     own = game.board_for(uid)
@@ -254,6 +262,7 @@ def as_dict(game, uid):
         "ships_list": list(ships_list),
         "own_mines": [list(m) for m in own.mines],
         "mine_placed": len(own.mines) > 0,
+        "messages": _pop_in_game_messages(game, uid),
     }
 
 def new_solo(uid, strip=False, difficulty=2):
@@ -610,11 +619,15 @@ def _handle_message_opponent(data, uid, code):
     last_sent[str(uid)] = now
     game.last_message_sent = last_sent
 
-    pending = _notify_opponent(
-        game, uid, f"💬 Сообщение от соперника:\n{message}",
-        f"message:{uid}:{time.time_ns()}", force=True,
+    recipient = game.opponent_id(uid) if hasattr(game, "opponent_id") else (
+        game.player2_id if uid == game.player1_id else game.player1_id
     )
-    return {"ok": True}, pending
+    game.in_game_messages = getattr(game, "in_game_messages", [])
+    game.in_game_messages.append({
+        "recipient": recipient,
+        "text": message,
+    })
+    return {"ok": True}, []
 
 
 def _handle_pd_join(data, uid, code):
@@ -688,7 +701,9 @@ def _handle_pd_state(data, uid, code):
     if pnum is None:
         return {"error": "not_in_game"}
     _mark_active(game, uid)
-    return {"ok": True, "state": game.get_state(pnum)}
+    state = game.get_state(pnum)
+    state["messages"] = _pop_in_game_messages(game, uid)
+    return {"ok": True, "state": state}
 
 
 def _add_active_game(games_list, gtype, code, game, my_turn):
@@ -805,7 +820,9 @@ def _handle_checkers_state(data, uid, code):
     game, err = _get_game(checkers_games, code, uid)
     if err: return err
     _mark_active(game, uid)
-    return {"ok": True, "state": game.get_state(uid)}
+    state = game.get_state(uid)
+    state["messages"] = _pop_in_game_messages(game, uid)
+    return {"ok": True, "state": state}
 
 
 def _checkers_ai_difficulty(game):
