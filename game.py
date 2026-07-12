@@ -1,7 +1,6 @@
 import random
-import time
 
-from utils import make_game_code
+from base_game import BaseGame
 
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
@@ -174,14 +173,10 @@ class Board:
         board.mines = [tuple(m) for m in data.get('mines', [])]
         return board
 
-class Game:
+class Game(BaseGame):
     def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False, difficulty=2):
-        self.code = code
-        self.player1_id = player1_id
-        self.player2_id = player2_id
-        self.solo = solo
+        super().__init__(code, player1_id, player2_id, solo, difficulty)
         self.strip = strip
-        self.difficulty = difficulty
         self.board1 = Board()
         self.board2 = Board()
         self.bot_ai = BotAI(difficulty=difficulty) if solo else None
@@ -191,22 +186,12 @@ class Game:
         # Per-player "stake" photo, committed before the game starts
         # (both participants must upload one to confirm placement).
         self.strip_stakes = {1: "", 2: ""}
-        # Ephemeral delivery state: deliberately excluded from persistence.
-        self.last_activity = {}
-        self.notification_events = set()
-        self.created_at = time.time()
-
-    def player_num(self, user_id):
-        return 1 if user_id == self.player1_id else 2
 
     def switch_turn(self):
         self.turn = 3 - self.turn
 
     def current_player(self):
         return self.player1_id if self.turn == 1 else self.player2_id
-
-    def opponent_id(self, player_id):
-        return self.player2_id if player_id == self.player1_id else self.player1_id
 
     def board_for(self, player_id):
         return self.board1 if player_id == self.player1_id else self.board2
@@ -226,10 +211,6 @@ class Game:
         target = random.choice(unhit)
         board.receive_shot(target[0], target[1])
         return {"r": target[0], "c": target[1]}
-
-    @staticmethod
-    def generate_code():
-        return make_game_code()
 
     def to_dict(self):
         return {
@@ -252,14 +233,9 @@ class Game:
     @staticmethod
     def from_dict(data):
         game = Game.__new__(Game)
-        game.code = data['code']
-        game.player1_id = data['player1_id']
-        game.player2_id = data.get('player2_id')
-        game.solo = data.get('solo', False)
+        game._from_dict_common(data)
         game.strip = data.get('strip', False)
-        game.difficulty = data.get('difficulty', 2)
         game.strip_stakes = {int(k): v for k, v in data.get('strip_stakes', {1: "", 2: ""}).items()}
-        game.created_at = data.get('created_at', 0)
         game.board1 = Board.from_dict(data['board1'])
         game.board2 = Board.from_dict(data['board2'])
         game.turn = data['turn']
@@ -273,9 +249,6 @@ class Game:
             game.bot_ai = None
         if game.solo and game.player2_id is None:
             game.player2_id = 0
-        # Notification activity is intentionally reset after a restart.
-        game.last_activity = {}
-        game.notification_events = set()
         return game
 
 

@@ -1,8 +1,7 @@
 import random
-import time
 from typing import Dict, List, Optional, Any, Tuple
 
-from utils import make_game_code
+from base_game import BaseGame
 
 POINTS = 24
 WHITE = 1
@@ -133,13 +132,9 @@ def evaluate_move(board: List[int], bar: List[int], off: List[int], player: int,
     return score
 
 
-class BackgammonGame:
+class BackgammonGame(BaseGame):
     def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False, difficulty: int = 2):
-        self.code = code
-        self.player1_id = player1_id
-        self.player2_id = player2_id
-        self.solo = solo
-        self.difficulty = difficulty
+        super().__init__(code, player1_id, player2_id, solo, difficulty)
         self.board: List[int] = list(INITIAL_BOARD)
         self.bar: List[int] = [0, 0]
         self.off: List[int] = [0, 0]
@@ -148,9 +143,6 @@ class BackgammonGame:
         self.turn = WHITE
         self.phase = 'playing'
         self.winner: Optional[int] = None
-        self.created_at = time.time()
-        self.last_activity = {}
-        self.notification_events = set()
         self.last_move: Optional[List[Tuple[int, int]]] = None
 
     @property
@@ -163,12 +155,6 @@ class BackgammonGame:
         if uid == self.player2_id:
             return BLACK
         return None
-
-    def opponent_id(self, uid: int) -> Optional[int]:
-        return self.player2_id if uid == self.player1_id else self.player1_id
-
-    def player_num(self, uid: int) -> int:
-        return 1 if uid == self.player1_id else 2
 
     def roll(self, uid: int) -> Optional[Dict]:
         color = self.player_color(uid)
@@ -332,10 +318,6 @@ class BackgammonGame:
             'legal_moves': [[list(m) for m in [[f, t]]] for f, t in moves_for_current],
         }
 
-    @staticmethod
-    def generate_code() -> str:
-        return make_game_code()
-
     def to_dict(self) -> Dict[str, Any]:
         return {
             'code': self.code,
@@ -358,11 +340,7 @@ class BackgammonGame:
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'BackgammonGame':
         game = BackgammonGame.__new__(BackgammonGame)
-        game.code = data['code']
-        game.player1_id = data['player1_id']
-        game.player2_id = data.get('player2_id')
-        game.solo = data.get('solo', False)
-        game.difficulty = data.get('difficulty', 2)
+        game._from_dict_common(data)
         game.board = list(data.get('board', INITIAL_BOARD))
         game.bar = list(data.get('bar', [0, 0]))
         game.off = list(data.get('off', [0, 0]))
@@ -372,11 +350,4 @@ class BackgammonGame:
         game.phase = data.get('phase', 'playing')
         game.winner = data.get('winner')
         game.last_move = data.get('last_move')
-        game.created_at = data.get('created_at', 0)
-        game.last_activity = {}
-        game.notification_events = set()
         return game
-
-
-games: Dict[str, BackgammonGame] = {}
-player_games: Dict[str, str] = {}

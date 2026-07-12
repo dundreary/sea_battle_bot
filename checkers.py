@@ -1,6 +1,4 @@
-import time
-
-from utils import make_game_code
+from base_game import BaseGame
 
 BOARD_SIZE = 8
 EMPTY = 0
@@ -191,24 +189,16 @@ def dict_to_board(d):
     return [[d[r * BOARD_SIZE + c] for c in range(BOARD_SIZE)] for r in range(BOARD_SIZE)]
 
 
-class CheckersGame:
+class CheckersGame(BaseGame):
     def __init__(self, code, player1_id, player2_id=None, solo=False, difficulty=2):
-        self.code = code
-        self.player1_id = player1_id
-        self.player2_id = player2_id
-        self.solo = solo
-        self.difficulty = difficulty
+        super().__init__(code, player1_id, player2_id, solo, difficulty)
         self.board = initial_board()
         self.turn = WHITE
         self.phase = "playing"
-        self.created_at = time.time()
         self.winner = None
         self.draw = False
         self.no_progress_plies = 0
         self.last_move = None
-        # Ephemeral notification state; it is not persisted.
-        self.last_activity = {}
-        self.notification_events = set()
         # Draw detection. `_seen` counts how many times each position (board +
         # side to move) has occurred, used for the threefold-repetition rule.
         self._seen = {}
@@ -236,12 +226,6 @@ class CheckersGame:
         key = self._position_key()
         self._seen[key] = self._seen.get(key, 0) + 1
         return self._seen[key]
-
-    def player_num(self, uid):
-        return 1 if uid == self.player1_id else 2
-
-    def opponent_id(self, uid):
-        return self.player2_id if uid == self.player1_id else self.player1_id
 
     def get_moves_for_color(self, color):
         return get_legal_moves(self.board, color)
@@ -331,10 +315,6 @@ class CheckersGame:
         self.phase = "finished"
         return self.get_state(uid)
 
-    @staticmethod
-    def generate_code():
-        return make_game_code()
-
     def to_dict(self):
         return {
             "code": self.code,
@@ -358,11 +338,7 @@ class CheckersGame:
     @staticmethod
     def from_dict(data):
         game = CheckersGame.__new__(CheckersGame)
-        game.code = data["code"]
-        game.player1_id = data["player1_id"]
-        game.player2_id = data.get("player2_id")
-        game.solo = data.get("solo", False)
-        game.difficulty = data.get("difficulty", 2)
+        game._from_dict_common(data)
         game.board = dict_to_board(data["board"])
         game.turn = data["turn"]
         game.phase = data.get("phase", "playing")
@@ -370,7 +346,6 @@ class CheckersGame:
         game.draw = data.get("draw", False)
         game.no_progress_plies = data.get("no_progress_plies", 0)
         game.last_move = data.get("last_move")
-        game.created_at = data.get("created_at", 0)
         # Restore repetition history so threefold-draw detection survives a
         # restart. Stored as [[flattened_board, side_to_move, count], ...].
         seen_raw = data.get("seen")
@@ -379,6 +354,4 @@ class CheckersGame:
         else:
             game._seen = {}
             game._record_position()
-        game.last_activity = {}
-        game.notification_events = set()
         return game

@@ -5,13 +5,15 @@ import time
 from typing import Dict, Any, Callable
 
 from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, EMPTY, auto_place_ships, auto_place_strip_ships
-from poker_dice import PokerDiceGame as PDGame, games as pd_games, player_games as pd_player_games
+from poker_dice import PokerDiceGame as PDGame
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
-from backgammon import BackgammonGame as BGGame, games as bg_games, player_games as bg_player_games
+from backgammon import BackgammonGame as BGGame
 from checkers_ai import get_ai_move
 from persist import save
 from auth import validate_init_data
 import config
+
+from registry import REGISTRIES
 
 from notifications import (
     _enqueue_notifications,
@@ -23,17 +25,22 @@ from strip import send_strip_photo_to_winner, STRIP_LOSE_CAPTIONS
 
 logger = logging.getLogger(__name__)
 
-# Notification delivery (see notifications.py) and strip-mode stake-photo
-# delivery (see strip.py) are extracted into their own modules. The helpers
-# below are re-exported under their historical names so call sites in this
-# file are unchanged.
+# All game sets live in a single registry (see registry.py). These aliases keep
+# the existing handler code unchanged while making the registry the sole owner
+# of the underlying dicts.
+sb = REGISTRIES["sea_battle"]
+pd = REGISTRIES["poker_dice"]
+ck = REGISTRIES["checkers"]
+bg = REGISTRIES["backgammon"]
 
-games: Dict[str, Game] = {}
-player_games: Dict[str, str] = {}
-
-# Checkers games
-checkers_games: Dict[str, CheckersGame] = {}
-checkers_player_games: Dict[str, str] = {}
+games = sb.games
+player_games = sb.player_games
+checkers_games = ck.games
+checkers_player_games = ck.player_games
+pd_games = pd.games
+pd_player_games = pd.player_games
+bg_games = bg.games
+bg_player_games = bg.player_games
 
 # Guards all shared in-memory game dictionaries below. The HTTP server thread and
 # the bot's asyncio thread both access these, so mutations must be serialized to

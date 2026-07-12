@@ -3,7 +3,16 @@ import json
 import time
 import logging
 
+from registry import REGISTRIES
+
 logger = logging.getLogger(__name__)
+
+# The registry is the single owner of every game set; reach the same dict
+# objects here so persistence never depends on the API layer.
+sb = REGISTRIES["sea_battle"]
+pd = REGISTRIES["poker_dice"]
+ck = REGISTRIES["checkers"]
+bg = REGISTRIES["backgammon"]
 
 PERSIST_PATH = os.path.join(os.path.dirname(__file__), 'data', 'persist.json')
 
@@ -61,25 +70,22 @@ def _cleanup_stale_player_games(player_games, valid_codes):
 
 
 def save():
-    import api
-
     data = {
         'version': 1,
         'saved_at': time.time(),
-        'api_games': _serialize_games(api.games, lambda g: g.to_dict()),
-        'api_player_games': {str(k): v for k, v in api.player_games.items()},
-        'checkers_games': _serialize_games(api.checkers_games, lambda g: g.to_dict()),
-        'checkers_player_games': {str(k): v for k, v in api.checkers_player_games.items()},
-        'poker_dice_games': _serialize_games(api.pd_games, lambda g: g.to_dict()),
-        'poker_dice_player_games': {str(k): v for k, v in api.pd_player_games.items()},
-        'backgammon_games': _serialize_games(api.bg_games, lambda g: g.to_dict()),
-        'backgammon_player_games': {str(k): v for k, v in api.bg_player_games.items()},
+        'api_games': _serialize_games(sb.games, lambda g: g.to_dict()),
+        'api_player_games': {str(k): v for k, v in sb.player_games.items()},
+        'checkers_games': _serialize_games(ck.games, lambda g: g.to_dict()),
+        'checkers_player_games': {str(k): v for k, v in ck.player_games.items()},
+        'poker_dice_games': _serialize_games(pd.games, lambda g: g.to_dict()),
+        'poker_dice_player_games': {str(k): v for k, v in pd.player_games.items()},
+        'backgammon_games': _serialize_games(bg.games, lambda g: g.to_dict()),
+        'backgammon_player_games': {str(k): v for k, v in bg.player_games.items()},
     }
     _write(data)
 
 
 def load():
-    import api
     from game import Game
     from checkers import CheckersGame
     from poker_dice import PokerDiceGame
@@ -89,34 +95,34 @@ def load():
     if not data:
         return
 
-    api.games.clear()
-    api.games.update(_deserialize_games(data.get('api_games', {}), Game.from_dict))
-    api.player_games.clear()
-    api.player_games.update(data.get('api_player_games', {}))
-    _cleanup_stale_player_games(api.player_games, set(api.games.keys()))
+    sb.games.clear()
+    sb.games.update(_deserialize_games(data.get('api_games', {}), Game.from_dict))
+    sb.player_games.clear()
+    sb.player_games.update(data.get('api_player_games', {}))
+    _cleanup_stale_player_games(sb.player_games, set(sb.games.keys()))
 
-    api.checkers_games.clear()
-    api.checkers_games.update(_deserialize_games(data.get('checkers_games', {}), CheckersGame.from_dict))
-    api.checkers_player_games.clear()
-    api.checkers_player_games.update(data.get('checkers_player_games', {}))
-    _cleanup_stale_player_games(api.checkers_player_games, set(api.checkers_games.keys()))
+    ck.games.clear()
+    ck.games.update(_deserialize_games(data.get('checkers_games', {}), CheckersGame.from_dict))
+    ck.player_games.clear()
+    ck.player_games.update(data.get('checkers_player_games', {}))
+    _cleanup_stale_player_games(ck.player_games, set(ck.games.keys()))
 
-    api.pd_games.clear()
-    api.pd_games.update(_deserialize_games(
+    pd.games.clear()
+    pd.games.update(_deserialize_games(
         data.get('poker_dice_games', {}),
         PokerDiceGame.from_dict,
     ))
-    api.pd_player_games.clear()
-    api.pd_player_games.update(data.get('poker_dice_player_games', {}))
-    _cleanup_stale_player_games(api.pd_player_games, set(api.pd_games.keys()))
+    pd.player_games.clear()
+    pd.player_games.update(data.get('poker_dice_player_games', {}))
+    _cleanup_stale_player_games(pd.player_games, set(pd.games.keys()))
 
-    api.bg_games.clear()
-    api.bg_games.update(_deserialize_games(
+    bg.games.clear()
+    bg.games.update(_deserialize_games(
         data.get('backgammon_games', {}),
         BackgammonGame.from_dict,
     ))
-    api.bg_player_games.clear()
-    api.bg_player_games.update(data.get('backgammon_player_games', {}))
-    _cleanup_stale_player_games(api.bg_player_games, set(api.bg_games.keys()))
+    bg.player_games.clear()
+    bg.player_games.update(data.get('backgammon_player_games', {}))
+    _cleanup_stale_player_games(bg.player_games, set(bg.games.keys()))
 
 

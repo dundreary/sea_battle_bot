@@ -1,7 +1,7 @@
 import random
 from typing import Dict, List, Optional, Any, Set
 
-from utils import make_game_code
+from base_game import BaseGame
 
 
 CATEGORY_IDS = [
@@ -257,19 +257,12 @@ def _bot_choose_category(dice: List[int], remaining: List[str], scorecard: Dict[
     return best_cat
 
 
-class PokerDiceGame:
+class PokerDiceGame(BaseGame):
     def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None, solo: bool = False, difficulty: int = 3):
-        self.code = code
-        self.player1_id = player1_id
-        self.player2_id = player2_id
-        self.solo = solo
-        self.difficulty = difficulty
+        super().__init__(code, player1_id, player2_id, solo, difficulty)
         self.phase = 'playing'
         self.turn = 1
         self.surrendered = None
-        # Ephemeral notification state; it is not persisted.
-        self.last_activity = {}
-        self.notification_events = set()
         self.players = {
             1: self._fresh_player(),
             2: self._fresh_player(),
@@ -296,13 +289,6 @@ class PokerDiceGame:
         p['last_scored_category'] = None
         p['last_scored_score'] = None
         p['dice_history'] = []
-
-    def player_num(self, uid: int) -> Optional[int]:
-        if uid == self.player1_id:
-            return 1
-        if uid == self.player2_id:
-            return 2
-        return None
 
     def roll(self, uid: int, keep_indices: Optional[List[int]] = None) -> Optional[Dict]:
         pnum = self.player_num(uid)
@@ -566,11 +552,7 @@ class PokerDiceGame:
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'PokerDiceGame':
         game = PokerDiceGame.__new__(PokerDiceGame)
-        game.code = data['code']
-        game.player1_id = data['player1_id']
-        game.player2_id = data.get('player2_id')
-        game.solo = data.get('solo', False)
-        game.difficulty = data.get('difficulty', 3)
+        game._from_dict_common(data)
         game.phase = data.get('phase', 'playing')
         game.turn = data.get('turn', 1)
         game.surrendered = data.get('surrendered')
@@ -589,14 +571,4 @@ class PokerDiceGame:
             }
         if game.solo and game.player2_id is None:
             game.player2_id = 0
-        game.last_activity = {}
-        game.notification_events = set()
         return game
-
-    @staticmethod
-    def generate_code() -> str:
-        return make_game_code()
-
-
-games: Dict[str, PokerDiceGame] = {}
-player_games: Dict[str, str] = {}
