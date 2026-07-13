@@ -461,7 +461,7 @@ const LANG = {
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
     stripDesc: 'Корабли могут быть любой формы!',
-    stripInfoDesc: 'Сделай фото. Оно отправится сопернику только если ты проиграешь. Фото должно быть четким и хорошо читаемым.',
+    stripInfoDesc: 'Фото отправится сопернику... Сделай фото. Оно отправится сопернику только если ты проиграешь. Фото должно быть четким и хорошо читаемым.',
     stripLoseTitle: '👗 Игра окончена!',
     stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
     stripUploadTitle: '📸 Загрузи фото',
@@ -587,7 +587,7 @@ const LANG = {
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
     stripDesc: 'Кораблі можуть бути будь-якої форми!',
-    stripInfoDesc: 'Зроби фото. Воно надішлеться супернику тільки якщо ти програєш. Фото має бути чітким і добре читаним.',
+    stripInfoDesc: 'Фото надішлеться супернику... Зроби фото. Воно надішлеться супернику тільки якщо ти програєш. Фото має бути чітким і добре читаним.',
     stripLoseTitle: '👗 Гра закінчена!',
     stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
     stripUploadTitle: '📸 Завантаж фото',
@@ -713,7 +713,7 @@ const LANG = {
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
     stripDesc: 'Ships can be any shape!',
-    stripInfoDesc: 'Take a photo. It will be sent to the opponent only if you lose. The photo must be clear and well-readable.',
+    stripInfoDesc: 'The photo will be sent to your opponent... Take a photo. It will be sent to the opponent only if you lose. The photo must be clear and well-readable.',
     stripLoseTitle: '👗 Game Over!',
     stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
     stripUploadTitle: '📸 Upload Photo',
@@ -1196,7 +1196,6 @@ function showStripInfoOverlay(){
   o.className = 'overlay';
   o.innerHTML = `
     <div class="modal">
-      <h2>${t('stripMode')}</h2>
       <p>${t('stripInfoDesc')}</p>
       <button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();captureAndUploadStake()">${t('stripStakeBtn')}</button>
       <button class="btn outline" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button>
@@ -1214,8 +1213,12 @@ function captureStripPhoto(){
     input.capture = 'environment';
     let cancelled = true;
     const onFocus = () => {
-      window.removeEventListener('focus', onFocus);
-      if(cancelled) resolve(null);
+      // Defer so the file 'change' event (which sets cancelled=false)
+      // fires first. Otherwise we'd resolve null and skip the upload.
+      setTimeout(() => {
+        window.removeEventListener('focus', onFocus);
+        if(cancelled) resolve(null);
+      }, 400);
     };
     window.addEventListener('focus', onFocus);
     input.onchange = async (e) => {
