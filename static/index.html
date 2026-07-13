@@ -1212,18 +1212,25 @@ function captureStripPhoto(){
     input.accept = 'image/*';
     input.capture = 'environment';
     let cancelled = true;
+    let opened = false;
+    const onBlur = () => { opened = true; };
     const onFocus = () => {
-      // Defer so the file 'change' event (which sets cancelled=false)
-      // fires first. Otherwise we'd resolve null and skip the upload.
-      setTimeout(() => {
-        window.removeEventListener('focus', onFocus);
-        if(cancelled) resolve(null);
-      }, 400);
+      // Only treat a focus as "returned from the picker" if the picker
+      // actually opened first (window blurred). Some browsers fire a stray
+      // focus when the camera is launched, which must be ignored.
+      if(!opened) return;
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+      // Give the file 'change' event (which sets cancelled=false) a moment
+      // to land before deciding the user cancelled.
+      setTimeout(() => { if(cancelled) resolve(null); }, 600);
     };
+    window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
     input.onchange = async (e) => {
       cancelled = false;
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
       const file = e.target.files[0];
       if(!file){resolve(null);return}
       const reader = new FileReader();
