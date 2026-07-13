@@ -461,7 +461,7 @@ const LANG = {
     stripTitle: '👗 Морской бой — На раздевание',
     stripPlace: '👗 Расставь корабли-одежду',
     stripDesc: 'Корабли могут быть любой формы!',
-    stripInfoDesc: 'Фото отправится сопернику... Сделай фото. Оно отправится сопернику только если ты проиграешь. Фото должно быть четким и хорошо читаемым.',
+    stripInfoDesc: 'Фото отправится сопернику только если ты проиграешь.',
     stripLoseTitle: '👗 Игра окончена!',
     stripLoseDesc: 'Ты проиграл в режиме «На раздевание». Загрузи фото.',
     stripUploadTitle: '📸 Загрузи фото',
@@ -587,7 +587,7 @@ const LANG = {
     stripTitle: '👗 Морський бій — На роздягання',
     stripPlace: '👗 Розстав кораблі-одяг',
     stripDesc: 'Кораблі можуть бути будь-якої форми!',
-    stripInfoDesc: 'Фото надішлеться супернику... Зроби фото. Воно надішлеться супернику тільки якщо ти програєш. Фото має бути чітким і добре читаним.',
+    stripInfoDesc: 'Фото надішлеться супернику тільки якщо ти програєш.',
     stripLoseTitle: '👗 Гра закінчена!',
     stripLoseDesc: 'Ти програв у режимі «На роздягання». Завантаж фото.',
     stripUploadTitle: '📸 Завантаж фото',
@@ -713,7 +713,7 @@ const LANG = {
     stripTitle: '👗 Sea Battle — Strip Mode',
     stripPlace: '👗 Place clothing ships',
     stripDesc: 'Ships can be any shape!',
-    stripInfoDesc: 'The photo will be sent to your opponent... Take a photo. It will be sent to the opponent only if you lose. The photo must be clear and well-readable.',
+    stripInfoDesc: 'The photo will be sent to your opponent only if you lose.',
     stripLoseTitle: '👗 Game Over!',
     stripLoseDesc: 'You lost in Strip Mode. Upload a photo.',
     stripUploadTitle: '📸 Upload Photo',
@@ -1242,9 +1242,11 @@ async function captureAndUploadStake(){
   showLoadingOverlay(STRIP_LOADING_MSGS[lang].send);
   const res = await api('/api/upload_stake',{uid:getUid(),code:gameCode,photo:data,lang:lang});
   hideLoadingOverlay();
-  if(!(res&&res.ok)){ setStatus(t('error')); }
-  // Always re-render from the server so the UI matches the real state
-  // (the upload button disappears once the stake is committed).
+  if(!(res&&res.ok)){ setStatus(t('error')); return; }
+  // Flip the stake flag immediately so the action button switches to
+  // "start" right away, independent of poll/refresh timing. The server
+  // stays the source of truth via refreshState below.
+  if(state){ state.strip_stake = true; updateUI(); }
   await refreshState();
 }
 
