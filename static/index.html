@@ -784,19 +784,6 @@ function sfxRoll(){if(!_snd)return;for(let i=0;i<8;i++){const delay=i*70;setTime
 // we show an explicit "AI is thinking" beat, then reveal what the AI did
 // (the dice it threw, the pieces it moved / dice it kept). These helpers are
 // also reused to surface an opponent's action the moment a poll delivers it.
-let _aiThinkingEl = null;
-function showAiThinking(label){
-  hideAiThinking();
-  const o = document.createElement('div');
-  o.id = 'aiThinking';
-  o.className = 'ai-thinking';
-  o.innerHTML = `<div class="ai-thinking-spinner"></div><div class="ai-thinking-label">${label || {ru:'🤖 ИИ думает…',uk:'🤖 ШІ думає…',en:'🤖 AI is thinking…'}[lang]}</div>`;
-  document.body.appendChild(o);
-  _aiThinkingEl = o;
-}
-function hideAiThinking(){
-  if(_aiThinkingEl){ _aiThinkingEl.remove(); _aiThinkingEl = null; }
-}
 function _aiDelay(ms){ return new Promise(r => setTimeout(r, ms)); }
 function showRevealBanner(html){
   const b = document.createElement('div');
@@ -1497,16 +1484,6 @@ async function handleShot(r,c){
     }
     msg+=' '+botMsg;
   }
-  // In solo mode the bot shoots right after you. Make that sequence explicit
-  // so it is never mistaken for lag: your shot is accepted, then a visible
-  // "bot is thinking" beat, then the bot's shots are revealed.
-  const soloBot = res.state && res.state.solo && bs && bs.length;
-  if(soloBot){
-    showAiThinking({ru:'🤖 Бот думает…',uk:'🤖 Бот думає…',en:'🤖 Bot is thinking…'}[lang]);
-    await _aiDelay(950);
-    hideAiThinking();
-    showRevealBanner(botMsg);
-  }
   // Render the final board from the shot response immediately. This avoids a
   // race with polling and makes the win/loss result appear without delay.
   if(res.state){
@@ -1748,16 +1725,10 @@ async function pdRefreshState(){
   }
   if(!pdCode)return;
   const st=res.state;
-  // Real-time opponent reveal: when the friend just scored and it is now
-  // our turn, announce what they wrote down.
-  if(!st.solo && st.turn===1 && st.opponent_scored && st.opponent_scored_category){
-    const key=st.opponent_scored_category+':'+st.opponent_scored_points;
-    if(key!==pdSeenScore){
-      pdSeenScore=key;
-      showRevealBanner('🎲 '+{ru:'Соперник записал: '+catName(st.opponent_scored_category)+' — '+st.opponent_scored_points,uk:'Суперник записав: '+catName(st.opponent_scored_category)+' — '+st.opponent_scored_points,en:'Opponent scored: '+catName(st.opponent_scored_category)+' — '+st.opponent_scored_points}[lang]);
-    }
-  }
-  pdShowGame(res.state);
+  // Replay the opponent's throws live in the shared dice tray the moment their
+  // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
+  await pdMaybeAnimateOpponent(st);
+  pdShowGame(st);
 }
 
 function pdShowGame(st){
@@ -1795,7 +1766,6 @@ function pdShowGame(st){
 
   pdRenderScorecard(st);
   pdRenderDice(st);
-  pdRenderOpponentHistory(st);
   pdRenderActions(st);
   pdRenderInfo(st);
 }
@@ -1940,72 +1910,100 @@ function pdRenderDice(st){
 
    }
 
-  function pdRenderOpponentHistory(st){
-    const cont = $('pdOppHistory');
-    if(!cont) return;
-    cont.innerHTML = '';
+  // Play back the opponent's (or AI's) full turn in the SINGLE shared dice
+  // tray: the dice spin on the first throw, the kept dice are highlighted and
+  // the discarded ones spin again in place, up to the third throw. No separate
+  // / duplicated "opponent table" — everything happens in #pdDice.
+  let pdAnimating = false;
 
-    // Show the opponent's rolls only while their turn is in progress, or
-    // right after they scored (before you start your own turn), so you can
-    // review what they kept and discarded on the 2nd and 3rd throw.
-    const showOpp = st.opponent_scored && !st.scored && st.rolls_left === 3;
-    if(st.my_turn && !showOpp) return;
-
+  async function pdMaybeAnimateOpponent(st){
     const hist = st.opponent_roll_history || [];
-    if(!hist.length) return;
+    if(!hist.length) return false;
+    const key = hist.map(h => (h.dice||[]).join(',')).join('|') + ':' + (st.opponent_scored_category || '');
+    if(pdSeenScore === key) return false;
+    pdSeenScore = key;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'pd-opp-history';
+    // Lay out the scorecard / actions for the upcoming player turn; the dice
+    // tray is then taken over by the throw-by-throw playback below.
+    pdRenderScorecard(st);
+    pdRenderActions(st);
+    pdRenderInfo(st);
 
-    const title = document.createElement('div');
-    title.className = 'pd-opp-history-title';
-    title.textContent = t('pdOppMoves');
-    wrap.appendChild(title);
+    await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points);
+    return true;
+  }
 
-    hist.forEach((entry, idx) => {
-      const rollNum = idx + 1;
-      const row = document.createElement('div');
-      row.className = 'pd-opp-history-row';
+  async function pdAnimateBotTurn(history, cat, pts){
+    if(pdAnimating) return;
+    pdAnimating = true;
+    const savedKept = pdKept;
+    pdKept = new Set();
 
-      const label = document.createElement('div');
-      label.className = 'pd-opp-history-label';
-      if(rollNum === 1){
-        label.textContent = `${t('pdThrow')} 1`;
-      } else {
-        const kept = entry.kept || [];
-        const rerolled = entry.rerolled || [];
-        label.textContent = `${t('pdThrow')} ${rollNum} · ${t('pdKept')} ${kept.length}, ${t('pdDiscarded')} ${rerolled.length}`;
+
+    const cont = $('pdDice');
+    cont.innerHTML = '';
+    const label = document.createElement('div');
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px';
+    cont.appendChild(label);
+
+    const diceEls = [];
+    for(let i = 0; i < 5; i++){
+      const die = document.createElement('div');
+      die.className = 'pd-dot-die';
+      die.style.cursor = 'default';
+      die.dataset.idx = i;
+      cont.appendChild(die);
+      diceEls.push(die);
+    }
+
+    const setDie = (el, val) => {
+      el.innerHTML = '';
+      if(val){
+        const dots = PD_DOTS[val - 1] || [];
+        for(const [r, c] of dots){
+          const dot = document.createElement('div');
+          dot.className = 'dot';
+          dot.style.gridRow = r + 1;
+          dot.style.gridColumn = c + 1;
+          el.appendChild(dot);
+        }
       }
-      row.appendChild(label);
+    };
 
-      const diceWrap = document.createElement('div');
-      diceWrap.className = 'pd-dice pd-opp-history-dice';
+    for(let h = 0; h < history.length; h++){
+      const entry = history[h] || {};
+      const kept = entry.kept || [];
+      const rerolled = entry.rerolled || [];
+      const isFirst = h === 0;
+      label.textContent = isFirst
+        ? `${t('pdThrow')} 1`
+        : `${t('pdThrow')} ${h + 1} · ${t('pdKept')} ${kept.length}, ${t('pdDiscarded')} ${rerolled.length}`;
+
       for(let i = 0; i < 5; i++){
-        const die = document.createElement('div');
-        die.className = 'pd-dot-die';
-        die.style.cursor = 'default';
-        const val = entry.dice[i] || 0;
-        if(val){
-          const dots = PD_DOTS[val - 1] || [];
-          for(const [r, c] of dots){
-            const dot = document.createElement('div');
-            dot.className = 'dot';
-            dot.style.gridRow = r + 1;
-            dot.style.gridColumn = c + 1;
-            die.appendChild(dot);
-          }
-        }
-        if(rollNum > 1){
-          if((entry.kept || []).includes(i)) die.classList.add('kept');
-          else die.classList.add('discarded');
-        }
-        diceWrap.appendChild(die);
+        if(!isFirst && kept.includes(i)) diceEls[i].classList.add('kept');
+        else diceEls[i].classList.remove('kept');
       }
-      row.appendChild(diceWrap);
-      wrap.appendChild(row);
-    });
 
-    cont.appendChild(wrap);
+      sfxRoll();
+      const spinEls = isFirst ? diceEls : rerolled.map(i => diceEls[i]);
+      for(const el of spinEls) el.classList.add('rolling');
+      const animId = setInterval(() => {
+        for(const el of spinEls) setDie(el, Math.floor(Math.random() * 6) + 1);
+      }, 80);
+      await _aiDelay(1100);
+      clearInterval(animId);
+      for(const el of spinEls) el.classList.remove('rolling');
+      for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
+      await _aiDelay(350);
+    }
+
+    const catNameStr = cat ? catName(cat) : '';
+    label.textContent = cat
+      ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
+      : t('pdOppHand');
+
+    pdKept = savedKept;
+    pdAnimating = false;
   }
 
 
@@ -2105,6 +2103,7 @@ function pdRenderInfo(st){
 
 async function pdDoRoll(){
   if(!pdState)return;
+  if(pdAnimating)return;
   sfxRoll();
   const keep=Array.from(pdKept);
   const start=Date.now();
@@ -2160,14 +2159,9 @@ async function pdDoScore(category){
   const res=await api('/api/pd_score',{uid:getUid(),code:pdCode,category:category,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdKept = new Set();
-  if(res.state && res.state.solo && res.state.opponent_scored){
-    showAiThinking({ru:'🤖 ИИ думает…',uk:'🤖 ШІ думає…',en:'🤖 AI is thinking…'}[lang]);
-    await _aiDelay(1000);
-    hideAiThinking();
-    const cat=res.state.opponent_scored_category;
-    const pts=res.state.opponent_scored_points;
-    showRevealBanner('🤖 '+{ru:'ИИ выбрал: '+(cat?catName(cat):'')+' — '+(pts||0)+' '+(t('pdPts')||'очк.'),uk:'ШІ вибрав: '+(cat?catName(cat):'')+' — '+(pts||0),en:'AI chose: '+(cat?catName(cat):'')+' — '+(pts||0)}[lang]);
-  }
+  // If the opponent (AI or friend) just completed a turn, replay their throws
+  // live in the shared dice tray before showing our own turn.
+  await pdMaybeAnimateOpponent(res.state);
   pdShowGame(res.state);
 }
 
@@ -2523,15 +2517,11 @@ async function ckCellClick(r,c){
     if(flip){ csr=7-sr; csc=7-sc; cr=7-r; cc=7-c; }
     const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:csr,start_c:csc,end_r:cr,end_c:cc});
     if(!res||!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'') ;ckSelected=null;ckRenderBoard(ckState);return}
-    sfxHit();
-    if(res.state && res.state.solo && res.bot_move){
-      showAiThinking({ru:'🤖 ИИ думает…',uk:'🤖 ШІ думає…',en:'🤖 AI is thinking…'}[lang]);
-      await _aiDelay(950);
-      hideAiThinking();
-      const mv=res.bot_move.move||{};
-      const caps=(mv.captures&&mv.captures.length)||0;
-      showRevealBanner('🤖 '+(caps?{ru:'ИИ взял '+caps+' шашки',uk:'ШІ взяв '+caps+' шашки',en:'AI captured '+caps+' pieces'}[lang]:{ru:'ИИ походил',uk:'ШІ походив',en:'AI moved'}[lang]));
-    }
+     sfxHit();
+    // Render your move immediately so the checker slides into place first;
+    // a brief beat (no popup) lets that paint before the AI's reply appears.
+    if(res.player_state) ckShowGame(res.player_state);
+    if(res.state && res.state.solo && res.bot_move) await _aiDelay(400);
     ckShowGame(res.state);
     return;
   }
@@ -2951,16 +2941,6 @@ async function bgDoMove(from,to){
   const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from,to:to>=0?to:null});
   if(!res||!res.ok){setStatus(t('error'));return}
   sfxHit();
-  if(res.state && res.state.solo){
-    const st=res.state;
-    if(st.last_roller===-1 && st.last_roll && st.last_roll.length){
-      showAiThinking({ru:'🤖 ИИ думает…',uk:'🤖 ШІ думає…',en:'🤖 AI is thinking…'}[lang]);
-      await _aiDelay(1000);
-      hideAiThinking();
-      const dice=st.last_roll.map(d=>'⚀⚁⚂⚃⚄⚅'[d-1]||d).join(' ');
-      showRevealBanner('🤖 '+{ru:'ИИ выбросил '+dice+' и походил',uk:'ШІ викидав '+dice+' і походив',en:'AI rolled '+dice+' and moved'}[lang]);
-    }
-  }
   bgShowGame(res.state);
 }
 
@@ -2968,18 +2948,6 @@ async function bgPassTurn(){
   const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from:-1,to:-1});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgSelected=null;
-  if(res.state && res.state.solo){
-    const st=res.state;
-    if(st.last_roller===-1 && st.last_roll && st.last_roll.length){
-      showAiThinking({ru:'🤖 ИИ думает…',uk:'🤖 ШІ думає…',en:'🤖 AI is thinking…'}[lang]);
-      await _aiDelay(1000);
-      hideAiThinking();
-      const dice=st.last_roll.map(d=>'⚀⚁⚂⚃⚄⚅'[d-1]||d).join(' ');
-      const moved = st.last_move && st.last_move.length;
-      const verb = moved ? {ru:'и походил',uk:'і походив',en:'and moved'} : {ru:'и пропустил',uk:'і пропустив',en:'and passed'};
-      showRevealBanner('🤖 '+{ru:'ИИ выбросил '+dice+' '+verb.ru,uk:'ШІ викидав '+dice+' '+verb.uk,en:'AI rolled '+dice+' '+verb.en}[lang]);
-    }
-  }
   bgShowGame(res.state);
 }
 
