@@ -50,9 +50,19 @@ class MainHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
-        self.send_header("Pragma", "no-cache")
-        self.send_header("Expires", "0")
+        # index.html embeds all the app JS/CSS inline and changes on every
+        # deploy, so it must never be cached by the client -- otherwise
+        # people get stuck on stale app logic after an update.
+        # Static assets (icons, images) never change content at a fixed
+        # path, so let the browser/Telegram WebView cache them instead of
+        # re-fetching every single load. This is what was causing the
+        # visible "icons pop in a beat late" delay on the menu screen.
+        if name == "index.html":
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+        else:
+            self.send_header("Cache-Control", "public, max-age=604800, immutable")
         self.end_headers()
         self.wfile.write(data)
 

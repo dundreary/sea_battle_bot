@@ -486,11 +486,30 @@ class PokerDiceGame(BaseGame):
         p['last_scored_score'] = scored_points
         p['scored'] = True
 
-        self._advance_turn(pnum)
+        # Advance whose turn it is WITHOUT running the AI's turn synchronously.
+        # In a solo game this can leave self.turn == 2 (the bot) with the bot's
+        # dice not yet rolled; the API layer is expected to call bot_turn() as
+        # a separate follow-up step right after this returns, so the player's
+        # own result reaches the client immediately instead of being held up
+        # behind the AI's computation (which can be slow at Expert difficulty).
+        self._advance_turn(pnum, run_bot=False)
 
         return self.get_state(pnum)
 
-    def _advance_turn(self, pnum: int):
+    def bot_turn(self) -> Optional[Dict]:
+        """Run the AI's full turn (roll/keep/score) as its own step.
+
+        Called by the API layer in a follow-up request right after score()
+        returns the human player's result, so the slow part (AI thinking,
+        especially the Expert-difficulty expectimax search) never blocks the
+        response that confirms the player's own move.
+        """
+        if not self.solo or self.phase != 'playing' or self.turn != 2:
+            return None
+        self._bot_play()
+        return self.get_state(1)
+
+    def _advance_turn(self, pnum: int, run_bot: bool = True):
         p1_remaining = _remaining_categories(self.players[1]['scorecard'])
         p2_remaining = _remaining_categories(self.players[2]['scorecard'])
 
@@ -502,7 +521,8 @@ class PokerDiceGame(BaseGame):
             if pnum == 1:
                 if p2_remaining:
                     self.turn = 2
-                    self._bot_play()
+                    if run_bot:
+                        self._bot_play()
                 else:
                     self.turn = 1
                     if self.players[1]['scored']:

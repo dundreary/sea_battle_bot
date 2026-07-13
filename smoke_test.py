@@ -84,7 +84,7 @@ check(unwrap(out).get("ok"), "poker dice roll")
 out = api._handle_pd_score({"code": code_pd, "category": "chance"}, uid, code_pd)
 check(unwrap(out).get("ok"), "poker dice score")
 
-print("Backgammon (solo roll + move):")
+print("Backgammon (solo roll + move + bot reply):")
 uid = 5001
 res = unwrap(api._handle_bg_new_solo({"difficulty": 2}, uid, None))
 code_bg = res["code"]
@@ -96,6 +96,43 @@ if moves:
     f, t = moves[0][0]
     out = api._handle_bg_move({"code": code_bg, "from": f, "to": t}, uid, code_bg)
     check(unwrap(out).get("ok"), "backgammon move")
+    # In solo the bot must take its turn and hand control back to the human.
+    st = (unwrap(out).get("state") or {})
+    check(st.get("my_turn") is True, "control returns to human after move")
+    # Play out the rest of the human's dice so the bot actually moves.
+    guard = 0
+    while (st.get("legal_moves")) and guard < 10:
+        f, t = st["legal_moves"][0][0]
+        out = api._handle_bg_move({"code": code_bg, "from": f, "to": t}, uid, code_bg)
+        st = (unwrap(out).get("state") or {})
+        guard += 1
+    check(st.get("my_turn") is True, "control still with human after full turn")
+    check(st.get("turn") == 1, "turn is WHITE (human) after bot reply")
+
+print("Backgammon (long narde: shared head, no hitting, same direction):")
+uid = 5002
+res = unwrap(api._handle_bg_new_solo({"difficulty": 2, "variant": "long"}, uid, None))
+code_bg_l = res["code"]
+out = api._handle_bg_roll({"code": code_bg_l}, uid, code_bg_l)
+resp = unwrap(out)
+check(resp.get("ok"), "long narde roll")
+st = (resp.get("state") or {})
+check(st.get("variant") == "long", "variant is long")
+check(st.get("board", [])[23] == 15, "white starts with 15 on the head")
+check(st.get("head_black") == 15, "black starts with 15 on the head")
+# a move from the head must be permitted
+moves = st.get("legal_moves") or []
+if moves:
+    f, t = moves[0][0]
+    out = api._handle_bg_move({"code": code_bg_l, "from": f, "to": t}, uid, code_bg_l)
+    check(unwrap(out).get("ok"), "long narde move from head")
+    # a second move from the head on the opening roll must be rejected
+    st2 = (unwrap(out).get("state") or {})
+    if st2.get("my_turn") and st2.get("legal_moves"):
+        f2, t2 = st2["legal_moves"][0][0]
+        if f2 == 23:
+            out2 = api._handle_bg_move({"code": code_bg_l, "from": f2, "to": t2}, uid, code_bg_l)
+            check(unwrap(out2).get("ok") is not True, "2nd head move on opening roll rejected")
 
 print("Shared endpoints (active_games / bot_info / resolve_code):")
 unwrap(api._handle_active_games({"code": None}, uid, None))

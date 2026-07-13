@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Games</title>
+<!-- Preload the 6 menu icons so they start fetching in parallel with the
+     HTML/CSS instead of only after showMainMenu() runs and inserts <img>
+     tags. This removes the visible "blank then icons pop in" delay. -->
+<link rel="preload" as="image" href="/static/sb-navy.svg">
+<link rel="preload" as="image" href="/static/pd-green.svg">
+<link rel="preload" as="image" href="/static/checkers-icon.svg">
+<link rel="preload" as="image" href="/static/backgammon-icon.svg">
+<link rel="preload" as="image" href="/static/mode-join.svg">
+<link rel="preload" as="image" href="/static/mode-bot.svg">
+<link rel="preload" as="image" href="/static/mode-friend.svg">
+<link rel="preload" as="image" href="/static/mode-shirt.svg">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root {
@@ -298,7 +309,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bg-dice{display:flex;gap:12px;justify-content:center;margin:12px 0;flex-wrap:wrap}
 .bg-die{width:48px;height:48px;background:#fff;color:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .bg-die.used{opacity:.3}
+.bg-target{outline:2px dashed var(--accent-primary,#3a86ff);outline-offset:-2px;border-radius:6px;background:rgba(58,134,255,.10)}
+.bg-checker.bg-selected{box-shadow:0 0 0 3px var(--accent-primary,#3a86ff),0 0 10px 2px rgba(58,134,255,.7)!important}
 .bg-info{text-align:center;font-size:13px;color:var(--text-secondary);padding:4px 0;width:100%;max-width:360px;margin:0 auto}
+.bg-variant-row{display:flex;gap:8px;margin-bottom:8px}
+.bg-variant-btn{flex:1;padding:10px;border:1px solid var(--border-color);background:var(--surface-2,#1b2230);color:var(--text-secondary);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.bg-variant-btn.active{background:var(--accent-primary,#3a86ff);color:#fff;border-color:transparent}
 .bg-home-label{font-size:9px;color:var(--text-hint);text-align:center;padding:1px 0;width:100%}
 
 
@@ -2159,8 +2175,22 @@ async function pdDoScore(category){
   const res=await api('/api/pd_score',{uid:getUid(),code:pdCode,category:category,keep:keep});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdKept = new Set();
-  // If the opponent (AI or friend) just completed a turn, replay their throws
-  // live in the shared dice tray before showing our own turn.
+  // Render the player's own result immediately -- this used to be delayed
+  // behind the AI's entire turn (roll/keep/score), which could take a
+  // while at Expert difficulty. The AI's turn is now a separate follow-up
+  // step (see pdRunBotTurn), triggered right after this paints.
+  pdShowGame(res.state);
+  if(res.state && res.state.solo && res.state.phase === 'playing' && res.state.turn === 2){
+    await pdRunBotTurn();
+  }
+}
+
+async function pdRunBotTurn(){
+  if(!pdCode) return;
+  const res = await api('/api/pd_bot_turn', {uid:getUid(), code:pdCode});
+  if(!res || !res.ok) return;
+  if(!pdCode) return;
+  // Replay the AI's throws in the shared dice tray, then show our own turn.
   await pdMaybeAnimateOpponent(res.state);
   pdShowGame(res.state);
 }
@@ -2580,7 +2610,7 @@ async function ckSurrender(){
 
 // ---- Backgammon ----
 let bgCode=null, bgState=null, bgPollTimer=null, bgSeenRoll='';
-let bgSelected=null, bgMoveTargets=[];
+let bgSelected=null, bgMoveTargets=[], bgVariant='short';
 
 const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
 
@@ -2602,6 +2632,10 @@ function showBackgammon(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
+    <div class="bg-variant-row">
+      <button class="bg-variant-btn ${bgVariant==='short'?'active':''}" onclick="bgSetVariant('short')">Короткие</button>
+      <button class="bg-variant-btn ${bgVariant==='long'?'active':''}" onclick="bgSetVariant('long')">Длинные</button>
+    </div>
     <div class="game-card" onclick="bgStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('bgSolo')}</div>
@@ -2618,8 +2652,13 @@ function showBackgammon(){
   `;
 }
 
+function bgSetVariant(v){
+  bgVariant=v;
+  showBackgammon();
+}
+
 async function bgStartSolo(){
-  const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: 2});
+  const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: 2, variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   localStorage.setItem('bg_game',bgCode);
@@ -2628,7 +2667,7 @@ async function bgStartSolo(){
 }
 
 async function bgNewMulti(){
-  const res=await api('/api/bg_new_multi',{uid:getUid()});
+  const res=await api('/api/bg_new_multi',{uid:getUid(), variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   localStorage.setItem('bg_game',bgCode);
@@ -2677,11 +2716,13 @@ async function bgRefreshState(){
   bgShowGame(res.state);
 }
 
-function bgShowGame(st){
+function bgShowGame(st, keepSelection=false){
   bgState=st;
   showIncomingMessages(st.messages);
-  bgSelected=null;
-  bgMoveTargets=[];
+  if(!keepSelection){
+    bgSelected=null;
+    bgMoveTargets=[];
+  }
   hideAllGameAreas();
   $('bgArea').style.display='';
   setThemeSelectorVisibility(false);
@@ -2718,7 +2759,7 @@ function bgRenderBoard(st){
   const board=st.board;
   const bar=st.bar||[0,0];
   const off=st.off||[0,0];
-  const flip = st.my_color === -1;
+  const flip = st.variant === 'long' ? false : (st.my_color === -1);
   const myTurn = st.my_turn;
 
   // Cells the AI (solo) just moved from / to, so they can be flashed.
@@ -2754,25 +2795,33 @@ function bgRenderBoard(st){
       pt.className='bg-point'+(start>=12?' top':'');
       const inner=document.createElement('div');
       inner.className='bg-point-inner';
-      const count=Math.abs(board[idx]);
-      const color=board[idx]>0?1:-1;
-      for(let j=0;j<count;j++){
-        const ch=document.createElement('div');
-        ch.className='bg-checker '+BG_CHECKER_COLORS[color];
-        if(aiCells.has(idx)) ch.classList.add('ai-move');
-        if(myTurn && bgSelected===null && moveMap[idx]){
-          ch.style.cursor='pointer';
-          ch.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+      const whiteCount = board[idx] > 0 ? board[idx] : 0;
+      const blackCount = (st.variant === 'long' && idx === 23)
+        ? (st.head_black || 0)
+        : (board[idx] < 0 ? -board[idx] : 0);
+      const drawCheckers = (n, c) => {
+        for(let j=0;j<n;j++){
+          const ch=document.createElement('div');
+          ch.className='bg-checker '+BG_CHECKER_COLORS[c];
+          if(bgSelected===idx){ ch.classList.add('bg-selected'); }
+          if(aiCells.has(idx)) ch.classList.add('ai-move');
+          if(myTurn && bgSelected===null && moveMap[idx]){
+            ch.style.cursor='pointer';
+            ch.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+          }
+          if(bgSelected===idx && moveMap[idx] && moveMap[idx].has(-1)){
+            ch.style.cursor='pointer';
+            ch.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
+          }
+          inner.appendChild(ch);
         }
-        if(bgSelected===idx && moveMap[idx] && moveMap[idx].has(-1)){
-          ch.style.cursor='pointer';
-          ch.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
-        }
-        inner.appendChild(ch);
-      }
+      };
+      drawCheckers(whiteCount, 1);
+      drawCheckers(blackCount, -1);
       pt.appendChild(inner);
       // Click on empty point to move
       if(myTurn && bgSelected!==null && bgSelected!==idx && moveMap[bgSelected] && (moveMap[bgSelected].has(idx))){
+        pt.classList.add('bg-target');
         pt.style.cursor='pointer';
         const hitArea=document.createElement('div');
         hitArea.style.cssText='position:absolute;inset:0;z-index:1';
@@ -2821,6 +2870,11 @@ function bgRenderBoard(st){
   if(off[0]>0||off[1]>0){
     offCol.innerHTML=`<div>⬜ ${off[0]}</div><div>⬛ ${off[1]}</div>`;
   }
+  if(bgSelected!==null && moveMap[bgSelected] && moveMap[bgSelected].has(-1)){
+    offCol.classList.add('bg-target');
+    offCol.style.cursor='pointer';
+    offCol.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
+  }
 
   wrap.appendChild(leftHalf);
   wrap.appendChild(barCol);
@@ -2829,6 +2883,14 @@ function bgRenderBoard(st){
 
   cont.innerHTML='';
   cont.appendChild(wrap);
+  cont.onclick=()=>{
+    if(bgSelected!==null){
+      bgSelected=null;
+      bgMoveTargets=[];
+      bgShowGame(bgState);
+      setStatus({ru:'Нажми на шашку',uk:'Натисни на шашку',en:'Tap a checker to move'}[lang],'battle');
+    }
+  };
 }
 
 function bgRenderDice(st){
@@ -2848,9 +2910,10 @@ function bgRenderDice(st){
   if(!st.my_turn) return;
   const diceDiv=document.createElement('div');
   diceDiv.className='bg-dice';
+  const used=st.used_dice||0;
   for(let i=0;i<dice.length;i++){
     const die=document.createElement('div');
-    die.className='bg-die';
+    die.className='bg-die'+(i<used?' used':'');
     die.textContent=dice[i];
     diceDiv.appendChild(die);
   }
@@ -2918,6 +2981,13 @@ async function bgDoRoll(){
 }
 
 async function bgSelectSource(idx){
+  if(bgSelected===idx){
+    bgSelected=null;
+    bgMoveTargets=[];
+    bgShowGame(bgState);
+    setStatus({ru:'Нажми на шашку',uk:'Натисни на шашку',en:'Tap a checker to move'}[lang],'battle');
+    return;
+  }
   bgSelected=idx;
   bgMoveTargets=[];
   if(bgState && bgState.legal_moves){
@@ -2927,12 +2997,8 @@ async function bgSelectSource(idx){
       }
     }
   }
-  // Re-render with visual feedback
-  bgShowGame(bgState);
-  // Show click hint on source
-  const cont=$('bgBoard');
-  const checkers=cont.querySelectorAll('.bg-checker');
-  // For simplicity we just show a brief status
+  // Re-render with visual feedback, preserving the current selection
+  bgShowGame(bgState, true);
   setStatus('🎯 '+(bgMoveTargets.length ? {ru:'Выбери пункт назначения',uk:'Обери пункт призначення',en:'Choose destination'}[lang] : {ru:'Нет ходов этой шашкой',uk:'Немає ходів цією шашкою',en:'No moves for this checker'}[lang]),'battle');
 }
 

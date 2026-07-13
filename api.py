@@ -592,13 +592,41 @@ def _handle_pd_score(data, uid, code):
     if game.phase == 'finished':
         pending = _notify_opponent(game, uid, "🎲 Игра в Покерные кости окончена.", "finished", force=True)
     elif game.player_num(uid) != game.turn:
-        pending = _notify_opponent(game, uid, "🎲 Ваш ход в Покерных костях.", f"score:{uid}:{category}")
+        # In solo, turn==2 here means the bot is up next but hasn't played
+        # yet (bot_turn() runs as a separate follow-up request), so there is
+        # no opponent to notify yet.
+        if not game.solo:
+            pending = _notify_opponent(game, uid, "🎲 Ваш ход в Покерных костях.", f"score:{uid}:{category}")
+        else:
+            pending = []
     else:
         pending = []
     if game.phase == 'finished':
         _evict_game(code, pd_games, pd_player_games)
     save()
     return {"ok": True, "state": st}, pending
+
+
+def _handle_pd_bot_turn(data, uid, code):
+    """Run the AI's poker-dice turn as its own step, separate from the
+    request that confirmed the human player's score. Lets the client show
+    the player's own result immediately, then fetch the (possibly slow,
+    especially at Expert difficulty) AI turn right after."""
+    game, err = _get_game(pd_games, code, uid)
+    if err:
+        return err
+    if game.player_num(uid) != 1:
+        return {"error": "not_in_game"}
+    st = game.bot_turn()
+    if st is None:
+        # Nothing to do (e.g. already the player's turn) -- return current
+        # state rather than an error so the client can just re-render.
+        st = game.get_state(1)
+    _mark_active(game, uid)
+    if game.phase == 'finished':
+        _evict_game(code, pd_games, pd_player_games)
+    save()
+    return {"ok": True, "state": st}
 
 
 def _handle_pd_surrender(data, uid, code):
@@ -790,25 +818,10 @@ def _handle_checkers_move(data, uid, code):
     finished = game.make_move(winning_move)
     # Capture the position right after the player's move so the client can show
     # the checker sliding into place *immediately*, before the (slower) AI move
-    # is computed and revealed. Return it in every case (also when the move ends
-    # the game) so the client can render the final board state first.
+    # is computed. The AI's move is now a separate step (see
+    # _handle_checkers_bot_turn), triggered by the client right after it
+    # renders this response, instead of being computed synchronously here.
     player_state = game.get_state(uid)
-    bot_result = None
-
-    if game.solo and not finished and game.turn == BLACK:
-        ai_diff = _checkers_ai_difficulty(game)
-        ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff)
-        if ai_mv:
-            finished = game.make_move(ai_mv)
-            ai_captures = ai_mv[2] if len(ai_mv) > 2 else []
-            bot_result = {
-                "move": {
-                    "start": list(ai_mv[0]),
-                    "end": list(ai_mv[1][-1]),
-                    "path": [list(s) for s in ai_mv[1]],
-                    "captures": [list(c) for c in ai_captures],
-                }
-            }
 
     if finished:
         _evict_game(code, checkers_games, checkers_player_games)
@@ -824,6 +837,55 @@ def _handle_checkers_move(data, uid, code):
         "ok": True,
         "state": game.get_state(uid),
         "player_state": player_state,
+        "finished": finished,
+        # bot_move is no longer computed synchronously here; kept as None for
+        # API-shape compatibility with older clients. New clients see
+        # needs_bot_turn and call /api/checkers_bot_turn right after this.
+        "bot_move": None,
+        "needs_bot_turn": bool(game.solo and not finished and game.turn == BLACK),
+    }, pending)
+
+
+def _handle_checkers_bot_turn(data, uid, code):
+    """Run the AI's checkers move as its own step, separate from the request
+    that confirmed the human player's move. Lets the client render the
+    player's own move immediately, then fetch the AI's move right after."""
+    game, err = _get_game(checkers_games, code, uid)
+    if err:
+        return err
+    if game.phase != "playing":
+        return {"ok": True, "state": game.get_state(uid), "finished": game.phase == "finished", "bot_move": None}
+    color = game.player_color(uid)
+    if color is None or not game.solo or game.turn != BLACK:
+        return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
+
+    ai_diff = _checkers_ai_difficulty(game)
+    ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff)
+    finished = False
+    bot_result = None
+    if ai_mv:
+        finished = game.make_move(ai_mv)
+        ai_captures = ai_mv[2] if len(ai_mv) > 2 else []
+        bot_result = {
+            "move": {
+                "start": list(ai_mv[0]),
+                "end": list(ai_mv[1][-1]),
+                "path": [list(s) for s in ai_mv[1]],
+                "captures": [list(c) for c in ai_captures],
+            }
+        }
+
+    if finished:
+        _evict_game(code, checkers_games, checkers_player_games)
+    _mark_active(game, uid)
+    if finished:
+        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
+    else:
+        pending = []
+    save()
+    return ({
+        "ok": True,
+        "state": game.get_state(uid),
         "finished": finished,
         "bot_move": bot_result,
     }, pending)
@@ -859,8 +921,9 @@ def _handle_bg_new_solo(data, uid, code):
 
 def _do_bg_new_solo(data, uid):
     difficulty = data.get("difficulty", 2)
+    variant = data.get("variant", "short")
     c = generate_unique_code(BGGame.generate_code, bg_games)
-    game = BGGame(c, uid, solo=True, difficulty=difficulty)
+    game = BGGame(c, uid, solo=True, difficulty=difficulty, variant=variant)
     game.player2_id = 0
     return _register_new_game(bg_games, bg_player_games, game, game.get_state(uid))
 
@@ -868,8 +931,9 @@ def _handle_bg_new_multi(data, uid, code):
     return _with_uid(uid, lambda: _do_bg_new_multi(data, uid))
 
 def _do_bg_new_multi(data, uid):
+    variant = data.get("variant", "short")
     c = generate_unique_code(BGGame.generate_code, bg_games)
-    game = BGGame(c, uid)
+    game = BGGame(c, uid, variant=variant)
     return _register_new_game(bg_games, bg_player_games, game, game.get_state(uid))
 
 def _handle_bg_join(data, uid, code):
@@ -915,7 +979,10 @@ def _handle_bg_move(data, uid, code):
     _mark_active(game, uid)
     if game.phase == 'finished':
         pending = _notify_opponent(game, uid, "🎲 Игра в Нарды окончена.", "finished", force=True)
-    elif game.turn != (1 if uid == game.player1_id else -1):
+    elif not game.solo and game.turn != (1 if uid == game.player1_id else -1):
+        # In solo, the bot's turn (turn == -1 / BLACK) is now a separate
+        # follow-up step (see _handle_bg_bot_turn) rather than something
+        # computed synchronously here, so there's no opponent to notify yet.
         pending = _notify_opponent(game, uid, "🎲 Ваш ход в Нардах.", f"move:{uid}")
     else:
         pending = []
@@ -923,6 +990,24 @@ def _handle_bg_move(data, uid, code):
         _evict_game(code, bg_games, bg_player_games)
     save()
     return {"ok": True, "state": st}, pending
+
+def _handle_bg_bot_turn(data, uid, code):
+    """Run the AI's backgammon turn as its own step, separate from the
+    request that confirmed the human player's move. Lets the client render
+    the player's own move immediately, then fetch the AI's turn right after."""
+    game, err = _get_game(bg_games, code, uid)
+    if err:
+        return err
+    if game.player_color(uid) != 1:
+        return {"error": "not_in_game"}
+    st = game.bot_turn()
+    if st is None:
+        st = game.get_state(uid)
+    _mark_active(game, uid)
+    if game.phase == 'finished':
+        _evict_game(code, bg_games, bg_player_games)
+    save()
+    return {"ok": True, "state": st}
 
 def _handle_bg_surrender(data, uid, code):
     return _surrender_game(
@@ -948,6 +1033,7 @@ _HANDLERS = {
     "/api/pd_join": _handle_pd_join,
     "/api/pd_roll": _handle_pd_roll,
     "/api/pd_score": _handle_pd_score,
+    "/api/pd_bot_turn": _handle_pd_bot_turn,
     "/api/pd_state": _handle_pd_state,
     "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
@@ -957,6 +1043,7 @@ _HANDLERS = {
     "/api/checkers_join": _handle_checkers_join,
     "/api/checkers_state": _handle_checkers_state,
     "/api/checkers_move": _handle_checkers_move,
+    "/api/checkers_bot_turn": _handle_checkers_bot_turn,
     "/api/checkers_hint": _handle_checkers_hint,
     "/api/checkers_surrender": _handle_checkers_surrender,
     "/api/bg_new_solo": _handle_bg_new_solo,
@@ -965,13 +1052,14 @@ _HANDLERS = {
     "/api/bg_state": _handle_bg_state,
     "/api/bg_roll": _handle_bg_roll,
     "/api/bg_move": _handle_bg_move,
+    "/api/bg_bot_turn": _handle_bg_bot_turn,
     "/api/bg_surrender": _handle_bg_surrender,
 }
 
 NOTIFY_PATHS = {
     "/api/join", "/api/confirm", "/api/message_opponent",
     "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
-    "/api/checkers_join", "/api/checkers_move", "/api/checkers_surrender",
+    "/api/checkers_join", "/api/checkers_move", "/api/checkers_bot_turn", "/api/checkers_surrender",
     "/api/bg_join", "/api/bg_move", "/api/bg_surrender",
 }
 
