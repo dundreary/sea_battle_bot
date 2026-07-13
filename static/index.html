@@ -3111,9 +3111,7 @@ async function bgDoMove(from,to){
   // is now a separate follow-up step (see bgRunBotTurn), triggered right
   // after this paints, instead of being computed synchronously here.
   bgShowGame(res.state);
-  if(res.state && res.state.solo && res.state.phase==='playing' && res.state.turn===-1 && !res.state.dice.length){
-    await bgRunBotTurn();
-  }
+  if(res.needs_bot_turn) await bgRunBotTurn();
 }
 
 async function bgRunBotTurn(){
@@ -3130,9 +3128,7 @@ async function bgPassTurn(){
   if(!res||!res.ok){setStatus(t('error'));return}
   bgSelected=null;
   bgShowGame(res.state);
-  if(res.state && res.state.solo && res.state.phase==='playing' && res.state.turn===-1 && !res.state.dice.length){
-    await bgRunBotTurn();
-  }
+  if(res.needs_bot_turn) await bgRunBotTurn();
 }
 
 function leaveBgGame(){

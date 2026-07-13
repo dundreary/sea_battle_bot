@@ -1011,19 +1011,21 @@ def _handle_bg_move(data, uid, code):
         if st is None:
             return {"error": "invalid_move"}
     _mark_active(game, uid)
+    # In solo, the bot's turn (turn == -1 / BLACK) is now a separate
+    # follow-up step (see _handle_bg_bot_turn) rather than something computed
+    # synchronously here. needs_bot_turn tells the client explicitly whether
+    # to call it, instead of the client guessing from the dice array.
+    needs_bot_turn = bool(game.solo and game.phase == 'playing' and game.turn == -1)
     if game.phase == 'finished':
         pending = _notify_opponent(game, uid, "🎲 Игра в Нарды окончена.", "finished", force=True)
     elif not game.solo and game.turn != (1 if uid == game.player1_id else -1):
-        # In solo, the bot's turn (turn == -1 / BLACK) is now a separate
-        # follow-up step (see _handle_bg_bot_turn) rather than something
-        # computed synchronously here, so there's no opponent to notify yet.
         pending = _notify_opponent(game, uid, "🎲 Ваш ход в Нардах.", f"move:{uid}")
     else:
         pending = []
     if game.phase == 'finished':
         _evict_game(code, bg_games, bg_player_games)
     save()
-    return {"ok": True, "state": st}, pending
+    return {"ok": True, "state": st, "needs_bot_turn": needs_bot_turn}, pending
 
 def _handle_bg_bot_turn(data, uid, code):
     """Run the AI's backgammon turn as its own step, separate from the
