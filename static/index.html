@@ -291,31 +291,48 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black.king{color:#FFD700}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
-.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:4px;width:100%;max-width:700px;min-height:240px;margin:4px auto;background:#2d1810;border:3px solid #5C3A1E;border-radius:10px;padding:4px;overflow:visible}
+.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:5px;width:100%;max-width:860px;min-height:300px;margin:6px auto;background:#2d1810;border:3px solid #5C3A1E;border-radius:12px;padding:6px;box-shadow:0 4px 18px rgba(0,0,0,.45);overflow:visible}
 .bg-half{display:flex;flex-direction:column;flex:1;min-width:0}
-.bg-row{display:flex;gap:1px;flex:1;min-height:0}
-.bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0}
+.bg-row{display:flex;gap:2px;flex:1;min-height:0}
+.bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0;background:rgba(255,255,255,.05);border-radius:4px;padding:2px 0;overflow:hidden}
 .bg-point.top{justify-content:flex-start}
-.bg-point-inner{display:flex;flex-direction:column;align-items:center}
-.bg-checker{width:22px;height:22px;border-radius:50%;margin:1px 0;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.4);transition:transform .12s;cursor:pointer}
-.bg-checker:hover{transform:scale(1.15)}
-.bg-checker.white{background:radial-gradient(circle at 35% 35%, #fff, #ddd);border:1.5px solid #999}
-.bg-checker.black{background:radial-gradient(circle at 35% 35%, #555, #1a1a1a);border:1.5px solid #000}
+.bg-point.alt{background:rgba(0,0,0,.22)}
+.bg-point-inner{display:flex;flex-direction:column;align-items:center;width:100%;z-index:1}
+.bg-point-split{display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:1px;width:100%}
+.bg-point-split.top{align-items:flex-start}
+.bg-stack{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
+.bg-stack.top{align-items:flex-start}
+.bg-checker{width:clamp(20px,5.4vw,30px);height:clamp(20px,5.4vw,30px);border-radius:50%;margin:1px 0;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.5);transition:transform .12s;cursor:pointer}
+.bg-checker:hover{transform:scale(1.12)}
+.bg-checker.white{background:radial-gradient(circle at 35% 35%, #fff, #cfcfcf);border:2px solid #888}
+.bg-checker.black{background:radial-gradient(circle at 35% 35%, #6a6a6a, #111);border:2px solid #000}
 .bg-checker.selected{outline:3px solid #FFD700;outline-offset:-2px;z-index:2}
 .bg-checker.highlight{outline:3px solid #66BB6A;outline-offset:-2px;z-index:2}
-.bg-bar-v{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:26px;background:rgba(255,255,255,.05);border-radius:6px;padding:4px;gap:3px}
+.bg-count{font-size:11px;font-weight:700;line-height:1;margin:1px 0;padding:2px 4px;border-radius:6px;background:rgba(0,0,0,.55);color:#fff;white-space:nowrap}
+.bg-count.white{color:#fff;border:1px solid #888}
+.bg-count.black{color:#eee;border:1px solid #000}
+.bg-bar-v{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:32px;background:rgba(255,255,255,.06);border-radius:6px;padding:4px;gap:3px}
 .bg-bar-label{font-size:9px;color:var(--text-muted);text-transform:uppercase;writing-mode:vertical-rl;letter-spacing:1px}
-.bg-off-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:46px;background:rgba(255,255,255,.04);border-radius:6px;padding:6px;gap:6px;font-size:13px;color:var(--accent-primary)}
+.bg-off-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;background:rgba(255,255,255,.05);border-radius:6px;padding:8px;gap:8px;font-size:15px;font-weight:700;color:var(--accent-primary)}
 .bg-dice{display:flex;gap:12px;justify-content:center;margin:12px 0;flex-wrap:wrap}
-.bg-die{width:48px;height:48px;background:#fff;color:#333;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.bg-die{width:52px;height:52px;background:#fff;color:#333;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .bg-die.used{opacity:.3}
-.bg-target{outline:2px dashed var(--accent-primary,#3a86ff);outline-offset:-2px;border-radius:6px;background:rgba(58,134,255,.10)}
+.bg-target{outline:2px dashed var(--accent-primary,#3a86ff);outline-offset:-2px;border-radius:6px;background:rgba(58,134,255,.14)}
 .bg-checker.bg-selected{box-shadow:0 0 0 3px var(--accent-primary,#3a86ff),0 0 10px 2px rgba(58,134,255,.7)!important}
-.bg-info{text-align:center;font-size:13px;color:var(--text-secondary);padding:4px 0;width:100%;max-width:360px;margin:0 auto}
+.bg-info{text-align:center;font-size:13px;color:var(--text-secondary);padding:4px 0;width:100%;max-width:420px;margin:0 auto}
 .bg-variant-row{display:flex;gap:8px;margin-bottom:8px}
 .bg-variant-btn{flex:1;padding:10px;border:1px solid var(--border-color);background:var(--surface-2,#1b2230);color:var(--text-secondary);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
 .bg-variant-btn.active{background:var(--accent-primary,#3a86ff);color:#fff;border-color:transparent}
 .bg-home-label{font-size:9px;color:var(--text-hint);text-align:center;padding:1px 0;width:100%}
+.bg-rotate-hint{display:none;background:rgba(79,195,247,.12);border:1px solid var(--accent-primary,#3a86ff);color:var(--accent-primary-light,#80deea);border-radius:10px;padding:8px 12px;margin:6px auto;max-width:860px;text-align:center;font-size:13px}
+@media (orientation:landscape){
+  .bg-board-h{max-width:920px;min-height:340px}
+  .bg-checker{width:clamp(22px,4.6vh,34px);height:clamp(22px,4.6vh,34px)}
+  .bg-off-col{min-width:60px}
+}
+@media (orientation:portrait){
+  .bg-rotate-hint{display:block}
+}
 
 
 /* ---- AI "thinking" overlay + reveal banner ---- */
@@ -374,6 +391,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     <div class="btn-row" id="ckActions" style="margin-top:14px;min-height:120px"></div>
   </div>
   <div id="bgArea" style="display:none">
+    <div class="bg-rotate-hint" id="bgRotateHint">↻ Поверните телефон для удобной игры в Нарды</div>
     <div id="bgBoard"></div>
     <div class="btn-row" id="bgActions" style="margin-top:14px;min-height:120px"></div>
   </div>
@@ -2700,6 +2718,8 @@ function bgShowGame(st, keepSelection=false){
   }
   hideAllGameAreas();
   $('bgArea').style.display='';
+  const rh=$('bgRotateHint');
+  if(rh) rh.textContent='↻ '+{ru:'Поверните телефон для удобной игры в Нарды',uk:'Поверніть телефон для зручної гри в Нарди',en:'Rotate your phone to landscape for a better board'}[lang];
   setThemeSelectorVisibility(false);
   $('header').classList.add('in-game');
   document.title=t('backgammon');
@@ -2761,49 +2781,82 @@ function bgRenderBoard(st){
   const wrap=document.createElement('div');
   wrap.className='bg-board-h';
 
+  const MAX_VIS = 5;
+  const makeStack = (count, color, idx, isTop) => {
+    const stack=document.createElement('div');
+    stack.className='bg-stack';
+    const vis=Math.min(count, MAX_VIS);
+    for(let j=0;j<vis;j++){
+      const ch=document.createElement('div');
+      ch.className='bg-checker '+BG_CHECKER_COLORS[color];
+      if(bgSelected===idx){ ch.classList.add('bg-selected'); }
+      if(aiCells.has(idx)){ ch.classList.add('ai-move'); }
+      if(myTurn && bgSelected===null && moveMap[idx]){
+        ch.style.cursor='pointer';
+        ch.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+      }
+      if(bgSelected===idx && moveMap[idx] && moveMap[idx].has(-1)){
+        ch.style.cursor='pointer';
+        ch.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
+      }
+      stack.appendChild(ch);
+    }
+    if(count>MAX_VIS){
+      const pill=document.createElement('div');
+      pill.className='bg-count '+BG_CHECKER_COLORS[color];
+      pill.textContent='+'+(count-MAX_VIS);
+      stack.appendChild(pill);
+    }
+    return stack;
+  };
+
   const renderRow=(start,end)=>{
     const row=document.createElement('div');
     row.className='bg-row';
+    const isTop = start>=12;
+    let col=0;
     for(let i=start;i!==end;i+=end>start?1:-1){
       const idx=flip?23-i:i;
       const pt=document.createElement('div');
-      pt.className='bg-point'+(start>=12?' top':'');
+      pt.className='bg-point'+(isTop?' top':'')+(col%2? ' alt':'');
       const inner=document.createElement('div');
       inner.className='bg-point-inner';
       const whiteCount = board[idx] > 0 ? board[idx] : 0;
       const blackCount = (st.variant === 'long' && idx === 23)
         ? (st.head_black || 0)
         : (board[idx] < 0 ? -board[idx] : 0);
-      const drawCheckers = (n, c) => {
-        for(let j=0;j<n;j++){
-          const ch=document.createElement('div');
-          ch.className='bg-checker '+BG_CHECKER_COLORS[c];
-          if(bgSelected===idx){ ch.classList.add('bg-selected'); }
-          if(aiCells.has(idx)) ch.classList.add('ai-move');
-          if(myTurn && bgSelected===null && moveMap[idx]){
-            ch.style.cursor='pointer';
-            ch.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
-          }
-          if(bgSelected===idx && moveMap[idx] && moveMap[idx].has(-1)){
-            ch.style.cursor='pointer';
-            ch.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
-          }
-          inner.appendChild(ch);
-        }
-      };
-      drawCheckers(whiteCount, 1);
-      drawCheckers(blackCount, -1);
+      const twoColors = whiteCount>0 && blackCount>0;
+      if(twoColors){
+        // Long narde head: both colours share the point — show two columns.
+        inner.classList.add('bg-point-split');
+        if(isTop) inner.classList.add('top');
+        inner.appendChild(makeStack(whiteCount, 1, idx, isTop));
+        inner.appendChild(makeStack(blackCount, -1, idx, isTop));
+      } else if(whiteCount>0){
+        inner.appendChild(makeStack(whiteCount, 1, idx, isTop));
+      } else if(blackCount>0){
+        inner.appendChild(makeStack(blackCount, -1, idx, isTop));
+      }
       pt.appendChild(inner);
-      // Click on empty point to move
-      if(myTurn && bgSelected!==null && bgSelected!==idx && moveMap[bgSelected] && (moveMap[bgSelected].has(idx))){
+      // Select a source by tapping anywhere on a movable point.
+      if(myTurn && bgSelected===null && moveMap[idx]){
+        pt.style.cursor='pointer';
+        const sel=document.createElement('div');
+        sel.style.cssText='position:absolute;inset:0;z-index:1';
+        sel.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+        pt.appendChild(sel);
+      }
+      // Tap a destination point to move there.
+      if(myTurn && bgSelected!==null && bgSelected!==idx && moveMap[bgSelected] && moveMap[bgSelected].has(idx)){
         pt.classList.add('bg-target');
         pt.style.cursor='pointer';
         const hitArea=document.createElement('div');
-        hitArea.style.cssText='position:absolute;inset:0;z-index:1';
+        hitArea.style.cssText='position:absolute;inset:0;z-index:2';
         hitArea.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,idx);};
         pt.appendChild(hitArea);
       }
       row.appendChild(pt);
+      col++;
     }
     return row;
   };
