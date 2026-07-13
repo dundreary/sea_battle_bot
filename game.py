@@ -458,7 +458,7 @@ class BotAI:
                         if all(enemy_board.grid[nr][nc] in _BOT_OPEN for nr, nc in cells):
                             yield cells
 
-    def _smart_shot(self, enemy_board, strip):
+    def _smart_shot(self, enemy_board, strip, focus_fire=True):
         active_hits = [
             (r, c) for r in range(SIZE) for c in range(SIZE)
             if enemy_board.grid[r][c] == HIT
@@ -468,7 +468,12 @@ class BotAI:
             # Focus fire: once a ship is found, only count placements that
             # run through a known hit, so the solver finishes that ship fast
             # instead of diluting effort across the whole board.
-            if active_hits and not any((r, c) in active_hits for r, c in cells):
+            # At the highest difficulty (focus_fire=False) we keep the full
+            # probability density over the whole board, which is the
+            # theoretically optimal Battleship policy: it still concentrates
+            # on cells adjacent to hits, but may also pick a globally better
+            # untouched cell when the board geometry favours it.
+            if focus_fire and active_hits and not any((r, c) in active_hits for r, c in cells):
                 continue
             for r, c in cells:
                 if (r, c) not in self.shots:
@@ -490,7 +495,10 @@ class BotAI:
             return self._random_shot(enemy_board)
         if self.difficulty == 2:
             return self._hunt_shot(enemy_board)
-        return self._smart_shot(enemy_board, strip)
+        if self.difficulty == 3:
+            return self._smart_shot(enemy_board, strip, focus_fire=True)
+        # Difficulty >= 4: full-board probability density (optimal policy).
+        return self._smart_shot(enemy_board, strip, focus_fire=False)
 
     def register_shot(self, r, c, result, enemy_board):
         self.shots.add((r, c))

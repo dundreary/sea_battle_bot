@@ -331,7 +331,7 @@ def _handle_new_solo(data, uid, code):
 
 def _do_new_solo(data, uid):
     strip = data.get("strip", False)
-    difficulty = data.get("difficulty", 2)
+    difficulty = data.get("difficulty", 4)
     game = new_solo(uid, strip=strip, difficulty=difficulty)
     return _register_new_game(games, player_games, game, as_dict(game, uid))
 
@@ -496,7 +496,7 @@ def _handle_pd_new_solo(data, uid, code):
 
 def _do_pd_new_solo(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
-    difficulty = int(data.get('difficulty', 3))
+    difficulty = int(data.get('difficulty', 4))
     game = PDGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
     return _register_new_game(pd_games, pd_player_games, game, game.get_state(1))
@@ -747,7 +747,7 @@ def _handle_checkers_new_solo(data, uid, code):
 
 
 def _do_checkers_new_solo(data, uid):
-    difficulty = data.get("difficulty", 2)
+    difficulty = data.get("difficulty", 4)
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
     return _register_new_game(checkers_games, checkers_player_games, game, game.get_state(uid))
@@ -785,9 +785,10 @@ def _checkers_ai_difficulty(game):
     """Map the player's chosen difficulty to the AI search depth.
 
     Easy plays random (very beatable), Medium searches shallow, Hard searches
-    deep with iterative deepening bounded by the time budget.
+    deep with iterative deepening bounded by the time budget. Expert (4) goes
+    deeper still; the effective depth is also capped by the time budget.
     """
-    return {1: 1, 2: 4, 3: 9}.get(game.difficulty, 4)
+    return {1: 1, 2: 4, 3: 9, 4: 12}.get(game.difficulty, 4)
 
 
 def _handle_checkers_move(data, uid, code):
@@ -894,7 +895,8 @@ def _handle_checkers_bot_turn(data, uid, code):
         return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
 
     ai_diff = _checkers_ai_difficulty(game)
-    ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff)
+    tb = 3.0 if game.difficulty >= 4 else 1.5
+    ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff, time_budget=tb)
     finished = False
     bot_result = None
     if ai_mv:
@@ -942,7 +944,8 @@ def _handle_checkers_hint(data, uid, code):
     if color is None or game.turn != color:
         return {"error": "not_your_turn"}
     ai_diff = _checkers_ai_difficulty(game)
-    move = get_ai_move(game.board, color, difficulty=ai_diff)
+    tb = 3.0 if game.difficulty >= 4 else 1.5
+    move = get_ai_move(game.board, color, difficulty=ai_diff, time_budget=tb)
     if not move:
         return {"error": "no_move"}
     return {"ok": True, "hint": {"start": list(move[0]), "end": list(move[1][-1])}}

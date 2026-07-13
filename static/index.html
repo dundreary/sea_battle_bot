@@ -1447,7 +1447,7 @@ function showMainMenu(){
 
 function showMenu(){ showMainMenu(); }
 
-let gameDifficulty = 2;
+let gameDifficulty = 4;
 
 function showBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -1459,9 +1459,10 @@ function showBotDifficulty(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <button class="btn success" onclick="startSoloWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn primary" onclick="startSoloWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="startSoloWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn outline" onclick="startSoloWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
     <button class="btn outline" onclick="startSoloWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn primary" onclick="startSoloWithDifficulty(4)" style="width:100%">💀 ${t('stExpert')}</button>
     <button class="btn outline quit-btn" onclick="showSeaBattleMenu()" style="margin-top:8px">${t('quit')}</button>
   `;
   fetchActiveGames();
@@ -1735,7 +1736,7 @@ function showPokerDice(){
   `;
 }
 
-let pdDifficulty = 3;
+let pdDifficulty = 4;
 
 function showPdBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -1745,10 +1746,10 @@ function showPdBotDifficulty(){
   $('header').classList.remove('in-game');
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <button class="btn success" onclick="pdStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn primary" onclick="pdStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="pdStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn outline" onclick="pdStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
     <button class="btn outline" onclick="pdStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
-    <button class="btn danger" onclick="pdStartWithDifficulty(4)" style="width:100%">🧠 ${t('stExpert')}</button>
+    <button class="btn primary" onclick="pdStartWithDifficulty(4)" style="width:100%">🧠 ${t('stExpert')}</button>
     <button class="btn outline quit-btn" onclick="showPokerDice()" style="margin-top:8px">${t('quit')}</button>
   `;
 }
@@ -2352,7 +2353,7 @@ let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='';
 
 const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
 
-let ckDifficulty = 2;
+let ckDifficulty = 4;
 
 function showCkBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -2364,9 +2365,10 @@ function showCkBotDifficulty(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <button class="btn success" onclick="ckStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn primary" onclick="ckStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
+    <button class="btn outline" onclick="ckStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
+    <button class="btn outline" onclick="ckStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
     <button class="btn outline" onclick="ckStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
+    <button class="btn primary" onclick="ckStartWithDifficulty(4)" style="width:100%">💀 ${t('stExpert')}</button>
     <button class="btn outline quit-btn" onclick="showCheckers()" style="margin-top:8px">${t('quit')}</button>
   `;
 }
