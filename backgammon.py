@@ -144,6 +144,11 @@ class BackgammonGame(BaseGame):
         self.phase = 'playing'
         self.winner: Optional[int] = None
         self.last_move: Optional[List[Tuple[int, int]]] = None
+        # The most recent dice roll and who rolled them, kept so the *other*
+        # side (a human opponent in 2-player, or the viewer in solo) can see
+        # what was thrown in real time. Cleared on every new turn.
+        self.last_roll: List[int] = []
+        self.last_roller: Optional[int] = None
 
     @property
     def current_player(self):
@@ -166,6 +171,8 @@ class BackgammonGame(BaseGame):
             return None
         self.dice = roll_dice()
         self.used_dice = 0
+        self.last_roll = list(self.dice)
+        self.last_roller = color
         return self.get_state(uid)
 
     def _skip_blocked_dice(self):
@@ -253,6 +260,8 @@ class BackgammonGame(BaseGame):
             return
         self.dice = roll_dice()
         self.used_dice = 0
+        self.last_roll = list(self.dice)
+        self.last_roller = BLACK
         self.last_move = []
         while self.used_dice < len(self.dice):
             die_val = self.dice[self.used_dice]
@@ -315,6 +324,8 @@ class BackgammonGame(BaseGame):
             'opponent_joined': self.player2_id is not None,
             'winner': self.winner,
             'last_move': self.last_move,
+            'last_roll': list(self.last_roll),
+            'last_roller': self.last_roller,
             'legal_moves': [[list(m) for m in [[f, t]]] for f, t in moves_for_current],
         }
 
@@ -334,6 +345,8 @@ class BackgammonGame(BaseGame):
             'phase': self.phase,
             'winner': self.winner,
             'last_move': self.last_move,
+            'last_roll': list(self.last_roll),
+            'last_roller': self.last_roller,
             'created_at': self.created_at,
         }
 
@@ -350,4 +363,6 @@ class BackgammonGame(BaseGame):
         game.phase = data.get('phase', 'playing')
         game.winner = data.get('winner')
         game.last_move = data.get('last_move')
+        game.last_roll = list(data.get('last_roll', []))
+        game.last_roller = data.get('last_roller')
         return game
