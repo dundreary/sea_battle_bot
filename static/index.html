@@ -126,7 +126,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
  .cell.hit{background:var(--color-hit)}
  .cell.miss{background:var(--bg-board);opacity:.4}
  .cell.sunk{background:var(--color-sunk-dark);border:1px solid #424242}
- .cell.dead{background:var(--bg-board);opacity:.4}
+  .cell.dead{background:var(--bg-board);opacity:.4}
+  /* At game over the opponent's still-floating ships are revealed so the
+     loser can see the full enemy layout. Ring them clearly so they are not
+     mistaken for the player's own (already-sunk) fleet. */
+  .cell.enemy-reveal{outline:2px solid var(--accent-primary);outline-offset:-2px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+  .cell.enemy-reveal.mine{outline-color:#ff6f00}
  .cell.highlight{background:#ff9800;border:2px solid #ff6f00;animation:glow 1s ease-in-out infinite}
 .cell.shootable{background:var(--border-color);border:1px solid var(--color-btn-outline-border)}
 /* On touch screens :hover can remain on the last tapped cell, making it look selected. */
@@ -973,7 +978,7 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
     cell.className='cell';
-    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship')}else if(v===MINE){cell.classList.add('mine')}}
+    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
     else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
     else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
@@ -1047,6 +1052,11 @@ function updateUI(){
     const won = s.all_sunk;
     const resultTitle = won ? t('win') : t('lose');
     const resultDesc = won ? t('winDesc') : t('loseDesc');
+    // At game over the opponent board reveals the full enemy layout. Relabel
+    // it so the loser understands these are the opponent's ships they missed.
+    $('lblOpp').textContent = won
+      ? {ru:'🚢 Флот соперника потоплен',uk:'🚢 Флот суперника потоплено',en:"🚢 Opponent's fleet sunk"}[lang]
+      : {ru:'🚢 Корабли соперника',uk:'🚢 Кораблі суперника',en:"🚢 Opponent's ships"}[lang];
     setStatus(`${resultTitle} ${resultDesc}`, 'battle');
     $('actions').className = 'btn-col';
     $('actions').innerHTML = `<div class="result-notice ${won ? 'win' : 'lose'}">${resultTitle}<br><span style="font-size:13px;font-weight:400">${resultDesc}</span></div>`;
