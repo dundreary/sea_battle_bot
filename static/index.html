@@ -1240,31 +1240,44 @@ function captureStripPhoto(){
     input.type = 'file';
     input.accept = 'image/*';
     input.capture = 'environment';
-    let cancelled = true;
+    // `resolved` guards against the classic race in Telegram's WebView (most
+    // visible on Android): the window can regain focus *before* the file
+    // input's change event actually lands, especially for camera captures
+    // that need a moment to encode the photo. The old code started a 600ms
+    // "did they cancel?" timer on focus and called resolve(null) if change
+    // hadn't fired yet -- but a Promise only resolves once, so if change
+    // fired a moment later it was silently dropped and the upload never
+    // happened (yet nothing told the user it failed). Now the timer is only
+    // a *fallback* for a genuine cancel, it's much longer, and both paths
+    // check `resolved` first so whichever settles first wins cleanly.
+    let resolved = false;
     let opened = false;
+    const finish = (value) => {
+      if(resolved) return;
+      resolved = true;
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
+      resolve(value);
+    };
     const onBlur = () => { opened = true; };
     const onFocus = () => {
       // Only treat a focus as "returned from the picker" if the picker
       // actually opened first (window blurred). Some browsers fire a stray
       // focus when the camera is launched, which must be ignored.
       if(!opened) return;
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
-      // Give the file 'change' event (which sets cancelled=false) a moment
-      // to land before deciding the user cancelled.
-      setTimeout(() => { if(cancelled) resolve(null); }, 600);
+      // Give the file 'change' event a generous window to land before
+      // deciding the user cancelled -- camera capture in particular can take
+      // a couple seconds to hand the photo back on slower devices.
+      setTimeout(() => finish(null), 2000);
     };
     window.addEventListener('blur', onBlur);
     window.addEventListener('focus', onFocus);
     input.onchange = async (e) => {
-      cancelled = false;
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
       const file = e.target.files[0];
-      if(!file){resolve(null);return}
+      if(!file){finish(null);return}
       const reader = new FileReader();
-      reader.onerror = () => resolve(null);
-      reader.onload = async (ev) => { resolve(await compressImage(ev.target.result)); };
+      reader.onerror = () => finish(null);
+      reader.onload = async (ev) => { finish(await compressImage(ev.target.result)); };
       reader.readAsDataURL(file);
     };
     input.click();
@@ -2157,14 +2170,9 @@ function pdRenderInfo(st){
 
   const info = $('pdResult');
 
-  // Status
-  if(st.scored){
-    setStatus(t('pdWaiting'), '');
-  } else if(st.my_turn){
-    setStatus('', '');
-  } else {
-    setStatus(t('pdWaiting'), '');
-  }
+  // The top status bar is intentionally left empty in poker dice — the
+  // "waiting for opponent" hint is not shown there anymore.
+  setStatus('', '');
 
   info.innerHTML = '';
 }
