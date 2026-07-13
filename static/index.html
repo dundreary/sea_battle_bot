@@ -1095,7 +1095,7 @@ function updateUI(){
         // then switches to the normal start label once it's uploaded.
         const needStake = s.strip && !s.strip_stake;
         const startBtnClass = needStake ? 'btn strip-btn' : 'btn primary';
-        const startOnclick = needStake ? 'captureAndUploadStake()' : 'confirmPlace()';
+        const startOnclick = needStake ? 'showStripInfoOverlay()' : 'confirmPlace()';
         const startLabel = needStake ? t('stripStakeBtn') : (s.strip ? t('stripStart') : t('confirm'));
         $('actions').innerHTML=`
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
@@ -1198,7 +1198,7 @@ function showStripInfoOverlay(){
     <div class="modal">
       <h2>${t('stripMode')}</h2>
       <p>${t('stripInfoDesc')}</p>
-      <button class="btn success" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();newMulti(true)">👗 ${t('stripPlace')}</button>
+      <button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();captureAndUploadStake()">${t('stripStakeBtn')}</button>
       <button class="btn outline" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -1434,7 +1434,7 @@ function showSeaBattleMenu(){
       <div class="name">${t('vsFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <div class="game-card" onclick="showStripInfoOverlay()" style="margin-bottom:8px">
+    <div class="game-card" onclick="newMulti(true)" style="margin-bottom:8px">
       <img src="/static/mode-shirt.svg" class="card-icon">
       <div class="name">${t('stripMode')}</div>
       <div class="card-desc">${t('stripDesc')}</div>
@@ -1533,7 +1533,7 @@ function showResult(icon,title,desc,strip){
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
+        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(true)">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
       </div>`;
     document.body.appendChild(o);
@@ -1548,7 +1548,7 @@ function showResult(icon,title,desc,strip){
         <h2>${title}</h2>
         <p>${desc}</p>
         ${photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
-        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();showStripInfoOverlay()">🔄 ${t('stripPlayAgain')}</button>
+        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();newMulti(true)">🔄 ${t('stripPlayAgain')}</button>
         <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
       </div>`;
     document.body.appendChild(o);
