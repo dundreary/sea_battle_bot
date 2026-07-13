@@ -7,6 +7,7 @@ network), so it exercises game logic + the refactored api.py handlers only.
 import api
 import persist
 import notifications
+from game import Game as _G, MINE, MINE_HIT
 
 # Never touch disk (persist.json) or the network during the test.
 api.save = lambda: None
@@ -139,5 +140,36 @@ unwrap(api._handle_active_games({"code": None}, uid, None))
 unwrap(api._handle_bot_info({}, uid, None))
 rc = unwrap(api._handle_resolve_code({"code": code_sb}, uid, None))
 check(rc.get("game") == "sea_battle", "resolve_code")
+
+print("Mine shows as a mine (not a cross) when hit:")
+_mg = _G("MINET", 1, 2)
+_mg.board1.grid[3][3] = MINE
+_mres = _mg.board1.receive_shot(3, 3)
+check(_mres == "mine", "mine shot returns 'mine'")
+check(_mg.board1.grid[3][3] == MINE_HIT, "hit mine cell is MINE_HIT, not HIT")
+check(_mg.board1.cell_display(3, 3) == "💣", "hit mine renders as mine glyph")
+_mflat = _mg.board1.to_flat_list(hide_ships=True)
+check(_mflat[3 * 10 + 3] == MINE_HIT, "hit mine stays visible on opponent board")
+
+print("Rematch reuses the same code:")
+_rg = _G("REMTC", 1, 2)
+_rg.phase = "finished"
+_r1 = _rg.request_rematch(1)
+check(_r1 is False, "first rematch vote records but waits")
+check(_rg.phase == "finished", "still finished after one vote")
+_r2 = _rg.request_rematch(2)
+check(_r2 is True, "second rematch vote restarts game")
+check(_rg.phase == "placing", "game restarted to placing phase")
+check(_rg.code == "REMTC", "same code preserved")
+check(_rg.rematch == {1: False, 2: False}, "rematch votes reset")
+
+print("Rematch via api handler:")
+api.games["REMTA"] = _G("REMTA", 11, 22)
+api.games["REMTA"].phase = "finished"
+_res = unwrap(api._handle_rematch({"code": "REMTA"}, 11, "REMTA"))
+check(_res.get("ok"), "rematch vote ok")
+_res2 = unwrap(api._handle_rematch({"code": "REMTA"}, 22, "REMTA"))
+check(_res2.get("ok") and _res2.get("restarted"), "rematch restarts on second vote")
+check(api.games["REMTA"].phase == "placing", "api game restarted")
 
 print("\nALL SMOKE TESTS PASSED")

@@ -13,6 +13,7 @@ MISS = 3
 SUNK = 4
 DEAD = 5
 MINE = 6
+MINE_HIT = 7
 
 # Specific ship shapes for strip mode, in placement order:
 STRIP_SHIP_SHAPES = [
@@ -116,7 +117,9 @@ class Board:
                         return "sunk"
             return "hit"
         elif self.grid[r][c] == MINE:
-            self.grid[r][c] = HIT
+            # Keep the cell visually distinct from a normal hit so the shooter
+            # can see they struck a mine instead of a ship.
+            self.grid[r][c] = MINE_HIT
             self._fill_dead_zone(r, c)
             return "mine"
         elif self.grid[r][c] == EMPTY:
@@ -137,6 +140,8 @@ class Board:
             return "⬜" if hide_ships else "🟩"
         if v == MINE:
             return "⬜" if hide_ships else "💣"
+        if v == MINE_HIT:
+            return "💣"
         if v == HIT:
             return "❌"
         if v == MISS:
@@ -183,6 +188,9 @@ class Game(BaseGame):
         self.turn = 1
         self.phase = "placing1"
         self.ready = {1: False, 2: False}
+        # Rematch opt-in after a finished game. Both participants must agree
+        # before the same game (same code) restarts for another round.
+        self.rematch = {1: False, 2: False}
         # Per-player "stake" photo, committed before the game starts
         # (both participants must upload one to confirm placement).
         self.strip_stakes = {1: "", 2: ""}
@@ -198,6 +206,51 @@ class Game(BaseGame):
 
     def opponent_board(self, player_id):
         return self.board2 if player_id == self.player1_id else self.board1
+
+    def request_rematch(self, uid):
+        """Opt in to a rematch on the same code.
+
+        Returns True if the game has restarted (both players agreed, or a solo
+        game which restarts immediately), False if this player's vote was
+        recorded but the opponent has not yet agreed, and None if a rematch
+        cannot be requested in the current state.
+        """
+        if self.phase != "finished":
+            return None
+        if self.solo:
+            self.reset_for_rematch()
+            return True
+        pnum = self.player_num(uid)
+        if pnum not in (1, 2):
+            return None
+        self.rematch[pnum] = True
+        if self.rematch[1] and self.rematch[2]:
+            self.reset_for_rematch()
+            return True
+        return False
+
+    def reset_for_rematch(self):
+        """Restart the same game (same code) for another round.
+
+        Boards, turn, readiness and rematch votes are cleared. Player ids,
+        strip mode, difficulty and code are preserved so participants continue
+        without re-entering the code. Strip stakes are cleared so each round
+        commits a fresh photo (the previous one may already be revealed).
+        """
+        self.board1 = Board()
+        self.board2 = Board()
+        self.turn = 1
+        self.phase = "placing"
+        self.ready = {1: False, 2: False}
+        self.rematch = {1: False, 2: False}
+        if self.strip:
+            self.strip_stakes = {1: "", 2: ""}
+        if self.solo:
+            if self.strip:
+                auto_place_strip_ships(self.board2)
+            else:
+                auto_place_ships(self.board2)
+            self.ready[2] = True
 
     def trigger_mine_explosion(self, shooter_uid):
         board = self.board_for(shooter_uid)
@@ -227,6 +280,7 @@ class Game(BaseGame):
             'turn': self.turn,
             'phase': self.phase,
             'ready': {str(k): v for k, v in self.ready.items()},
+            'rematch': {str(k): v for k, v in self.rematch.items()},
             'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
         }
 
@@ -241,6 +295,7 @@ class Game(BaseGame):
         game.turn = data['turn']
         game.phase = data['phase']
         game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
+        game.rematch = {int(k): v for k, v in data.get('rematch', {1: False, 2: False}).items()}
         if data.get('bot_ai'):
             game.bot_ai = BotAI.from_dict(data['bot_ai'])
         elif game.solo:

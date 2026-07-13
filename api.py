@@ -187,6 +187,7 @@ def as_dict(game, uid):
         "current_player": game.current_player(),
         "my_turn": game.current_player() == uid,
         "ready": game.ready,
+        "rematch": game.rematch,
         "you": uid,
         "own": own.to_flat_list(),
         "own_ships": ships_data,
@@ -437,6 +438,36 @@ def _handle_confirm(data, uid, code):
     if started:
         pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
     return {"ok": True, "started": started, "state": state}, pending
+
+
+def _handle_rematch(data, uid, code):
+    """Record a player's wish to replay on the same code.
+
+    When both participants (or a solo player) have opted in, the same game
+    object is reset for another round so nobody has to re-enter the code.
+    """
+    game, err = _get_game(games, code, uid)
+    if err:
+        return err
+    if uid != game.player1_id and uid != game.player2_id:
+        return {"error": "not_in_game"}
+    if game.phase != "finished":
+        return {"ok": False, "error": "not_finished"}
+    restarted = game.request_rematch(uid)
+    if restarted is None:
+        return {"error": "invalid_rematch"}
+    _mark_active(game, uid)
+    state = as_dict(game, uid)
+    if game.solo:
+        pending = []
+    elif restarted:
+        pending = _notify_opponent(
+            game, uid, "⚓ Реванш начался! Расставьте корабли.", "rematch_start", force=True)
+    else:
+        pending = _notify_opponent(
+            game, uid, "⚓ Соперник хочет реванш! Расставьте корабли.", "rematch", force=True)
+    save()
+    return {"ok": True, "restarted": bool(restarted), "state": state}, pending
 
 
 def _handle_upload_stake(data, uid, code):
@@ -1028,6 +1059,7 @@ _HANDLERS = {
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
     "/api/upload_stake": _handle_upload_stake,
+    "/api/rematch": _handle_rematch,
     "/api/surrender": _handle_surrender,
     "/api/message_opponent": _handle_message_opponent,
     "/api/active_games": _handle_active_games,
@@ -1060,7 +1092,7 @@ _HANDLERS = {
 }
 
 NOTIFY_PATHS = {
-    "/api/join", "/api/confirm", "/api/message_opponent",
+    "/api/join", "/api/confirm", "/api/message_opponent", "/api/rematch",
     "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
     "/api/checkers_join", "/api/checkers_move", "/api/checkers_bot_turn", "/api/checkers_surrender",
     "/api/bg_join", "/api/bg_move", "/api/bg_surrender",
@@ -1116,8 +1148,9 @@ def handle_api(path, body):
         if pending_stake:
             winner_id, photo, caption = pending_stake
             send_strip_photo_to_winner(winner_id, photo, caption)
-            with _state_lock:
-                _evict_game(code, games, player_games)
+            # Keep the finished game in memory so both players can opt into a
+            # rematch on the same code (the game is still persisted and pruned
+            # after 24h like every other finished game).
             flush()
         return response
 

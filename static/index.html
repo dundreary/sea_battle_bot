@@ -479,6 +479,9 @@ const LANG = {
     stripStakeBtn: '📸 Загрузить фото',
     stripStart: '🍀 Удачи, начинаем',
     stripPlayAgain: '💪 Отыграться',
+    rematchWin: '🎉 Ещё партию',
+    rematchLose: '💪 Отыграться',
+    rematchWait: '⏳ Ожидание соперника для реванша...',
     checkers: 'Шашки',
     ckHint: '💡 Подсказка',
     ckNoMoves: 'Нет ходов',
@@ -605,6 +608,9 @@ const LANG = {
     stripStakeBtn: '📸 Завантажити фото',
     stripStart: '🍀 Удачі, починаємо',
     stripPlayAgain: '💪 Відігратись',
+    rematchWin: '🎉 Ще партію',
+    rematchLose: '💪 Відігратись',
+    rematchWait: '⏳ Очікування суперника для реваншу...',
     checkers: 'Шашки',
     ckHint: '💡 Підказка',
     ckNoMoves: 'Немає ходів',
@@ -731,6 +737,9 @@ const LANG = {
     stripStakeBtn: '📸 Upload photo',
     stripStart: '🍀 Good luck, let\'s begin',
     stripPlayAgain: '💪 Redeem',
+    rematchWin: '🎉 Another game',
+    rematchLose: '💪 Replay',
+    rematchWait: '⏳ Waiting for opponent to rematch...',
     checkers: 'Checkers',
     ckHint: '💡 Hint',
     ckNoMoves: 'No moves',
@@ -973,13 +982,14 @@ async function fetchBotInfo(retries=10){
 
 function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
   boardEl.innerHTML='';
-  const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5,MINE=6;
+  const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5,MINE=6,MINE_HIT=7;
   for(let r=0;r<10;r++)for(let c=0;c<10;c++){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
     cell.className='cell';
     if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
     else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
+    else if(v===MINE_HIT){cell.classList.add('mine');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}
     else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
@@ -1012,6 +1022,9 @@ function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
 function updateUI(){
   if(!state)return;
   const s=state;
+  // A round that left the 'finished' phase means the rematch (if any) has
+  // started, so stop treating the game as pending a rematch.
+  if(s.phase!=='finished') rematchPending=false;
   showIncomingMessages(s.messages);
   const gameOver=s.all_sunk||s.my_all_sunk;
   const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
@@ -1036,6 +1049,12 @@ function updateUI(){
   }
 
   if(gameOver){
+    if(rematchPending){
+      // A rematch on the same code is in progress: keep polling and wait for
+      // the opponent (or the server) to restart the round. No result overlay.
+      setStatus(t('rematchWait'), 'battle');
+      return;
+    }
     if(s.all_sunk && s.strip && !s.opp_stake && !s.strip_photo){
       setStatus('⏳ ' + {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang], 'battle');
       if(!window._stripPhotoWaitTimer){
@@ -1060,7 +1079,7 @@ function updateUI(){
     setStatus(`${resultTitle} ${resultDesc}`, 'battle');
     $('actions').className = 'btn-col';
     $('actions').innerHTML = `<div class="result-notice ${won ? 'win' : 'lose'}">${resultTitle}<br><span style="font-size:13px;font-weight:400">${resultDesc}</span></div>`;
-    localStorage.removeItem('sb_game');
+    if(!rematchPending) localStorage.removeItem('sb_game');
     $('app').insertBefore($('status'), $('app').firstChild);
     if(won)showResult('🏆',resultTitle,resultDesc,s.strip);
     else if(s.my_all_sunk)showResult('💔',resultTitle,resultDesc,s.strip);
@@ -1342,6 +1361,10 @@ async function universalJoinGame(){
 }
 
 let pollTimer=null;
+// True while a rematch on the same code is pending, so the finished-game
+// cleanup (stop polling / drop saved code) is skipped until the new round
+// actually starts.
+let rematchPending=false;
 
 function pollGame(){
   if(pollTimer)clearInterval(pollTimer);
@@ -1542,9 +1565,10 @@ async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=s
   setStatus(res && res.ok ? t('messageSent') : t('messageError'), res && res.ok ? '' : 'battle');
 }
 
-function showResult(icon,title,desc,strip){
+function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
   const o=document.createElement('div');
   o.className='overlay';
+  const won = icon==='🏆';
   if(icon==='🏆')sfxWin();else sfxLose();
   
   if(strip && icon==='💔'){
@@ -1555,8 +1579,8 @@ function showResult(icon,title,desc,strip){
         <div class="result-icon">💔</div>
         <h2>${title}</h2>
         <p>${desc}</p>
-        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();newMulti(true)">🔄 ${t('stripPlayAgain')}</button>
-        <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
+        <button class="btn success" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();requestRematch()">💪 ${t('rematchLose')}</button>
+        <button class="btn outline quit-btn" style="margin:4px 0;width:100%" onclick="this.closest('.overlay').remove();showMenu()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
     return;
@@ -1570,25 +1594,38 @@ function showResult(icon,title,desc,strip){
         <h2>${title}</h2>
         <p>${desc}</p>
         ${photo ? `<img src="${photo}" style="max-width:90%;max-height:320px;border-radius:8px;margin:12px auto;display:block;object-fit:contain">` : ''}
-        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();newMulti(true)">🔄 ${t('stripPlayAgain')}</button>
-        <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
+        <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();requestRematch()">🎉 ${t('rematchWin')}</button>
+        <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('quit')}</button>
       </div>`;
     document.body.appendChild(o);
     return;
   }
   
-  const isMulti = state && !state.solo;
-  const playAgainFn = isMulti ? 'newMulti(false)' : 'startSolo()';
-  const endMsg = state ? '' : t('gameOver');
+  // Non-strip results (sea battle and the other games that reuse this modal).
+  // Sea battle defaults to a same-code rematch; other games pass their own
+  // "play again" action so they don't call the sea-battle rematch endpoint.
+  const paFn = playAgainFn || 'requestRematch()';
+  const paLabel = playAgainLabel || (won ? t('rematchWin') : t('rematchLose'));
   o.innerHTML=`
     <div class="modal">
       <div class="result-icon">${icon}</div>
       <h2>${title}</h2>
       <p>${desc}</p>
-      <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();${playAgainFn}">${t('playAgain')}</button>
-      <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('close')}</button>
+      <button class="btn success" style="margin-top:8px" onclick="this.closest('.overlay').remove();${paFn}">${paLabel}</button>
+      <button class="btn outline" style="margin-top:8px" onclick="this.closest('.overlay').remove();showMenu()">${t('quit')}</button>
     </div>`;
   document.body.appendChild(o);
+}
+
+async function requestRematch(){
+  // Both this player and the opponent must opt in; the server restarts the
+  // SAME game (same code) once both agree, so nobody re-enters the code.
+  const ov = document.querySelector('.overlay');
+  if(ov) ov.remove();
+  rematchPending = true;
+  setStatus(t('rematchWait'), 'battle');
+  if(!pollTimer){ pollTimer = setInterval(refreshState, 2000); }
+  try { await api('/api/rematch', {uid:getUid(), code:gameCode}); } catch(e){}
 }
 
 async function leaveGame(surrender){
@@ -2443,7 +2480,7 @@ function ckShowGame(st){
     const icon=st.winner===1?'🏆':'💔';
     const title=st.winner===1?t('win'):t('lose');
     const desc=t('checkers');
-    showResult(icon,title,desc,false);
+    showResult(icon,title,desc,false,'ckStartSolo()',t('playAgain'));
     const el=$('ckActions');
     el.className='btn-col';
     el.innerHTML=`
@@ -2563,11 +2600,13 @@ async function ckCellClick(r,c){
     const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:csr,start_c:csc,end_r:cr,end_c:cc});
     if(!res||!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'') ;ckSelected=null;ckRenderBoard(ckState);return}
      sfxHit();
-    // Render your move immediately so the checker slides into place first;
-    // a brief beat (no popup) lets that paint before the AI's reply appears.
+    // Render your move immediately so the checker slides into place first --
+    // this used to be delayed behind the AI's own move computation. The AI's
+    // move is now a separate follow-up step (see ckRunBotTurn), triggered
+    // right after this paints, instead of arriving bundled in this response.
     if(res.player_state) ckShowGame(res.player_state);
-    if(res.state && res.state.solo && res.bot_move) await _aiDelay(400);
     ckShowGame(res.state);
+    if(res.needs_bot_turn) await ckRunBotTurn();
     return;
   }
   let pr=r, pc=c;
@@ -2578,6 +2617,17 @@ async function ckCellClick(r,c){
   if(color!==ckState.turn)return;
   ckSelected=[r,c];
   ckRenderBoard(ckState);
+}
+
+async function ckRunBotTurn(){
+  if(!ckCode) return;
+  // A brief beat before fetching so the player's own move has a moment to
+  // register visually, then the AI's move is fetched and rendered.
+  await _aiDelay(250);
+  const res = await api('/api/checkers_bot_turn', {uid:getUid(), code:ckCode});
+  if(!res || !res.ok) return;
+  if(!ckCode) return;
+  ckShowGame(res.state);
 }
 
 async function ckGetHint(){
@@ -2757,7 +2807,7 @@ function bgShowGame(st, keepSelection=false){
     const icon=won?'🏆':'💔';
     const title=won?t('bgWin'):t('bgLose');
     const desc=t('backgammon');
-    showResult(icon,title,desc,false);
+    showResult(icon,title,desc,false,'bgStartSolo()',t('bgPlayAgain'));
     const el=$('bgActions');
     el.className='btn-col';
     el.innerHTML=`
@@ -3057,6 +3107,21 @@ async function bgDoMove(from,to){
   const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from,to:to>=0?to:null});
   if(!res||!res.ok){setStatus(t('error'));return}
   sfxHit();
+  // Render your own move immediately -- the AI's turn (roll + all die moves)
+  // is now a separate follow-up step (see bgRunBotTurn), triggered right
+  // after this paints, instead of being computed synchronously here.
+  bgShowGame(res.state);
+  if(res.state && res.state.solo && res.state.phase==='playing' && res.state.turn===-1 && !res.state.dice.length){
+    await bgRunBotTurn();
+  }
+}
+
+async function bgRunBotTurn(){
+  if(!bgCode) return;
+  await _aiDelay(250);
+  const res = await api('/api/bg_bot_turn', {uid:getUid(), code:bgCode});
+  if(!res || !res.ok) return;
+  if(!bgCode) return;
   bgShowGame(res.state);
 }
 
@@ -3065,6 +3130,9 @@ async function bgPassTurn(){
   if(!res||!res.ok){setStatus(t('error'));return}
   bgSelected=null;
   bgShowGame(res.state);
+  if(res.state && res.state.solo && res.state.phase==='playing' && res.state.turn===-1 && !res.state.dice.length){
+    await bgRunBotTurn();
+  }
 }
 
 function leaveBgGame(){
