@@ -1072,14 +1072,18 @@ function updateUI(){
           $('status').onclick=null;
         }
         // In strip mode each player must commit a stake photo before
-        // starting. The upload button sits above the ship placement
-        // and replaces the "OK, start" button until a photo exists.
+        // starting. The "start" button stays visible but is disabled
+        // until a photo exists, so ship placement always comes first
+        // and the photo is a clearly separate, optional step.
         const needStake = s.strip && !s.strip_stake;
         const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
+        const startDisabled = needStake ? 'disabled style="opacity:.5;cursor:default"' : '';
+        const startOnclick = needStake ? '' : 'confirmPlace()';
         $('actions').innerHTML=`
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-           ${needStake ? stakeBtn : `<button class="btn primary" onclick="confirmPlace()">${s.strip ? t('stripStart') : t('confirm')}</button>`}
+           ${stakeBtn}
+           <button class="btn primary" ${startDisabled} onclick="${startOnclick}">${s.strip ? t('stripStart') : t('confirm')}</button>
            ${!s.solo ? `<button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
