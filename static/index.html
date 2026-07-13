@@ -453,7 +453,7 @@ const LANG = {
     stripPhotoSent: 'Фото отправлено победителю ✅',
     stripUseStandard: '🎭 Стандартное фото',
     stripSkip: '⏭ Пропустить',
-    stripStakeBtn: '📸 Загрузи фото-ставку',
+    stripStakeBtn: '📸 Загрузить фото',
     stripStart: '🍀 Удачи, начинаем',
     stripPlayAgain: '💪 Отыграться',
     checkers: 'Шашки',
@@ -579,7 +579,7 @@ const LANG = {
     stripPhotoSent: 'Фото надіслано переможцю ✅',
     stripUseStandard: '🎭 Стандартне фото',
     stripSkip: '⏭ Пропустити',
-    stripStakeBtn: '📸 Завантаж фото-ставку',
+    stripStakeBtn: '📸 Завантажити фото',
     stripStart: '🍀 Удачі, починаємо',
     stripPlayAgain: '💪 Відігратись',
     checkers: 'Шашки',
@@ -705,7 +705,7 @@ const LANG = {
     stripPhotoSent: 'Photo sent to winner ✅',
     stripUseStandard: '🎭 Standard Photo',
     stripSkip: '⏭ Skip',
-    stripStakeBtn: '📸 Upload stake photo',
+    stripStakeBtn: '📸 Upload photo',
     stripStart: '🍀 Good luck, let\'s begin',
     stripPlayAgain: '💪 Redeem',
     checkers: 'Checkers',
@@ -1072,18 +1072,17 @@ function updateUI(){
           $('status').onclick=null;
         }
         // In strip mode each player must commit a stake photo before
-        // starting. The "start" button stays visible but is disabled
-        // until a photo exists, so ship placement always comes first
-        // and the photo is a clearly separate, optional step.
+        // starting. The main action button doubles as the upload step:
+        // it shows the "upload photo" label until a stake photo exists,
+        // then switches to the normal start label once it's uploaded.
         const needStake = s.strip && !s.strip_stake;
-        const stakeBtn = needStake ? `<button class="btn strip-btn" style="width:100%;margin:4px 0" onclick="captureAndUploadStake()">📸 ${t('stripStakeBtn')}</button>` : '';
-        const startDisabled = needStake ? 'disabled style="opacity:.5;cursor:default"' : '';
-        const startOnclick = needStake ? '' : 'confirmPlace()';
+        const startBtnClass = needStake ? 'btn strip-btn' : 'btn primary';
+        const startOnclick = needStake ? 'captureAndUploadStake()' : 'confirmPlace()';
+        const startLabel = needStake ? t('stripStakeBtn') : (s.strip ? t('stripStart') : t('confirm'));
         $('actions').innerHTML=`
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-           ${stakeBtn}
-           <button class="btn primary" ${startDisabled} onclick="${startOnclick}">${s.strip ? t('stripStart') : t('confirm')}</button>
+           <button class="${startBtnClass}" onclick="${startOnclick}">${startLabel}</button>
            ${!s.solo ? `<button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
         `;
