@@ -190,7 +190,10 @@ def as_dict(game, uid):
         "you": uid,
         "own": own.to_flat_list(),
         "own_ships": ships_data,
-        "opp": opp.to_flat_list(hide_ships=True),
+        # Once the game is finished, reveal the opponent's full board
+        # (ships and mines) so the winner can see the complete result
+        # instead of a hidden board that looks incomplete.
+        "opp": opp.to_flat_list(hide_ships=(game.phase != "finished")),
         "all_sunk": opp.all_sunk(),
         "my_all_sunk": own.all_sunk(),
         "ships_placed": len(own.ships),
