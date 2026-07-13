@@ -1177,7 +1177,7 @@ function showStripInfoOverlay(){
     <div class="modal">
       <h2>${t('stripMode')}</h2>
       <p>${t('stripInfoDesc')}</p>
-      <button class="btn success" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();startStripCapture()">📸 ${t('stripTakePhoto')}</button>
+      <button class="btn success" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove();newMulti(true)">👗 ${t('stripPlace')}</button>
       <button class="btn outline" style="width:100%;margin:4px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -1211,14 +1211,6 @@ function captureStripPhoto(){
   });
 }
 
-async function startStripCapture(){
-  showLoadingOverlay(STRIP_LOADING_MSGS[lang].process);
-  const data = await captureStripPhoto();
-  if(!data){ hideLoadingOverlay(); showStripInfoOverlay(); return; }
-  window._stripPhotoData = data;
-  doStripMulti();
-}
-
 // Captures a "stake" photo and uploads it before the game starts.
 async function captureAndUploadStake(){
   const data = await captureStripPhoto();
@@ -1230,21 +1222,6 @@ async function captureAndUploadStake(){
   // Always re-render from the server so the UI matches the real state
   // (the upload button disappears once the stake is committed).
   await refreshState();
-}
-
-async function doStripMulti(){
-  if(!window._stripPhotoData){hideLoadingOverlay();setStatus(t('error'));return}
-  const res=await api('/api/new_multi',{uid:getUid(),strip:true});
-  hideLoadingOverlay();
-  if(!res||!res.ok){setStatus(t('error'));return}
-  gameCode=res.code;
-  localStorage.setItem('sb_game',gameCode);
-  setStatus('', '');
-  // Host commits their stake photo up-front so a strip game
-  // always has both players' photos before it begins.
-  await api('/api/upload_stake',{uid:getUid(),code:gameCode,photo:window._stripPhotoData,lang:lang});
-  await refreshState();
-  pollGame();
 }
 
 async function newMulti(strip=false){
@@ -1287,11 +1264,6 @@ async function joinByCode(code){
     localStorage.setItem('sb_game', code);
     $('actions').innerHTML = '';
     await refreshState();
-    // In strip mode the joiner must commit a stake photo before
-    // they can confirm placement.
-    if(res.state && res.state.strip && !res.state.strip_stake){
-      await captureAndUploadStake();
-    }
     pollGame();
   } else if(gameType === 'poker_dice'){
     const res = await api('/api/pd_join', {uid: getUid(), code});
