@@ -2121,18 +2121,18 @@ function pdRenderActions(st){
   el.className = 'btn-col';
   let html = '';
 
-  if(st.my_turn && !st.scored){
-    // Roll button — always visible, disabled if 0 rolls or waiting for opponent
-    const canRoll = st.rolls_left > 0;
-    const waitingForOpponent = !st.solo && !st.opponent_joined;
-    const rollDisabled = !canRoll || waitingForOpponent;
-    
-    html += `<button class="btn success" onclick="pdDoRoll()" ${rollDisabled?'disabled style="opacity:0.5"':''}>🎲 ${t('pdRoll')} (${st.rolls_left})</button>`;
-    
-    // Show invite button only if opponent hasn't joined yet
-    if(!st.solo && !st.opponent_joined){
-      html += `<button class="btn primary" onclick="sharePdGame()">📤 ${t('inviteFriend')}</button>`;
-    }
+  // Roll button — ALWAYS visible. Active only on your turn (before scoring,
+  // with rolls left and an opponent present); disabled otherwise, e.g. while
+  // it's the opponent's turn.
+  const canRoll = st.my_turn && !st.scored && st.rolls_left > 0;
+  const waitingForOpponent = !st.solo && !st.opponent_joined;
+  const rollDisabled = !canRoll || waitingForOpponent;
+  const rollCount = st.my_turn ? ` (${st.rolls_left})` : '';
+  html += `<button class="btn success" onclick="pdDoRoll()" ${rollDisabled?'disabled style="opacity:0.5"':''}>🎲 ${t('pdRoll')}${rollCount}</button>`;
+
+  // Show invite button only if opponent hasn't joined yet
+  if(st.my_turn && !st.scored && !st.solo && !st.opponent_joined){
+    html += `<button class="btn primary" onclick="sharePdGame()">📤 ${t('inviteFriend')}</button>`;
   }
   // Messaging is available only in a multiplayer game.
   if(!st.solo){
