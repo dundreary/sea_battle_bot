@@ -1919,8 +1919,10 @@ function pdRenderDice(st){
   cont.innerHTML='';
   const dice=st.dice||[];
   const diceTotal = values => values.reduce((total, value) => total + value, 0);
-  // showOpp: opponent finished their turn, now it's my turn - show what opp rolled last
-  const showOpp = st.opponent_scored && !st.scored && st.rolls_left===3;
+  // We no longer statically replay the opponent's last roll at the start of
+  // the player's turn; the throw animation already reveals it. So showOpp is
+  // disabled and the player simply sees their own (empty) tray.
+  const showOpp = false;
 
   if(st.my_turn || showOpp){
     let labelColor = 'var(--accent-primary)';
@@ -1959,8 +1961,21 @@ function pdRenderDice(st){
       }
       cont.appendChild(die);
     }
+  } else if(st.solo){
+    // Solo bot turn: don't reveal the bot's stale (previous-round) dice; they
+    // are replayed by the throw animation once the AI move is computed.
+    const label = document.createElement('div');
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
+    label.textContent = '🎲 ' + t('pdOppHand');
+    cont.appendChild(label);
+    for(let i=0;i<5;i++){
+      const die=document.createElement('div');
+      die.className='pd-dot-die';
+      die.style.cursor='default';
+      cont.appendChild(die);
+    }
   } else {
-    // The dice on screen belong to the opponent while their turn is in progress.
+    // Multiplayer: the opponent's current dice are live, show them.
     const label = document.createElement('div');
     label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
     if(st.opponent_hand_name){
@@ -2005,12 +2020,11 @@ function pdRenderDice(st){
     if(pdSeenScore === key) return false;
     pdSeenScore = key;
 
-    // Lay out the scorecard / actions for the upcoming player turn; the dice
-    // tray is then taken over by the throw-by-throw playback below.
-    pdRenderScorecard(st);
-    pdRenderActions(st);
-    pdRenderInfo(st);
-
+    // Intentionally do NOT re-render the scorecard here. The table already
+    // shows the running totals from the previous turn (rendered by pdShowGame
+    // before this animation); the bot's new score is revealed only by the
+    // pdShowGame call that follows the animation, so the dice spin to their
+    // result before the table updates.
     await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points);
     return true;
   }
@@ -2078,6 +2092,9 @@ function pdRenderDice(st){
       for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
       await _aiDelay(350);
     }
+
+    // Brief "thinking" beat before revealing the bot's chosen category.
+    await _aiDelay(800);
 
     const catNameStr = cat ? catName(cat) : '';
     label.textContent = cat
@@ -2349,7 +2366,7 @@ function resumePd(code){
 }
 
 // ---- Checkers ----
-let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='';
+let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='', ckHint=null;
 
 const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
 
@@ -2475,6 +2492,7 @@ function ckShowGame(st){
   ckState=st;
   showIncomingMessages(st.messages);
   ckSelected=null;
+  ckHint=null;
   hideAllGameAreas();
   $('ckArea').style.display='';
   setThemeSelectorVisibility(false);
@@ -2584,6 +2602,10 @@ function ckRenderBoard(st){
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
       }
+      if(ckHint){
+        if(ckHint[0]===r && ckHint[1]===c) cell.classList.add('highlight-src');
+        if(ckHint[2]===r && ckHint[3]===c) cell.classList.add('highlight-capture');
+      }
       board.appendChild(cell);
     }
   }
@@ -2626,6 +2648,7 @@ async function ckCellClick(r,c){
   const color=piece===1||piece===3?1:2;
   if(color!==ckState.turn)return;
   ckSelected=[r,c];
+  ckHint=null;
   ckRenderBoard(ckState);
 }
 
@@ -2647,13 +2670,13 @@ async function ckGetHint(){
   const flip = ckState && ckState.my_color === 2;
   let sr=h.start[0], sc=h.start[1], er=h.end[0], ec=h.end[1];
   if(flip){ sr=7-sr; sc=7-sc; er=7-er; ec=7-ec; }
-  ckSelected=[sr,sc];
+  // Highlight only the suggested move (source in blue, destination in red)
+  // instead of selecting the piece, which would also reveal every legal
+  // destination and look like several moves at once.
+  ckSelected=null;
+  ckHint=[sr,sc,er,ec];
   setStatus('💡 '+String.fromCharCode(65+ec)+(8-er),'');
   ckRenderBoard(ckState);
-  // Highlight the hint destination
-  const cells=$('ckBoard').children;
-  const idx=er*8+ec;
-  if(cells[idx])cells[idx].classList.add('highlight-capture');
 }
 
 function leaveCkGame(){
