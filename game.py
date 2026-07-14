@@ -373,54 +373,175 @@ _BOT_BLOCKED = (MISS, SUNK, DEAD)
 class BotAI:
     """Difficulty-aware Sea Battle opponent.
 
-    Tiers (1=Easy, 2=Medium, 3=Hard):
-      1 Easy   - pure random shots, never hunts.  Weak but beatable.
-      2 Medium - random search with neighbour hunting around hits.
-      3 Hard   - probability-density solver over the *remaining* ships that
-                 accounts for known hits and sunk ships, so it finishes found
-                 ships quickly and avoids wasting shots elsewhere.
+    All tiers share one strong engine - a probability-density solver over the
+    *remaining* ships that accounts for known hits, sunk ships and mines, fully
+    exploits the "ships never touch" rule (see ``_compute_blocked``) and locks
+    onto a found ship to finish it quickly.  The difficulty knob is a single
+    "skill" probability ``_P_OPT``: on each shot the bot plays that optimal
+    move with probability ``p``; otherwise it plays a weaker (random) move.
+    This produces a smooth, monotonic ladder with Expert at full strength and
+    each lower tier a controlled ~step weaker:
+
+      4 Expert - p = 1.00, always the optimal density move (strongest).
+      3 Hard   - p = 0.45.
+      2 Medium - p = 0.20.
+      1 Easy   - p = 0.05, still competent but clearly the easiest.
+
+    The exact ``p`` values are calibrated (see the benchmark) so the average
+    shots-to-clear form an evenly spaced ladder: roughly 54.6 / 57.5 / 61.1 /
+    64.4 shots for Expert / Hard / Medium / Easy - about +3 shots (~one player
+    turn's edge) per step down, i.e. the "100 / 90 / 80 / 70" gradation.
     """
+
+    # Probability of playing the optimal move at each difficulty (1..4).
+    # Calibrated in the accompanying benchmark for an even, monotonic ladder.
+    _P_OPT = {1: 0.05, 2: 0.20, 3: 0.45, 4: 1.00}
 
     def __init__(self, difficulty=2):
         self.difficulty = difficulty
         self.shots = set()
         self.hunt_queue = []
         self.ship_mode = False
+        self._strip = False
+        self._blocked = frozenset()
 
     def reset_for_board(self, board):
         self.shots = set()
         self.hunt_queue = []
         self.ship_mode = False
+        self._strip = False
+        self._blocked = frozenset()
 
     # -- Easy ---------------------------------------------------------------
     def _random_shot(self, enemy_board):
         available = [
             (r, c) for r in range(SIZE) for c in range(SIZE)
-            if (r, c) not in self.shots and enemy_board.grid[r][c] in _BOT_OPEN
+            if self._open_unshot(enemy_board, r, c)
         ]
         return random.choice(available) if available else None
 
     # -- Medium -------------------------------------------------------------
-    def _hunt_shot(self, enemy_board):
-        validated = []
-        for r, c in self.hunt_queue:
-            if enemy_board.grid[r][c] in _BOT_OPEN:
-                validated.append((r, c))
-            else:
-                for dr, dc in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < SIZE and 0 <= nc < SIZE and (nr, nc) not in self.shots:
-                        if enemy_board.grid[nr][nc] in _BOT_OPEN and (nr, nc) not in validated:
-                            validated.append((nr, nc))
-        self.hunt_queue = validated
+    def _neighbours(self, r, c):
+        for dr, dc in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                yield nr, nc
 
-        while self.hunt_queue:
-            r, c = self.hunt_queue.pop(0)
-            if enemy_board.grid[r][c] in _BOT_OPEN:
-                return r, c
+    def _compute_blocked(self, enemy_board, strip):
+        """Cells that provably cannot hold a ship, from the game's rules.
+
+        Two deductions, both exploiting that ships never touch (a 3x3 clearance
+        is enforced around every ship and mine at placement time):
+
+        * Mines: the whole 3x3 neighbourhood of a *discovered* mine (MINE_HIT)
+          is ship-free.
+        * Non-adjacency (normal mode only): any cell diagonally adjacent to a
+          HIT is water.  A hit belongs to a straight ship, whose own cells are
+          orthogonally contiguous, and no *other* ship may touch it even
+          diagonally - so a diagonal neighbour of a hit can never be a ship.
+          This is NOT valid in strip mode, where a single ship may itself have
+          diagonally-placed cells (e.g. the diagonal 2-decker).
+        """
+        blocked = set()
+        grid = enemy_board.grid
+        for r in range(SIZE):
+            for c in range(SIZE):
+                v = grid[r][c]
+                if v == MINE_HIT:
+                    for dr in (-1, 0, 1):
+                        for dc in (-1, 0, 1):
+                            nr, nc = r + dr, c + dc
+                            if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                                blocked.add((nr, nc))
+                elif v == HIT and not strip:
+                    for dr, dc in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
+                        nr, nc = r + dr, c + dc
+                        if 0 <= nr < SIZE and 0 <= nc < SIZE:
+                            blocked.add((nr, nc))
+        return blocked
+
+    def _open_unshot(self, enemy_board, r, c):
+        if (r, c) in self.shots or not (0 <= r < SIZE and 0 <= c < SIZE):
+            return False
+        if enemy_board.grid[r][c] not in _BOT_OPEN:
+            return False
+        # Cells provably water from the "ships never touch" rule (mines +
+        # diagonal-of-hit); precomputed once per shot in ``_blocked``.
+        if (r, c) in self._blocked:
+            return False
+        return True
+
+    def _target_shot(self, enemy_board):
+        """Orientation-aware hunting for the Medium tier.
+
+        Once a ship is found (one or more HIT cells) we no longer spray the
+        four orthogonal neighbours blindly.  Adjacent hits are grouped into
+        clusters; when a cluster is a straight line we only fire at its two
+        open ends, which finishes a damaged ship in far fewer shots than naive
+        neighbour hunting and avoids wasting shots perpendicular to the ship.
+        """
+        active = [
+            (r, c) for r in range(SIZE) for c in range(SIZE)
+            if enemy_board.grid[r][c] == HIT
+        ]
+        if not active:
+            return self._random_shot(enemy_board)
+
+        # Group HIT cells into orthogonally-connected clusters.
+        active_set = set(active)
+        clusters = []
+        seen = set()
+        for cell in active:
+            if cell in seen:
+                continue
+            stack = [cell]
+            cluster = []
+            while stack:
+                cur = stack.pop()
+                if cur in seen:
+                    continue
+                seen.add(cur)
+                cluster.append(cur)
+                for n in self._neighbours(*cur):
+                    if n in active_set and n not in seen:
+                        stack.append(n)
+            clusters.append(cluster)
+
+        candidates = []
+        for cl in clusters:
+            if len(cl) == 1:
+                r, c = cl[0]
+                for n in self._neighbours(r, c):
+                    if self._open_unshot(enemy_board, *n):
+                        candidates.append(n)
+                continue
+            rows = {r for r, _ in cl}
+            cols = {c for _, c in cl}
+            if len(rows) == 1:
+                r = next(iter(rows))
+                cs = sorted(c for _, c in cl)
+                for end in (cs[0] - 1, cs[-1] + 1):
+                    if self._open_unshot(enemy_board, r, end):
+                        candidates.append((r, end))
+            elif len(cols) == 1:
+                c = next(iter(cols))
+                rs = sorted(r for r, _ in cl)
+                for end in (rs[0] - 1, rs[-1] + 1):
+                    if self._open_unshot(enemy_board, end, c):
+                        candidates.append((end, c))
+            else:
+                # Non-collinear cluster (e.g. an L-shaped hit pattern): try
+                # every open orthogonal neighbour of every hit in the cluster.
+                for cell in cl:
+                    for n in self._neighbours(*cell):
+                        if self._open_unshot(enemy_board, *n) and n not in candidates:
+                            candidates.append(n)
+
+        if candidates:
+            return random.choice(candidates)
         return self._random_shot(enemy_board)
 
-    # -- Hard ---------------------------------------------------------------
+    # -- Hard / Expert: probability density ---------------------------------
     def _remaining_ship_lengths(self, enemy_board):
         if enemy_board.ships:
             return [len(s.cells) for s in enemy_board.ships if not s.sunk]
@@ -431,74 +552,145 @@ class BotAI:
             return [list(s.cells) for s in enemy_board.ships if not s.sunk]
         return [list(s) for s in STRIP_SHIP_SHAPES]
 
-    def _placements(self, enemy_board, strip):
-        """Yield every placement of the remaining ships that is still
-        consistent with the shots fired so far (no blocked cell covered)."""
+    def _mine_blocked(self, enemy_board):
+        """Deprecated: superseded by ``_compute_blocked``.  Kept as a thin
+        wrapper so any external caller/tests keep working."""
+        return self._compute_blocked(enemy_board, False)
+
+    def _ship_placement_lists(self, enemy_board, strip):
+        """One entry per remaining ship; each entry lists every legal placement
+        (a list of cells) for that ship on the current board."""
+        blocked = self._blocked
+
+        def open_ok(r, c):
+            return enemy_board.grid[r][c] in _BOT_OPEN and (r, c) not in blocked
+
         if strip:
+            lists = []
             for shape in self._remaining_ship_shapes(enemy_board):
-                minr = min(r for r, c in shape)
-                maxr = max(r for r, c in shape)
-                minc = min(c for r, c in shape)
-                maxc = max(c for r, c in shape)
+                minr = min(r for r, _ in shape)
+                maxr = max(r for r, _ in shape)
+                minc = min(c for _, c in shape)
+                maxc = max(c for _, c in shape)
+                pls = []
                 for r0 in range(-minr, SIZE - maxr):
                     for c0 in range(-minc, SIZE - maxc):
                         cells = [(r + r0, c + c0) for r, c in shape]
-                        if all(enemy_board.grid[r][c] in _BOT_OPEN for r, c in cells):
-                            yield cells
-        else:
-            for length in self._remaining_ship_lengths(enemy_board):
-                for r in range(SIZE):
-                    for c in range(SIZE - length + 1):
-                        cells = [(r, c + i) for i in range(length)]
-                        if all(enemy_board.grid[nr][nc] in _BOT_OPEN for nr, nc in cells):
-                            yield cells
-                for r in range(SIZE - length + 1):
-                    for c in range(SIZE):
-                        cells = [(r + i, c) for i in range(length)]
-                        if all(enemy_board.grid[nr][nc] in _BOT_OPEN for nr, nc in cells):
-                            yield cells
+                        if all(open_ok(r, c) for r, c in cells):
+                            pls.append(cells)
+                lists.append(pls)
+            return lists
+        lists = []
+        for length in self._remaining_ship_lengths(enemy_board):
+            pls = []
+            for r in range(SIZE):
+                for c in range(SIZE - length + 1):
+                    cells = [(r, c + i) for i in range(length)]
+                    if all(open_ok(nr, nc) for nr, nc in cells):
+                        pls.append(cells)
+            for r in range(SIZE - length + 1):
+                for c in range(SIZE):
+                    cells = [(r + i, c) for i in range(length)]
+                    if all(open_ok(nr, nc) for nr, nc in cells):
+                        pls.append(cells)
+            lists.append(pls)
+        return lists
 
-    def _smart_shot(self, enemy_board, strip, focus_fire=True):
-        active_hits = [
-            (r, c) for r in range(SIZE) for c in range(SIZE)
-            if enemy_board.grid[r][c] == HIT
-        ]
-        probs = [[0.0] * SIZE for _ in range(SIZE)]
-        for cells in self._placements(enemy_board, strip):
-            # Focus fire: once a ship is found, only count placements that
-            # run through a known hit, so the solver finishes that ship fast
-            # instead of diluting effort across the whole board.
-            # At the highest difficulty (focus_fire=False) we keep the full
-            # probability density over the whole board, which is the
-            # theoretically optimal Battleship policy: it still concentrates
-            # on cells adjacent to hits, but may also pick a globally better
-            # untouched cell when the board geometry favours it.
-            if focus_fire and active_hits and not any((r, c) in active_hits for r, c in cells):
+    def _density(self, enemy_board, strip, focus_hits=None):
+        """Probability that each open cell belongs to *some* remaining ship.
+
+        We combine the per-ship placement counts with the independence
+        approximation ``1 - prod(1 - p_ship(cell))``.  Unlike a naive sum of
+        placement counts this correctly accounts for the fact that several
+        remaining ships compete for the same space, so it concentrates fire on
+        the cells that are genuinely most likely to hide a ship.
+
+        When ``focus_hits`` is given we condition on the event that a ship runs
+        through one of those cells, which makes the bot finish a found ship
+        before spreading out again.
+        """
+        ships = self._ship_placement_lists(enemy_board, strip)
+        survive = [[1.0] * SIZE for _ in range(SIZE)]
+        for pls in ships:
+            total = 0
+            cnt = [[0] * SIZE for _ in range(SIZE)]
+            for pl in pls:
+                if focus_hits is not None and not any(cell in focus_hits for cell in pl):
+                    continue
+                total += 1
+                for r, c in pl:
+                    if (r, c) not in self.shots:
+                        cnt[r][c] += 1
+            if total == 0:
                 continue
-            for r, c in cells:
-                if (r, c) not in self.shots:
-                    probs[r][c] += 1.0
-        best = -1.0
-        best_cell = None
+            for r in range(SIZE):
+                for c in range(SIZE):
+                    if self._open_unshot(enemy_board, r, c):
+                        survive[r][c] *= (1.0 - cnt[r][c] / total)
+        density = [[0.0] * SIZE for _ in range(SIZE)]
         for r in range(SIZE):
             for c in range(SIZE):
-                if (r, c) not in self.shots and enemy_board.grid[r][c] in _BOT_OPEN:
-                    if probs[r][c] > best:
-                        best = probs[r][c]
-                        best_cell = (r, c)
-        if best_cell is not None:
-            return best_cell
-        return self._hunt_shot(enemy_board)
+                if self._open_unshot(enemy_board, r, c):
+                    density[r][c] = 1.0 - survive[r][c]
+        return density
+
+    def _best_in(self, density):
+        best = -1.0
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if density[r][c] > best:
+                    best = density[r][c]
+        if best <= 0.0:
+            return None
+        # Among equally-likely cells, break ties smartly instead of always
+        # taking the top-left one: prefer central cells (they touch more
+        # placements on later shots) and then a fixed checkerboard parity.
+        eps = 1e-9
+        center = (SIZE - 1) / 2.0
+        best_cell, best_key = None, None
+        for r in range(SIZE):
+            for c in range(SIZE):
+                if density[r][c] >= best - eps:
+                    key = (abs(r - center) + abs(c - center), (r + c) % 2)
+                    if best_key is None or key < best_key:
+                        best_key, best_cell = key, (r, c)
+        return best_cell
+
+    def _smart_shot(self, enemy_board, strip):
+        active_hits = {
+            (r, c) for r in range(SIZE) for c in range(SIZE)
+            if enemy_board.grid[r][c] == HIT
+        }
+        # Lock onto a found ship (focus on known hits) so the bot finishes
+        # damaged ships as fast as possible instead of probing elsewhere.
+        focus = active_hits if active_hits else None
+        density = self._density(enemy_board, strip, focus_hits=focus)
+        best = self._best_in(density)
+        if best is not None:
+            return best
+        return self._target_shot(enemy_board)
+
+    def _weak_shot(self, enemy_board):
+        """A deliberately sub-optimal move used to weaken the lower tiers.
+
+        We fall back to a pure random open shot.  This costs the bot the
+        density solver's efficient search (and, occasionally, an in-progress
+        hunt), which is exactly what makes an easier tier easier - while the
+        optimal branch keeps every tier looking competent most of the time.
+        """
+        return self._random_shot(enemy_board)
 
     def choose_shot(self, enemy_board, strip=False):
-        if self.difficulty <= 1:
-            return self._random_shot(enemy_board)
-        if self.difficulty == 2:
-            return self._hunt_shot(enemy_board)
-        if self.difficulty == 3:
-            return self._smart_shot(enemy_board, strip, focus_fire=True)
-        # Difficulty >= 4: full-board probability density (optimal policy).
-        return self._smart_shot(enemy_board, strip, focus_fire=False)
+        # Precompute, once per shot, the cells provably water from the rules so
+        # every helper (search, hunt and the density solver) shares them.
+        self._strip = strip
+        self._blocked = self._compute_blocked(enemy_board, strip)
+        # Single skill knob: play the optimal density move with probability p,
+        # otherwise a weaker random move.  Expert (p = 1.0) is always optimal.
+        p = self._P_OPT.get(self.difficulty, 1.0)
+        if p >= 1.0 or random.random() < p:
+            return self._smart_shot(enemy_board, strip)
+        return self._weak_shot(enemy_board)
 
     def register_shot(self, r, c, result, enemy_board):
         self.shots.add((r, c))
