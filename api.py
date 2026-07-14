@@ -3,7 +3,11 @@ import logging
 import time
 from typing import Dict, Any, Callable
 
-from game import Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, EMPTY, auto_place_ships, auto_place_strip_ships
+from game import (
+    Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, EMPTY,
+    auto_place_ships, auto_place_strip_ships,
+    auto_place_ships_adversarial, auto_place_strip_ships_adversarial,
+)
 from poker_dice import PokerDiceGame as PDGame
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from backgammon import BackgammonGame as BGGame
@@ -210,9 +214,9 @@ def new_solo(uid, strip=False, difficulty=2):
     game.player2_id = 0
     game.phase = "placing"
     if strip:
-        auto_place_strip_ships(game.board2)
+        auto_place_strip_ships_adversarial(game.board2, difficulty)
     else:
-        auto_place_ships(game.board2)
+        auto_place_ships_adversarial(game.board2, difficulty)
     game.ready[2] = True
     return game
 
