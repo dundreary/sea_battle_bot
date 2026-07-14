@@ -424,6 +424,14 @@ class PokerDiceGame(BaseGame):
         p['dice_history'] = []
         p['roll_history'] = []
 
+    def apply_first_roll(self, pnum: int) -> Optional[Dict]:
+        """Opening-roll wrapper: the winner takes the first scoring turn."""
+        res = self.roll_for_first(pnum)
+        if res and res.get("winner"):
+            self.turn = res["winner"]
+            self.phase = "playing"
+        return res
+
     def roll(self, uid: int, keep_indices: Optional[List[int]] = None) -> Optional[Dict]:
         pnum = self.player_num(uid)
         if pnum is None or pnum != self.turn or self.phase != 'playing':
@@ -694,6 +702,10 @@ class PokerDiceGame(BaseGame):
             'dice_history': p['dice_history'] if my_turn else opp['dice_history'],
             'my_roll_history': p['roll_history'],
             'opponent_roll_history': opp['roll_history'],
+            'my_roll': self.first_roll.get(pnum),
+            'opp_roll': (self.first_roll.get(3 - pnum)
+                         if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
+                         else None),
         }
 
     def surrender(self, uid: int) -> Optional[Dict]:
@@ -717,6 +729,7 @@ class PokerDiceGame(BaseGame):
             'phase': self.phase,
             'turn': self.turn,
             'surrendered': self.surrendered,
+            'first_roll': self.first_roll_dict(),
             'players': {
                 str(k): {
                     'dice': list(v['dice']),

@@ -198,6 +198,14 @@ class Game(BaseGame):
     def switch_turn(self):
         self.turn = 3 - self.turn
 
+    def apply_first_roll(self, pnum):
+        """Opening-roll wrapper: a decisive roll makes the winner move first."""
+        res = self.roll_for_first(pnum)
+        if res and res.get("winner"):
+            self.turn = res["winner"]
+            self.phase = "playing"
+        return res
+
     def current_player(self):
         return self.player1_id if self.turn == 1 else self.player2_id
 
@@ -243,6 +251,7 @@ class Game(BaseGame):
         self.phase = "placing"
         self.ready = {1: False, 2: False}
         self.rematch = {1: False, 2: False}
+        self.reset_first_roll()
         if self.strip:
             self.strip_stakes = {1: "", 2: ""}
         if self.solo:
@@ -281,6 +290,7 @@ class Game(BaseGame):
             'phase': self.phase,
             'ready': {str(k): v for k, v in self.ready.items()},
             'rematch': {str(k): v for k, v in self.rematch.items()},
+            'first_roll': self.first_roll_dict(),
             'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
         }
 
@@ -296,6 +306,7 @@ class Game(BaseGame):
         game.phase = data['phase']
         game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
         game.rematch = {int(k): v for k, v in data.get('rematch', {1: False, 2: False}).items()}
+        game.restore_first_roll(data)
         if data.get('bot_ai'):
             game.bot_ai = BotAI.from_dict(data['bot_ai'])
         elif game.solo:

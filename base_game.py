@@ -1,6 +1,12 @@
+import random
 import time
 
 from utils import make_game_code
+
+# Shared phase used by every game while the two human players roll a die to
+# decide who moves first.  A decisive roll advances the game into its own
+# "playing" phase.
+ROLL_PHASE = "roll"
 
 
 class BaseGame:
@@ -19,6 +25,9 @@ class BaseGame:
         self.solo = solo
         self.difficulty = difficulty
         self.created_at = time.time()
+        # Opening dice roll to decide who moves first (multiplayer only).
+        # None = that player has not rolled yet.
+        self.first_roll = {1: None, 2: None}
         # Ephemeral delivery state: intentionally excluded from persistence.
         self.last_activity = {}
         self.notification_events = set()
@@ -28,6 +37,47 @@ class BaseGame:
 
     def opponent_id(self, uid):
         return self.player2_id if uid == self.player1_id else self.player1_id
+
+    def reset_first_roll(self):
+        self.first_roll = {1: None, 2: None}
+
+    def roll_for_first(self, pnum):
+        """Record player ``pnum``'s opening die (1-6) and report the outcome.
+
+        Ties clear both dice so the players roll again.  Returns a dict:
+          {"my": int, "opp": int|None, "both": bool, "tie": bool,
+           "winner": 1|2|None}
+        ``winner`` is set only once both players have rolled distinct values;
+        the caller is responsible for turning that into its own turn/phase.
+        """
+        if pnum not in (1, 2):
+            return None
+        if self.first_roll.get(pnum) is None:
+            self.first_roll[pnum] = random.randint(1, 6)
+        r1, r2 = self.first_roll[1], self.first_roll[2]
+        both = r1 is not None and r2 is not None
+        winner = None
+        tie = False
+        if both:
+            if r1 == r2:
+                tie = True
+                self.reset_first_roll()
+            else:
+                winner = 1 if r1 > r2 else 2
+        return {
+            "my": self.first_roll.get(pnum) if not tie else None,
+            "opp": self.first_roll.get(3 - pnum) if (both and not tie) else None,
+            "both": both,
+            "tie": tie,
+            "winner": winner,
+        }
+
+    def first_roll_dict(self):
+        return {str(k): v for k, v in self.first_roll.items()}
+
+    def restore_first_roll(self, data):
+        fr = data.get("first_roll") or {}
+        self.first_roll = {1: fr.get("1", fr.get(1)), 2: fr.get("2", fr.get(2))}
 
     @staticmethod
     def generate_code():
@@ -41,6 +91,7 @@ class BaseGame:
             'solo': self.solo,
             'difficulty': self.difficulty,
             'created_at': self.created_at,
+            'first_roll': self.first_roll_dict(),
         }
 
     def _from_dict_common(self, data):
@@ -50,6 +101,7 @@ class BaseGame:
         self.solo = data.get('solo', False)
         self.difficulty = data.get('difficulty', 2)
         self.created_at = data.get('created_at', 0)
+        self.restore_first_roll(data)
         # Ephemeral delivery state is reset after a restart.
         self.last_activity = {}
         self.notification_events = set()

@@ -415,6 +415,13 @@ const LANG = {
     placing: '🚢 Расстановка — крути, пока не устроит',
     reroll: '🔀 Переставить',
     confirm: '✅ ОК, начинаем!',
+    rollTitle: 'Бросьте кубик — кто больше, тот ходит первым',
+    rollBtn: 'Бросить кубик',
+    rollYou: 'Ваш бросок',
+    rollWait: 'Ожидание броска соперника…',
+    rollWin: '🎉 Вы ходите первым!',
+    rollLose: 'Соперник ходит первым',
+    rollTie: '🤝 Ничья — бросайте ещё раз!',
     again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
     yourTurn: '⚓ ТВОЙ ХОД!',
     oppTurn: '⏳ ХОД СОПЕРНИКА...',
@@ -544,6 +551,13 @@ const LANG = {
     placing: '🚢 Розстановка — крути, поки не сподобається',
     reroll: '🔀 Переставити',
     confirm: '✅ ОК, починаємо!',
+    rollTitle: 'Киньте кубик — хто більше, той ходить першим',
+    rollBtn: 'Кинути кубик',
+    rollYou: 'Ваш кидок',
+    rollWait: 'Очікування кидка суперника…',
+    rollWin: '🎉 Ви ходите першим!',
+    rollLose: 'Суперник ходить першим',
+    rollTie: '🤝 Нічия — киньте ще раз!',
     again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
     yourTurn: '⚓ ТВІЙ ХІД!',
     oppTurn: '⏳ ХІД СУПЕРНИКА...',
@@ -673,6 +687,13 @@ const LANG = {
     placing: '🚢 Place ships — reroll until you like it',
     reroll: '🔀 Reroll',
     confirm: '✅ OK, start!',
+    rollTitle: 'Roll a die — higher goes first',
+    rollBtn: 'Roll die',
+    rollYou: 'Your roll',
+    rollWait: 'Waiting for opponent to roll…',
+    rollWin: '🎉 You go first!',
+    rollLose: 'Opponent goes first',
+    rollTie: '🤝 Tie — roll again!',
     again: '🔄 Again? Press «OK» when ready',
     yourTurn: '⚓ YOUR TURN!',
     oppTurn: '⏳ OPPONENT\'S TURN...',
@@ -1019,6 +1040,47 @@ function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
   $('shipHint').innerHTML = '';
 }
 
+// ---- Opening dice roll (multiplayer: decides who moves first) --------------
+function diceFace(n){ return ['','⚀','⚁','⚂','⚃','⚄','⚅'][n] || '🎲'; }
+
+function firstRollHTML(s, rollFn){
+  const wrap = (inner)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 8px">${inner}</div>`;
+  const die = (n)=>`<span class="roll-die" style="font-size:64px;line-height:1">${n?diceFace(n):'🎲'}</span>`;
+  if(s.my_roll==null){
+    return wrap(`<div style="font-weight:600;text-align:center">${t('rollTitle')}</div>
+      ${die(0)}
+      <button class="btn primary" id="rollBtn" onclick="${rollFn}()">🎲 ${t('rollBtn')}</button>`);
+  }
+  if(s.opp_roll==null){
+    return wrap(`${die(s.my_roll)}
+      <div><b>${t('rollYou')}: ${s.my_roll}</b></div>
+      <div style="opacity:.7">${t('rollWait')}</div>`);
+  }
+  const won = s.my_roll > s.opp_roll;
+  return wrap(`<div style="display:flex;gap:28px;align-items:center">
+      <div style="text-align:center">${die(s.my_roll)}<div style="font-size:12px;opacity:.7">${t('rollYou')}</div></div>
+      <div style="font-size:26px;opacity:.5">:</div>
+      <div style="text-align:center">${die(s.opp_roll)}<div style="font-size:12px;opacity:.7">🎯</div></div>
+    </div>
+    <div style="font-weight:700">${won ? t('rollWin') : t('rollLose')}</div>`);
+}
+
+async function doFirstRoll(endpoint, codeVal, refreshFn){
+  const btn = document.getElementById('rollBtn');
+  if(btn) btn.disabled = true;
+  const dieEl = document.querySelector('.roll-die');
+  let anim = null;
+  if(dieEl){ anim = setInterval(()=>{ dieEl.textContent = diceFace(1 + Math.floor(Math.random()*6)); }, 80); }
+  try{ sfxClick(); }catch(e){}
+  const res = await api(endpoint, {uid:getUid(), code:codeVal});
+  if(anim) clearInterval(anim);
+  if(res && res.ok && res.roll && res.roll.tie){ setStatus(t('rollTie'), ''); }
+  await refreshFn();
+}
+function rollFirst(){ return doFirstRoll('/api/roll_first', gameCode, refreshState); }
+function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
+function pdRollFirst(){ return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState); }
+
 function updateUI(){
   if(!state)return;
   const s=state;
@@ -1138,6 +1200,19 @@ function updateUI(){
     return;
   }
   $('shipHint').innerHTML = '';
+
+  if(s.phase==='roll'){
+    ownEl.classList.remove('my-turn');
+    oppEl.classList.remove('my-turn');
+    $('oppBoardWrap').style.display='none';
+    $('app').insertBefore($('status'), $('app').firstChild);
+    setStatus('🎲 '+t('rollTitle'),'');
+    $('actions').className='btn-col';
+    $('actions').innerHTML = firstRollHTML(s, 'rollFirst') +
+      `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
+    setThemeSelectorVisibility(false);
+    return;
+  }
 
   $('oppBoardWrap').style.display='block';
   setThemeSelectorVisibility(true);
@@ -1841,6 +1916,15 @@ function pdShowGame(st){
     return;
   }
 
+  if(st.phase==='roll'){
+    $('pdScorecardContainer').innerHTML='';
+    $('pdScorecardContainer').style.minHeight='';
+    $('pdDice').innerHTML = firstRollHTML(st, 'pdRollFirst');
+    $('pdActions').innerHTML = `<button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>`;
+    setStatus('🎲 '+t('rollTitle'),'');
+    return;
+  }
+
   // Clear kept dice when it's a fresh turn, scored, or no rolls left
   if(!st.dice || st.dice.length === 0 || st.scored || (st.rolls_left === 0 && st.my_turn)){
     pdKept = new Set();
@@ -2520,6 +2604,12 @@ function ckShowGame(st){
   const el=$('ckActions');
    el.className='btn-col';
   let html='';
+  if(st.phase==='roll'){
+    setStatus('🎲 '+t('rollTitle'),'');
+    el.innerHTML = firstRollHTML(st, 'ckRollFirst') +
+      `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+    return;
+  }
   if(st.my_turn){
     setStatus('♟ '+{ru:'ТВОЙ ХОД!',uk:'ТВІЙ ХІД!',en:'YOUR TURN!'}[lang],'battle');
     const inviteBtn=st.solo||st.opponent_joined?'':`<button class="btn primary" onclick="shareCkGame()">📤 ${t('ckInviteFriend')}</button>`;

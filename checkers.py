@@ -218,6 +218,14 @@ class CheckersGame(BaseGame):
     def switch_turn(self):
         self.turn = opponent(self.turn)
 
+    def apply_first_roll(self, pnum):
+        """Opening-roll wrapper: the winner moves first (regardless of colour)."""
+        res = self.roll_for_first(pnum)
+        if res and res.get("winner"):
+            self.turn = WHITE if res["winner"] == 1 else BLACK
+            self.phase = "playing"
+        return res
+
     def _position_key(self):
         # A position is the board configuration together with the side to move.
         return (tuple(board_to_dict(self.board)), self.turn)
@@ -296,6 +304,10 @@ class CheckersGame(BaseGame):
             "you": uid,
             "solo": self.solo,
             "opponent_joined": self.player2_id is not None,
+            "my_roll": self.first_roll.get(self.player_num(uid)),
+            "opp_roll": (self.first_roll.get(3 - self.player_num(uid))
+                         if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
+                         else None),
             "winner": self.winner,
             "draw": self.draw,
             "last_move": self.last_move,
@@ -330,6 +342,7 @@ class CheckersGame(BaseGame):
             "no_progress_plies": self.no_progress_plies,
             "last_move": self.last_move,
             "created_at": self.created_at,
+            "first_roll": self.first_roll_dict(),
             # Repetition history, so threefold-draw detection survives a
             # restart. Position key is (flattened_board, side_to_move).
             "seen": [[list(k[0]), k[1], v] for k, v in self._seen.items()],

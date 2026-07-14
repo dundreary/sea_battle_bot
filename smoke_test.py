@@ -57,6 +57,25 @@ msg = unwrap(api._handle_message_opponent(
     {"code": code_m, "game": "sea_battle", "message": "hi there"}, uidA, code_m))
 check(msg.get("ok") or isinstance(msg, dict), "message_opponent")
 
+print("Sea Battle (multi opening dice roll decides first move):")
+uidA, uidB = 2101, 2102
+code_r = unwrap(api._handle_new_multi({"strip": False}, uidA, None))["code"]
+unwrap(api._handle_join({"code": code_r}, uidB, code_r))
+for u in (uidA, uidB):
+    unwrap(api._handle_place_auto({"code": code_r}, u, code_r))
+    unwrap(api._handle_confirm({"code": code_r}, u, code_r))
+st = unwrap(api._handle_state({"code": code_r}, uidA, code_r))["state"]
+check(st["phase"] == "roll", "enters roll phase after both confirm")
+started = False
+for _ in range(60):
+    unwrap(api._handle_roll_first({"code": code_r}, uidA, code_r))
+    unwrap(api._handle_roll_first({"code": code_r}, uidB, code_r))
+    st = unwrap(api._handle_state({"code": code_r}, uidA, code_r))["state"]
+    if st["phase"] == "playing":
+        started = True
+        break
+check(started and st["turn"] in (1, 2), "roll decides first turn -> playing")
+
 print("Checkers (solo move + AI reply + hint):")
 uid = 3001
 res = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid, None))
@@ -75,6 +94,16 @@ join = unwrap(api._handle_checkers_join({"code": code_ckm}, uidB, code_ckm))
 check(join.get("ok"), "checkers join")
 state = unwrap(api._handle_checkers_state({"code": code_ckm}, uidB, code_ckm))
 check(state.get("ok"), "checkers state")
+check(state["state"]["phase"] == "roll", "checkers enters roll phase on join")
+started = False
+for _ in range(60):
+    api._handle_checkers_roll_first({"code": code_ckm}, uidA, code_ckm)
+    api._handle_checkers_roll_first({"code": code_ckm}, uidB, code_ckm)
+    st = unwrap(api._handle_checkers_state({"code": code_ckm}, uidA, code_ckm))["state"]
+    if st["phase"] == "playing":
+        started = True
+        break
+check(started, "checkers roll decides first move -> playing")
 
 print("Poker Dice (solo roll + score):")
 uid = 4001
@@ -84,6 +113,22 @@ out = api._handle_pd_roll({"code": code_pd, "keep": []}, uid, code_pd)
 check(unwrap(out).get("ok"), "poker dice roll")
 out = api._handle_pd_score({"code": code_pd, "category": "chance"}, uid, code_pd)
 check(unwrap(out).get("ok"), "poker dice score")
+
+print("Poker Dice (multi opening dice roll decides first move):")
+uidA, uidB = 4101, 4102
+code_pdm = unwrap(api._handle_pd_new_multi({"difficulty": 3}, uidA, None))["code"]
+unwrap(api._handle_pd_join({"code": code_pdm}, uidB, code_pdm))
+st = unwrap(api._handle_pd_state({"code": code_pdm}, uidA, code_pdm))["state"]
+check(st["phase"] == "roll", "poker enters roll phase on join")
+started = False
+for _ in range(60):
+    api._handle_pd_roll_first({"code": code_pdm}, uidA, code_pdm)
+    api._handle_pd_roll_first({"code": code_pdm}, uidB, code_pdm)
+    st = unwrap(api._handle_pd_state({"code": code_pdm}, uidA, code_pdm))["state"]
+    if st["phase"] == "playing":
+        started = True
+        break
+check(started and st["turn"] in (1, 2), "poker roll decides first turn -> playing")
 
 print("Backgammon (solo roll + move + bot reply):")
 uid = 5001

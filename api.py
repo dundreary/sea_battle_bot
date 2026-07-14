@@ -77,11 +77,13 @@ def _register_new_game(games_dict, player_games_dict, game, state):
     return {"ok": True, "code": game.code, "state": state}
 
 
-def _join_game(games_dict, player_games_dict, code, uid, text, event, state_fn):
+def _join_game(games_dict, player_games_dict, code, uid, text, event, state_fn, start_roll=False):
     """Shared join logic for the method-based games (checkers/poker/backgammon).
 
     ``state_fn(game, uid)`` produces the state object returned to the joiner,
     because each game exposes its state under a different key (uid vs pnum).
+    When ``start_roll`` is set, the game enters the opening dice-roll phase as
+    the second player joins (used by checkers/poker to decide who goes first).
     """
     game, err = _get_game(games_dict, code, uid)
     if err:
@@ -93,6 +95,9 @@ def _join_game(games_dict, player_games_dict, code, uid, text, event, state_fn):
     if game.player2_id == uid:
         return {"ok": False, "error": "already_joined"}
     game.player2_id = uid
+    if start_roll:
+        game.phase = "roll"
+        game.reset_first_roll()
     player_games_dict[str(uid)] = code
     _mark_active(game, uid)
     save()
@@ -192,6 +197,12 @@ def as_dict(game, uid):
         "my_turn": game.current_player() == uid,
         "ready": game.ready,
         "rematch": game.rematch,
+        # Opening dice roll (multiplayer): each player's die, opponent's shown
+        # only once both have rolled.
+        "my_roll": game.first_roll.get(pnum),
+        "opp_roll": (game.first_roll.get(3 - pnum)
+                     if (game.first_roll.get(1) is not None and game.first_roll.get(2) is not None)
+                     else None),
         "you": uid,
         "own": own.to_flat_list(),
         "own_ships": ships_data,
@@ -313,8 +324,14 @@ def confirm_placement(uid, code):
             return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
-        game.phase = "playing"
-        game.turn = 1
+        if game.solo:
+            game.phase = "playing"
+            game.turn = 1
+        else:
+            # Multiplayer: both fleets are ready - now roll a die to decide who
+            # shoots first.
+            game.phase = "roll"
+            game.reset_first_roll()
         return True
     return False
 
@@ -440,8 +457,31 @@ def _handle_confirm(data, uid, code):
     save()
     pending = []
     if started:
-        pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
+        if game.solo:
+            pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
+        else:
+            pending = _notify_opponent(
+                game, uid, "🎲 Оба флота готовы! Бросьте кубик — кто больше, тот ходит первым.",
+                "roll", force=True)
     return {"ok": True, "started": started, "state": state}, pending
+
+
+def _handle_roll_first(data, uid, code):
+    game, err = _get_game(games, code, uid)
+    if err:
+        return err
+    if game.phase != "roll":
+        return {"ok": False, "error": "not_rolling"}
+    res = game.apply_first_roll(game.player_num(uid))
+    if res is None:
+        return {"ok": False, "error": "invalid_roll"}
+    _mark_active(game, uid)
+    save()
+    pending = []
+    if res.get("winner"):
+        # Game started: tell the player who moves first it's their turn.
+        pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
+    return {"ok": True, "state": as_dict(game, uid), "roll": res}, pending
 
 
 def _handle_rematch(data, uid, code):
@@ -600,9 +640,29 @@ def _handle_message_opponent(data, uid, code):
 def _handle_pd_join(data, uid, code):
     return _join_game(
         pd_games, pd_player_games, code, uid,
-        "🎲 Друг подключился к игре. Ваш ход в Покерных костях.", "join",
+        "🎲 Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
         lambda g, u: g.get_state(g.player_num(u)),
+        start_roll=True,
     )
+
+
+def _handle_pd_roll_first(data, uid, code):
+    game, err = _get_game(pd_games, code, uid)
+    if err:
+        return err
+    if game.phase != "roll":
+        return {"ok": False, "error": "not_rolling"}
+    res = game.apply_first_roll(game.player_num(uid))
+    if res is None:
+        return {"ok": False, "error": "invalid_roll"}
+    _mark_active(game, uid)
+    save()
+    pending = []
+    if res.get("winner"):
+        first_uid = game.player1_id if game.turn == 1 else game.player2_id
+        pending = _notify_recipient(
+            game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
+    return {"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res}, pending
 
 
 def _handle_pd_roll(data, uid, code):
@@ -776,9 +836,28 @@ def _evict_game(code, games_dict, player_games_dict):
 def _handle_checkers_join(data, uid, code):
     return _join_game(
         checkers_games, checkers_player_games, code, uid,
-        "♟ Друг подключился к игре. Ваш ход в Шашках.", "join",
+        "♟ Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
         lambda g, u: g.get_state(u),
+        start_roll=True,
     )
+
+
+def _handle_checkers_roll_first(data, uid, code):
+    game, err = _get_game(checkers_games, code, uid)
+    if err:
+        return err
+    if game.phase != "roll":
+        return {"ok": False, "error": "not_rolling"}
+    res = game.apply_first_roll(game.player_num(uid))
+    if res is None:
+        return {"ok": False, "error": "invalid_roll"}
+    _mark_active(game, uid)
+    save()
+    pending = []
+    if res.get("winner"):
+        pending = _notify_recipient(
+            game, game.current_player, "♟ Ваш ход в Шашках.", "started")
+    return {"ok": True, "state": game.get_state(uid), "roll": res}, pending
 
 
 def _handle_checkers_state(data, uid, code):
@@ -1067,6 +1146,7 @@ _HANDLERS = {
     "/api/shoot": _handle_shoot,
     "/api/place_auto": _handle_place_auto,
     "/api/confirm": _handle_confirm,
+    "/api/roll_first": _handle_roll_first,
     "/api/upload_stake": _handle_upload_stake,
     "/api/rematch": _handle_rematch,
     "/api/surrender": _handle_surrender,
@@ -1075,6 +1155,7 @@ _HANDLERS = {
     "/api/pd_new_solo": _handle_pd_new_solo,
     "/api/pd_new_multi": _handle_pd_new_multi,
     "/api/pd_join": _handle_pd_join,
+    "/api/pd_roll_first": _handle_pd_roll_first,
     "/api/pd_roll": _handle_pd_roll,
     "/api/pd_score": _handle_pd_score,
     "/api/pd_bot_turn": _handle_pd_bot_turn,
@@ -1085,6 +1166,7 @@ _HANDLERS = {
     "/api/checkers_new_solo": _handle_checkers_new_solo,
     "/api/checkers_new_multi": _handle_checkers_new_multi,
     "/api/checkers_join": _handle_checkers_join,
+    "/api/checkers_roll_first": _handle_checkers_roll_first,
     "/api/checkers_state": _handle_checkers_state,
     "/api/checkers_move": _handle_checkers_move,
     "/api/checkers_bot_turn": _handle_checkers_bot_turn,
@@ -1101,9 +1183,9 @@ _HANDLERS = {
 }
 
 NOTIFY_PATHS = {
-    "/api/join", "/api/confirm", "/api/message_opponent", "/api/rematch",
-    "/api/pd_join", "/api/pd_score", "/api/pd_surrender",
-    "/api/checkers_join", "/api/checkers_move", "/api/checkers_bot_turn", "/api/checkers_surrender",
+    "/api/join", "/api/confirm", "/api/roll_first", "/api/message_opponent", "/api/rematch",
+    "/api/pd_join", "/api/pd_roll_first", "/api/pd_score", "/api/pd_surrender",
+    "/api/checkers_join", "/api/checkers_roll_first", "/api/checkers_move", "/api/checkers_bot_turn", "/api/checkers_surrender",
     "/api/bg_join", "/api/bg_move", "/api/bg_surrender",
 }
 
