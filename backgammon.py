@@ -246,7 +246,7 @@ class BackgammonGame(BaseGame):
         self.last_roller: Optional[int] = None
         # Long narde: at most one checker may leave the head per turn on the
         # opening roll (two if the opening roll is a double 6/4/3).
-        self.first_roll: bool = True
+        self.head_first_roll: bool = True
         self.head_moves: int = 0
 
     @property
@@ -259,6 +259,22 @@ class BackgammonGame(BaseGame):
         if uid == self.player2_id:
             return BLACK
         return None
+
+    def apply_first_roll(self, pnum: int) -> Optional[Dict]:
+        """Opening-roll wrapper: the winner plays White and moves first.
+
+        Mirrors CheckersGame.apply_first_roll -- colour was previously fixed
+        by join order, so the roll (when it existed at all) only decided
+        move order. A winning player 2 is swapped into the player1 slot,
+        which player_color() already maps to White.
+        """
+        res = self.roll_for_first(pnum)
+        if res and res.get("winner"):
+            if res["winner"] == 2:
+                self.player1_id, self.player2_id = self.player2_id, self.player1_id
+            self.turn = WHITE
+            self.phase = 'playing'
+        return res
 
     def roll(self, uid: int) -> Optional[Dict]:
         color = self.player_color(uid)
@@ -284,7 +300,7 @@ class BackgammonGame(BaseGame):
             self.used_dice += 1
 
     def _head_limit(self) -> int:
-        if self.variant != 'long' or not self.first_roll:
+        if self.variant != 'long' or not self.head_first_roll:
             return 999
         is_double = len(set(self.dice)) == 1
         if is_double and self.dice[0] in (6, 4, 3):
@@ -384,7 +400,7 @@ class BackgammonGame(BaseGame):
         self.dice = []
         self.used_dice = 0
         self.head_moves = 0
-        self.first_roll = False
+        self.head_first_roll = False
         self.turn = opponent(self.turn)
 
     def _bot_play(self):
@@ -477,6 +493,10 @@ class BackgammonGame(BaseGame):
             'last_roll': list(self.last_roll),
             'last_roller': self.last_roller,
             'legal_moves': [[list(m) for m in [[f, t]]] for f, t in moves_for_current],
+            'my_roll': self.first_roll.get(self.player_num(uid)),
+            'opp_roll': (self.first_roll.get(3 - self.player_num(uid))
+                         if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
+                         else None),
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -499,7 +519,8 @@ class BackgammonGame(BaseGame):
             'last_move': self.last_move,
             'last_roll': list(self.last_roll),
             'last_roller': self.last_roller,
-            'first_roll': self.first_roll,
+            'first_roll': self.first_roll_dict(),
+            'head_first_roll': self.head_first_roll,
             'head_moves': self.head_moves,
             'created_at': self.created_at,
         }
@@ -527,6 +548,6 @@ class BackgammonGame(BaseGame):
         game.last_move = data.get('last_move')
         game.last_roll = list(data.get('last_roll', []))
         game.last_roller = data.get('last_roller')
-        game.first_roll = data.get('first_roll', False)
+        game.head_first_roll = data.get('head_first_roll', True)
         game.head_moves = data.get('head_moves', 0)
         return game

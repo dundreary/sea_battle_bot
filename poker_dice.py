@@ -1,5 +1,6 @@
 import math
 import random
+from functools import lru_cache
 from itertools import combinations_with_replacement
 from typing import Dict, List, Optional, Any, Set
 
@@ -300,10 +301,20 @@ _SCORE_TABLE = {
 }
 
 
+@lru_cache(maxsize=None)
 def _reroll_outcomes(reroll: int):
-    """Yield (multiset, probability) for every result of rerolling `reroll`
-    dice, using exact multinomial weights over the 6^reroll ordered space."""
+    """Return a tuple of (multiset, probability) for every result of
+    rerolling `reroll` dice, using exact multinomial weights over the
+    6^reroll ordered space.
+
+    There are only 6 possible values of `reroll` (0-5) in the whole search,
+    so this is computed once per value and cached forever — it used to be
+    a generator that recomputed the full combinatorics from scratch on
+    every one of the ~335k calls made during a single Expert-difficulty
+    bot turn, which was the dominant cost of that turn.
+    """
     total = 6 ** reroll
+    out = []
     for combo in combinations_with_replacement(range(1, 7), reroll):
         counts = [0] * 7
         for v in combo:
@@ -312,16 +323,21 @@ def _reroll_outcomes(reroll: int):
         den = 1
         for c in counts:
             den *= _FAC[c]
-        yield combo, (num / den) / total
+        out.append((combo, (num / den) / total))
+    return tuple(out)
 
 
-def _expert_ev(dice: List[int], rolls_left: int, rem_key: frozenset) -> float:
-    key = (tuple(sorted(dice)), rolls_left, rem_key)
+def _expert_ev(dice, rolls_left: int, rem_key: frozenset) -> float:
+    """dice may be a list or an already-sorted tuple; callers on the hot
+    path pass a pre-sorted tuple (see the `new = tuple(sorted(...))` call
+    sites) so this never re-sorts data that is already sorted, which used
+    to be the dominant cost of an Expert-difficulty turn (two sorted()
+    calls per node across ~427k node visits)."""
+    ms = dice if type(dice) is tuple else tuple(sorted(dice))
+    key = (ms, rolls_left, rem_key)
     cached = _EXPERT_CACHE.get(key)
     if cached is not None:
         return cached
-
-    ms = tuple(sorted(dice))
 
     # No rerolls left (or stop now): score the best available category.
     if rolls_left <= 0:
@@ -330,14 +346,17 @@ def _expert_ev(dice: List[int], rolls_left: int, rem_key: frozenset) -> float:
         return val
 
     best = -1e18
+    score_now = None
     for mask in range(32):
-        kept = [dice[i] for i in range(5) if (mask >> i) & 1]
+        kept = [ms[i] for i in range(5) if (mask >> i) & 1]
         reroll = 5 - len(kept)
         # Keeping all dice means "stop and score now" in the real game loop
         # (the caller breaks on the keep-all mask), so evaluate it as the
         # immediate best-category value rather than as another reroll.
         if reroll == 0:
-            val = max(_SCORE_TABLE[ms][c] for c in rem_key)
+            if score_now is None:
+                score_now = max(_SCORE_TABLE[ms][c] for c in rem_key)
+            val = score_now
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
@@ -354,13 +373,17 @@ def _expert_ev(dice: List[int], rolls_left: int, rem_key: frozenset) -> float:
 def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str]) -> int:
     """Pick the keep-mask maximising the exact expected score."""
     rem_key = frozenset(remaining)
+    ms = tuple(sorted(dice))
     best_mask = _KEEP_ALL
     best_val = -1e18
+    score_now = None
     for mask in range(32):
-        kept = [dice[i] for i in range(5) if (mask >> i) & 1]
+        kept = [ms[i] for i in range(5) if (mask >> i) & 1]
         reroll = 5 - len(kept)
         if reroll == 0:
-            val = max(_SCORE_TABLE[tuple(sorted(dice))][c] for c in rem_key)
+            if score_now is None:
+                score_now = max(_SCORE_TABLE[ms][c] for c in rem_key)
+            val = score_now
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
@@ -371,22 +394,6 @@ def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str]) ->
             best_val = val
             best_mask = mask
     return best_mask
-    """Choose the category maximising marginal value, nudged toward the
-    upper-section bonus (>=63 gives +35) when still reachable."""
-    upper = ('ones', 'twos', 'threes', 'fours', 'fives', 'sixes')
-    upper_sum = _upper_sum(scorecard)
-    best_cat = remaining[0]
-    best_val = -1e18
-    for c in remaining:
-        val = score_for_category(dice, c) - _expected_value()[c]
-        if c in upper and upper_sum < 63:
-            gap = 63 - upper_sum
-            contrib = score_for_category(dice, c)
-            val += 35.0 * min(contrib, gap) / 63.0 * 0.5
-        if val > best_val:
-            best_val = val
-            best_cat = c
-    return best_cat
 
 
 class PokerDiceGame(BaseGame):

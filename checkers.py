@@ -219,10 +219,19 @@ class CheckersGame(BaseGame):
         self.turn = opponent(self.turn)
 
     def apply_first_roll(self, pnum):
-        """Opening-roll wrapper: the winner moves first (regardless of colour)."""
+        """Opening-roll wrapper: the winner plays White and moves first.
+
+        Colour was previously fixed by join order (player1 always White),
+        so the roll only decided move order, not colour -- confusing for a
+        winner who then found themselves playing Black. Now a winning
+        player 2 is swapped into the player1 slot, which player_color()
+        already maps to White, so no other logic needs to change.
+        """
         res = self.roll_for_first(pnum)
         if res and res.get("winner"):
-            self.turn = WHITE if res["winner"] == 1 else BLACK
+            if res["winner"] == 2:
+                self.player1_id, self.player2_id = self.player2_id, self.player1_id
+            self.turn = WHITE
             self.phase = "playing"
         return res
 

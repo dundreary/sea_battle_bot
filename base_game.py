@@ -44,7 +44,9 @@ class BaseGame:
     def roll_for_first(self, pnum):
         """Record player ``pnum``'s opening die (1-6) and report the outcome.
 
-        Ties clear both dice so the players roll again.  Returns a dict:
+        On a tie both dice stay visible (the caller shows a "Reroll" button)
+        instead of being cleared automatically -- ``reroll_first`` is what
+        actually clears them, once the player chooses to try again. Returns:
           {"my": int, "opp": int|None, "both": bool, "tie": bool,
            "winner": 1|2|None}
         ``winner`` is set only once both players have rolled distinct values;
@@ -61,16 +63,30 @@ class BaseGame:
         if both:
             if r1 == r2:
                 tie = True
-                self.reset_first_roll()
             else:
                 winner = 1 if r1 > r2 else 2
         return {
-            "my": self.first_roll.get(pnum) if not tie else None,
-            "opp": self.first_roll.get(3 - pnum) if (both and not tie) else None,
+            "my": self.first_roll.get(pnum),
+            "opp": self.first_roll.get(3 - pnum) if both else None,
             "both": both,
             "tie": tie,
             "winner": winner,
         }
+
+    def reroll_first(self, pnum):
+        """Clear both dice so the opening roll can happen again after a tie.
+
+        Either player may trigger this once ``roll_for_first`` reports a
+        tie; it's a no-op otherwise so a stray call can't wipe a decisive
+        or in-progress roll.
+        """
+        if pnum not in (1, 2):
+            return False
+        r1, r2 = self.first_roll.get(1), self.first_roll.get(2)
+        if r1 is not None and r2 is not None and r1 == r2:
+            self.reset_first_roll()
+            return True
+        return False
 
     def first_roll_dict(self):
         return {str(k): v for k, v in self.first_roll.items()}

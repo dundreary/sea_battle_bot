@@ -53,11 +53,15 @@ class MainHandler(BaseHTTPRequestHandler):
         # index.html embeds all the app JS/CSS inline and changes on every
         # deploy, so it must never be cached by the client -- otherwise
         # people get stuck on stale app logic after an update.
-        # Static assets (icons, images) never change content at a fixed
-        # path, so let the browser/Telegram WebView cache them instead of
-        # re-fetching every single load. This is what was causing the
-        # visible "icons pop in a beat late" delay on the menu screen.
-        if name == "index.html":
+        # The app's own JS/CSS modules (style.css, common.js, poker_dice.js,
+        # checkers.js, backgammon.js) change on every deploy too -- they used
+        # to be inlined into index.html for exactly this reason. Now that
+        # they're separate files, they must not be cached long-term either,
+        # or people get stuck on stale game logic for up to a week after an
+        # update even though index.html itself refreshed immediately.
+        # Only genuinely static assets (icons, images) are safe to cache hard.
+        APP_MODULES = {"style.css", "common.js", "poker_dice.js", "checkers.js", "backgammon.js"}
+        if name == "index.html" or name in APP_MODULES:
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.send_header("Pragma", "no-cache")
             self.send_header("Expires", "0")
