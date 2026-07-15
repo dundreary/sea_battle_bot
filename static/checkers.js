@@ -150,10 +150,12 @@ function ckShowGame(st){
     `;
     return;
   }
+  showRollWinnerBanner(st, ckCode);
   const el=$('ckActions');
    el.className='btn-col';
   let html='';
   if(st.phase==='roll'){
+    armRollBanner(ckCode);
     setStatus('🎲 '+t('rollTitle'),'');
     el.innerHTML = firstRollHTML(st, 'ckRollFirst', 'ckRerollFirst') +
       `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;

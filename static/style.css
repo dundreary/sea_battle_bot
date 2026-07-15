@@ -354,4 +354,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-result{font-size:16px;font-weight:700;text-align:center;padding:6px 14px;border-radius:10px}
 .roll-result.roll-win{color:#66BB6A;background:rgba(102,187,106,.14)}
 .roll-result.roll-lose{color:var(--text-secondary);background:rgba(255,255,255,.05)}
-.roll-result.roll-tie{color:var(--color-warning);background:rgba(255,213,79,.12)}
+ .roll-result.roll-tie{color:var(--color-warning);background:rgba(255,213,79,.12)}
+
+/* Winner banner shown for a few seconds over the board once the opening
+   dice roll resolves. Non-blocking: it never intercepts taps on the board. */
+.roll-winner-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(0,0,0,.38);animation:rollWinnerIn .25s ease both}
+.roll-winner-overlay.roll-winner-out{animation:rollWinnerOut .7s ease both}
+.roll-winner-card{background:var(--card-bg,#fff);border-radius:20px;padding:22px 30px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);text-align:center;max-width:90vw}
+.roll-winner-card.win{border:2px solid #66BB6A}
+.roll-winner-card.lose{border:2px solid var(--border,#ddd)}
+.roll-winner-title{font-size:19px;font-weight:800}
+.roll-winner-card.win .roll-winner-title{color:#66BB6A}
+.roll-winner-card.lose .roll-winner-title{color:var(--text-secondary)}
+.roll-winner-sub{font-size:14px;font-weight:600;color:var(--text-secondary)}
+.roll-die3d.roll-die-win{transform:scale(1.12);box-shadow:0 0 0 3px #66BB6A,0 8px 18px rgba(0,0,0,.45);background:linear-gradient(145deg,#eafff0,#cdeed2)}
+@keyframes rollWinnerIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes rollWinnerOut{from{opacity:1}to{opacity:0}}
+

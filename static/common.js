@@ -16,6 +16,10 @@ const LANG = {
     rollWin: '🎉 Вы ходите первым!',
     rollLose: 'Соперник ходит первым',
     rollTie: '🤝 Ничья — бросайте ещё раз!',
+    rollWon: '🎉 Вы выиграли бросок!',
+    rollLost: 'Соперник выиграл бросок',
+    rollYouFirst: 'Вы ходите первым',
+    rollOppFirst: 'Соперник ходит первым',
     again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
     yourTurn: '⚓ ТВОЙ ХОД!',
     oppTurn: '⏳ ХОД СОПЕРНИКА...',
@@ -152,6 +156,10 @@ const LANG = {
     rollWin: '🎉 Ви ходите першим!',
     rollLose: 'Суперник ходить першим',
     rollTie: '🤝 Нічия — киньте ще раз!',
+    rollWon: '🎉 Ви виграли кидок!',
+    rollLost: 'Суперник виграв кидок',
+    rollYouFirst: 'Ви ходите першим',
+    rollOppFirst: 'Суперник ходить першим',
     again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
     yourTurn: '⚓ ТВІЙ ХІД!',
     oppTurn: '⏳ ХІД СУПЕРНИКА...',
@@ -288,6 +296,10 @@ const LANG = {
     rollWin: '🎉 You go first!',
     rollLose: 'Opponent goes first',
     rollTie: '🤝 Tie — roll again!',
+    rollWon: '🎉 You won the roll!',
+    rollLost: 'Opponent won the roll',
+    rollYouFirst: 'You go first',
+    rollOppFirst: 'Opponent goes first',
     again: '🔄 Again? Press «OK» when ready',
     yourTurn: '⚓ YOUR TURN!',
     oppTurn: '⏳ OPPONENT\'S TURN...',
@@ -694,6 +706,45 @@ function firstRollHTML(s, rollFn, rerollFn){
     <div class="roll-die-row">${mySide(s.my_roll,false)}<div class="roll-vs">VS</div>${oppSide(s.opp_roll,false)}</div>
     <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollWin') : t('rollLose')}</div>
   </div>`;
+}
+
+// One-shot guard keyed by game code: the winner banner must appear only once
+// when the opening roll resolves, not on every polling refresh afterwards.
+const _rollBannerShown = {};
+
+function armRollBanner(code){
+  if(code) delete _rollBannerShown[code];
+}
+
+// Show a brief, non-blocking banner over the board announcing who won the
+// opening dice roll (and therefore moves first). Called from each game's
+// render once the board is on screen and both players have rolled a decisive
+// value. Relies on my_roll/opp_roll, which the backend keeps sending even in
+// the 'playing' phase.
+function showRollWinnerBanner(st, code){
+  if(!st || st.my_roll == null || st.opp_roll == null || st.my_roll === st.opp_roll) return;
+  if(!code || _rollBannerShown[code]) return;
+  _rollBannerShown[code] = true;
+
+  const won = st.my_roll > st.opp_roll;
+  const myDie  = _dieSvg(st.my_roll,  won ? 'roll-die-win' : '');
+  const oppDie = _dieSvg(st.opp_roll, !won ? 'roll-die-win' : '');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'roll-winner-overlay';
+  overlay.innerHTML = `
+    <div class="roll-winner-card ${won ? 'win' : 'lose'}">
+      <div class="roll-winner-title">${won ? t('rollWon') : t('rollLost')}</div>
+      <div class="roll-die-row">
+        <div class="roll-die-col">${myDie}<div class="roll-die-label">${t('rollYou')}</div></div>
+        <div class="roll-vs">${st.my_roll} : ${st.opp_roll}</div>
+        <div class="roll-die-col">${oppDie}<div class="roll-die-label">🎯</div></div>
+      </div>
+      <div class="roll-winner-sub">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.classList.add('roll-winner-out'), 2500);
+  setTimeout(() => overlay.remove(), 3200);
 }
 
 async function doFirstRoll(endpoint, codeVal, refreshFn){

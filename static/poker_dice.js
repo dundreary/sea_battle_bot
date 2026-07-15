@@ -177,6 +177,7 @@ function pdShowGame(st){
   }
 
   if(st.phase==='roll'){
+    armRollBanner(pdCode);
     $('pdScorecardContainer').innerHTML='';
     $('pdScorecardContainer').style.minHeight='';
     $('pdDice').innerHTML = firstRollHTML(st, 'pdRollFirst', 'pdRerollFirst');
@@ -194,6 +195,7 @@ function pdShowGame(st){
   pdRenderDice(st);
   pdRenderActions(st);
   pdRenderInfo(st);
+  showRollWinnerBanner(st, pdCode);
 }
 
 function pdRenderScorecard(st){

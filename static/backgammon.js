@@ -126,6 +126,7 @@ function bgShowGame(st, keepSelection=false){
   $('bgActions').innerHTML='';
 
   if(st.phase==='roll'){
+    armRollBanner(bgCode);
     $('bgBoard').innerHTML='';
     setStatus('🎲 '+t('rollTitle'),'');
     const el=$('bgActions');
@@ -136,6 +137,7 @@ function bgShowGame(st, keepSelection=false){
   }
 
   bgRenderBoard(st);
+  showRollWinnerBanner(st, bgCode);
   if(st.phase==='finished'){
     if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
     localStorage.removeItem('bg_game');
