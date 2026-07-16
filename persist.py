@@ -96,6 +96,7 @@ def flush():
 
 def _dump():
     with STATE_LOCK:
+        import stats
         data = {
             'version': 1,
             'saved_at': time.time(),
@@ -107,6 +108,7 @@ def _dump():
             'poker_dice_player_games': {str(k): v for k, v in pd.player_games.items()},
             'backgammon_games': _serialize_games(bg.games, lambda g: g.to_dict()),
             'backgammon_player_games': {str(k): v for k, v in bg.player_games.items()},
+            'stats': stats.to_dict(),
         }
     _write(data)
 
@@ -134,10 +136,13 @@ def load():
     from checkers import CheckersGame
     from poker_dice import PokerDiceGame
     from backgammon import BackgammonGame
+    import stats
 
     data = _read()
     if not data:
         return
+
+    stats.load_from_dict(data.get('stats'))
 
     sb.games.clear()
     sb.games.update(_deserialize_games(data.get('api_games', {}), Game.from_dict))
