@@ -100,7 +100,25 @@ check(res.get("ok"), "solo confirm_placement")
 st = unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]
 check(st["phase"] == "roll", "solo enters roll phase after confirm")
 check(api.games[code_sr].first_roll[2] is not None, "bot die thrown server-side on confirm")
+# Force the bot to win the opening roll deterministically, then verify the
+# dice result is surfaced as an in-game message (matching multiplayer UX).
+g = api.games[code_sr]
+g.first_roll = {1: 2, 2: 5}
 roll = unwrap(api._handle_roll_first({"code": code_sr}, uid, code_sr))
+roll_msg = (roll.get("state", {}) or {}).get("messages", [])
+check(any("выиграл кубик" in m for m in roll_msg),
+      "solo bot-win surfaces dice result in messages")
+# Symmetric case: fresh solo game where the human wins the opening roll.
+uid_h = 2202
+code_srh = unwrap(api._handle_new_solo({"strip": False, "difficulty": 2}, uid_h, None))["code"]
+unwrap(api._handle_place_auto({"code": code_srh}, uid_h, code_srh))
+unwrap(api._handle_confirm({"code": code_srh}, uid_h, code_srh))
+gh = api.games[code_srh]
+gh.first_roll = {1: 6, 2: 1}
+roll2 = unwrap(api._handle_roll_first({"code": code_srh}, uid_h, code_srh))
+roll_msg2 = (roll2.get("state", {}) or {}).get("messages", [])
+check(any("выиграли кубик" in m for m in roll_msg2),
+      "solo human-win surfaces dice result in messages")
 for _ in range(10):
     still_rolling = (
         roll.get("roll", {}).get("tie")
