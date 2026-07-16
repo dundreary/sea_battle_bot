@@ -4,7 +4,7 @@ import json
 import logging
 import threading
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from telegram import BotCommand, MenuButtonWebApp, WebAppInfo
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 import config
@@ -21,14 +21,33 @@ logger = logging.getLogger(__name__)
 PORT = int(os.getenv("PORT", 8080))
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
+# Changes on every process restart (i.e. every deploy) and stays fixed for as
+# long as the process runs -- exactly the cache lifetime we want. index.html
+# (always served fresh, see _serve_index) embeds this value in the URLs of
+# its own JS/CSS, so a new deploy naturally busts old caches while a given
+# deploy's assets can be cached hard by the browser instead of being
+# re-downloaded on every single game open.
+ASSET_VERSION = str(int(time.time()))
+
+# JS/CSS modules whose content changes on every deploy. Requested with a
+# ?v=<ASSET_VERSION> query string (see _serve_index), they are safe to cache
+# hard -- that exact URL can never point at different content while this
+# process is running. Requested without it (a stale cached index.html from
+# before this feature existed, or a direct manual hit), they fall back to the
+# old no-cache behaviour so nobody gets stuck on outdated game logic.
+APP_MODULES = {"style.css", "common.js", "poker_dice.js", "checkers.js", "backgammon.js"}
+
+
 class MainHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/health":
+        path_only = self.path.split("?", 1)[0]
+        if path_only == "/health":
             self._json({"status": "ok"})
-        elif self.path == "/" or self.path == "/index.html":
-            self._serve_file("index.html", "text/html; charset=utf-8")
-        elif self.path.startswith("/static/"):
-            self._serve_file(self.path[1:], None)
+        elif path_only == "/" or path_only == "/index.html":
+            self._serve_index()
+        elif path_only.startswith("/static/"):
+            cache_busted = f"v={ASSET_VERSION}" in self.path
+            self._serve_file(path_only[1:], None, cache_busted=cache_busted)
         else:
             self._json({"error": "not found"}, 404)
 
@@ -38,7 +57,48 @@ class MainHandler(BaseHTTPRequestHandler):
         result = handle_api(self.path, body)
         self._json(result)
 
-    def _serve_file(self, name, mime):
+    def do_HEAD(self):
+        # UptimeRobot (and most uptime monitors) probe with HEAD, not GET.
+        # BaseHTTPRequestHandler returns 501 Not Implemented for any method
+        # it doesn't know, so without this the monitor always sees "down"
+        # even though GET /health works fine. Mirror do_GET routing but send
+        # headers only (no body), as the HTTP spec requires for HEAD.
+        path_only = self.path.split("?", 1)[0]
+        if path_only == "/health":
+            code, mime = 200, "application/json; charset=utf-8"
+        elif path_only == "/" or path_only == "/index.html":
+            code, mime = 200, "text/html; charset=utf-8"
+        elif path_only.startswith("/static/"):
+            code, mime = 200, "application/octet-stream"
+        else:
+            code, mime = 404, "application/json; charset=utf-8"
+        self.send_response(code)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _serve_index(self):
+        # index.html itself must never be cached -- it's what points browsers
+        # at the *current* versioned asset URLs below, so a stale copy would
+        # keep sending people to a previous deploy's assets forever.
+        path = os.path.join(STATIC_DIR, "index.html")
+        if not os.path.isfile(path):
+            self._json({"error": "not found"}, 404)
+            return
+        with open(path, "r", encoding="utf-8") as f:
+            html = f.read()
+        html = html.replace("__ASSET_VERSION__", ASSET_VERSION)
+        data = html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_file(self, name, mime, cache_busted=False):
         path = os.path.join(STATIC_DIR, os.path.basename(name))
         if not os.path.isfile(path):
             self._json({"error": "not found"}, 404)
@@ -50,18 +110,14 @@ class MainHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(data)))
-        # index.html embeds all the app JS/CSS inline and changes on every
-        # deploy, so it must never be cached by the client -- otherwise
-        # people get stuck on stale app logic after an update.
-        # The app's own JS/CSS modules (style.css, common.js, poker_dice.js,
-        # checkers.js, backgammon.js) change on every deploy too -- they used
-        # to be inlined into index.html for exactly this reason. Now that
-        # they're separate files, they must not be cached long-term either,
-        # or people get stuck on stale game logic for up to a week after an
-        # update even though index.html itself refreshed immediately.
-        # Only genuinely static assets (icons, images) are safe to cache hard.
-        APP_MODULES = {"style.css", "common.js", "poker_dice.js", "checkers.js", "backgammon.js"}
-        if name == "index.html" or name in APP_MODULES:
+        base_name = os.path.basename(name)
+        if base_name in APP_MODULES and cache_busted:
+            # This exact ?v=<ASSET_VERSION> URL will never point at different
+            # content while this process is running, so it's safe to cache
+            # hard instead of re-downloading ~150KB of JS/CSS on every single
+            # game open, which unconditional no-cache used to cost.
+            self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        elif base_name in APP_MODULES:
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.send_header("Pragma", "no-cache")
             self.send_header("Expires", "0")
@@ -98,7 +154,12 @@ class MainHandler(BaseHTTPRequestHandler):
         logger.info("HTTP %s", args[-1] if args else "")
 
 def run_http():
-    server = HTTPServer(("0.0.0.0", PORT), MainHandler)
+    # ThreadingHTTPServer handles each request on its own thread (with
+    # daemon_threads=True by default), instead of the old HTTPServer's
+    # one-request-at-a-time behaviour where a single slow request (or an AI
+    # move computation -- see api.py's UNLOCKED_* paths) froze the entire
+    # app -- every game, every player -- for its whole duration.
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), MainHandler)
     logger.info("HTTP server on port %s", PORT)
     server.serve_forever()
 
