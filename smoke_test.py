@@ -36,13 +36,20 @@ code_sb = res["code"]
 unwrap(api._handle_place_auto({"code": code_sb}, uid, code_sb))
 res = unwrap(api._handle_confirm({"code": code_sb}, uid, code_sb))
 check(res.get("ok"), "confirm_placement")
+# Solo now opens with a die roll; throw the human's die to start play.
+unwrap(api._handle_roll_first({"code": code_sb}, uid, code_sb))
 finished = False
 for r in range(10):
     for c in range(10):
-        out = api._handle_shoot({"code": code_sb, "r": r, "c": c}, uid, code_sb)
-        if unwrap(out).get("state", {}).get("phase") == "finished":
+        st = unwrap(api._handle_state({"code": code_sb}, uid, code_sb))["state"]
+        if st["phase"] == "finished":
             finished = True
             break
+        if st["my_turn"]:
+            out = api._handle_shoot({"code": code_sb, "r": r, "c": c}, uid, code_sb)
+            if unwrap(out).get("state", {}).get("phase") == "finished":
+                finished = True
+                break
     if finished:
         break
 check(finished, "sea battle reaches finished phase")
@@ -68,13 +75,45 @@ st = unwrap(api._handle_state({"code": code_r}, uidA, code_r))["state"]
 check(st["phase"] == "roll", "enters roll phase after both confirm")
 started = False
 for _ in range(60):
-    unwrap(api._handle_roll_first({"code": code_r}, uidA, code_r))
-    unwrap(api._handle_roll_first({"code": code_r}, uidB, code_r))
+    rollA = unwrap(api._handle_roll_first({"code": code_r}, uidA, code_r))["roll"]
+    rollB = unwrap(api._handle_roll_first({"code": code_r}, uidB, code_r))["roll"]
+    still_rolling = (
+        rollA.get("tie") or rollB.get("tie")
+        or unwrap(api._handle_state({"code": code_r}, uidA, code_r))["state"]["phase"] == "roll"
+    )
+    if still_rolling:
+        unwrap(api._handle_reroll_first({"code": code_r}, uidA, code_r))
+        unwrap(api._handle_reroll_first({"code": code_r}, uidB, code_r))
+        continue
     st = unwrap(api._handle_state({"code": code_r}, uidA, code_r))["state"]
     if st["phase"] == "playing":
         started = True
         break
 check(started and st["turn"] in (1, 2), "roll decides first turn -> playing")
+
+print("Sea Battle (solo opening dice roll decides first move):")
+uid = 2201
+code_sr = unwrap(api._handle_new_solo({"strip": False, "difficulty": 2}, uid, None))["code"]
+unwrap(api._handle_place_auto({"code": code_sr}, uid, code_sr))
+res = unwrap(api._handle_confirm({"code": code_sr}, uid, code_sr))
+check(res.get("ok"), "solo confirm_placement")
+st = unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]
+check(st["phase"] == "roll", "solo enters roll phase after confirm")
+check(api.games[code_sr].first_roll[2] is not None, "bot die thrown server-side on confirm")
+roll = unwrap(api._handle_roll_first({"code": code_sr}, uid, code_sr))
+for _ in range(10):
+    still_rolling = (
+        roll.get("roll", {}).get("tie")
+        or unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]["phase"] == "roll"
+    )
+    if not still_rolling:
+        break
+    unwrap(api._handle_reroll_first({"code": code_sr}, uid, code_sr))
+    roll = unwrap(api._handle_roll_first({"code": code_sr}, uid, code_sr))
+check(roll.get("ok"), "solo roll_first ok")
+st = unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]
+check(st["phase"] == "playing", "solo roll -> playing")
+check(st["turn"] in (1, 2), "solo turn in (1,2)")
 
 print("Checkers (solo move + AI reply + hint):")
 uid = 3001

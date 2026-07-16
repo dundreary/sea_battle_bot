@@ -25,6 +25,7 @@ from notifications import (
     notify_opponent as _notify_opponent,
 )
 from strip import send_strip_photo_to_winner, STRIP_LOSE_CAPTIONS
+import stats as _stats
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,51 @@ def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) ->
     while code in existing:
         code = gen_fn()
     return code
+
+
+def _record_match_stats(game_type, game):
+    """Work out each side's outcome for a game that has just finished (this
+    call site's transition into 'finished', not a re-read of an
+    already-finished game) and record it via stats.record_match().
+
+    Each game type exposes the finished result differently (Sea Battle has
+    no explicit winner field; Checkers stores a colour + draw flag; Poker
+    Dice and Backgammon resolve directly to a uid), so this maps each one to
+    a single player1-relative outcome and lets record_match() mirror it for
+    player2. A game type/state that isn't actually resolved is a no-op.
+    """
+    if game_type == "sea_battle":
+        b1_dead = game.board1.all_sunk()
+        b2_dead = game.board2.all_sunk()
+        if b1_dead and b2_dead:
+            p1_result = "draw"
+        elif b2_dead:
+            p1_result = "win"
+        elif b1_dead:
+            p1_result = "loss"
+        else:
+            return
+    elif game_type == "checkers":
+        if game.draw:
+            p1_result = "draw"
+        elif game.winner == 1:  # WHITE == player1's colour
+            p1_result = "win"
+        elif game.winner == 2:  # BLACK
+            p1_result = "loss"
+        else:
+            return
+    elif game_type == "poker_dice":
+        winner = game._get_winner()
+        if winner is None:
+            return
+        p1_result = "draw" if winner == -1 else ("win" if winner == game.player1_id else "loss")
+    elif game_type == "backgammon":
+        if game.winner is None:
+            return
+        p1_result = "win" if game.winner == game.player1_id else "loss"
+    else:
+        return
+    _stats.record_match(game_type, game.code, game.player1_id, game.player2_id, game.solo, p1_result)
 
 
 def _get_game(games_dict, code, uid):
@@ -120,7 +166,7 @@ def _state_game(games_dict, code, uid, state_fn):
     return {"ok": True, "state": state}
 
 
-def _surrender_game(games_dict, player_games_dict, code, uid, text, event):
+def _surrender_game(games_dict, player_games_dict, code, uid, text, event, game_type):
     """Shared surrender logic that notifies the opponent and evicts the game."""
     game, err = _get_game(games_dict, code, uid)
     if err:
@@ -128,6 +174,7 @@ def _surrender_game(games_dict, player_games_dict, code, uid, text, event):
     st = game.surrender(uid)
     if st is None:
         return {"error": "invalid_surrender"}
+    _record_match_stats(game_type, game)
     _mark_active(game, uid)
     pending = _notify_opponent(game, uid, text, event, force=True)
     _evict_game(code, games_dict, player_games_dict)
@@ -324,14 +371,13 @@ def confirm_placement(uid, code):
             return None
     game.ready[pnum] = True
     if game.ready[1] and game.ready[2]:
+        # Both fleets are ready. Roll a die to decide who shoots first;
+        # in solo the bot's die is thrown server-side immediately (the bot
+        # has no uid to click the button).
+        game.phase = "roll"
+        game.reset_first_roll()
         if game.solo:
-            game.phase = "playing"
-            game.turn = 1
-        else:
-            # Multiplayer: both fleets are ready - now roll a die to decide who
-            # shoots first.
-            game.phase = "roll"
-            game.reset_first_roll()
+            game.roll_for_first(2)
         return True
     return False
 
@@ -411,6 +457,7 @@ def _handle_shoot(data, uid, code):
     if game:
         _mark_active(game, uid)
         if game.phase == 'finished':
+            _record_match_stats("sea_battle", game)
             pending_notifications = _notify_opponent(
                 game, uid, "⚓ Игра в Морской бой окончена.", "finished", force=True)
         elif game.current_player() != uid:
@@ -475,13 +522,18 @@ def _handle_roll_first(data, uid, code):
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
-    _mark_active(game, uid)
-    save()
+    bot_shots = None
     pending = []
     if res.get("winner"):
+        if game.solo and game.turn == 2:
+            # Bot won the opening roll and moves first: take its opening shot.
+            bot_shots = _bot_shoots(game, uid)
+            _check_game_over(game)
         # Game started: tell the player who moves first it's their turn.
         pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
-    return {"ok": True, "state": as_dict(game, uid), "roll": res}, pending
+    _mark_active(game, uid)
+    save()
+    return {"ok": True, "state": as_dict(game, uid), "roll": res, "bot_shots": bot_shots}, pending
 
 
 def _handle_reroll_first(data, uid, code):
@@ -491,6 +543,9 @@ def _handle_reroll_first(data, uid, code):
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
     game.reroll_first(game.player_num(uid))
+    if game.solo:
+        # The bot can't click the reroll button, so re-throw its die here.
+        game.roll_for_first(2)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": as_dict(game, uid)}
@@ -585,6 +640,7 @@ def _handle_surrender(data, uid, code):
         ship.hits = set(ship.cells)
         own._mark_dead_zone(ship)
     game.phase = "finished"
+    _record_match_stats("sea_battle", game)
     state = as_dict(game, uid)
     _mark_active(game, uid)
     pending = _notify_opponent(game, uid, "⚓ Друг сдался в Морском бое.", "surrender", force=True)
@@ -712,6 +768,7 @@ def _handle_pd_score(data, uid, code):
         return {"error": "invalid_score"}
     _mark_active(game, uid)
     if game.phase == 'finished':
+        _record_match_stats("poker_dice", game)
         pending = _notify_opponent(game, uid, "🎲 Игра в Покерные кости окончена.", "finished", force=True)
     elif game.player_num(uid) != game.turn:
         # In solo, turn==2 here means the bot is up next but hasn't played
@@ -733,28 +790,48 @@ def _handle_pd_bot_turn(data, uid, code):
     """Run the AI's poker-dice turn as its own step, separate from the
     request that confirmed the human player's score. Lets the client show
     the player's own result immediately, then fetch the (possibly slow,
-    especially at Expert difficulty) AI turn right after."""
-    game, err = _get_game(pd_games, code, uid)
-    if err:
-        return err
-    if game.player_num(uid) != 1:
-        return {"error": "not_in_game"}
-    st = game.bot_turn()
-    if st is None:
-        # Nothing to do (e.g. already the player's turn) -- return current
-        # state rather than an error so the client can just re-render.
+    especially at Expert difficulty) AI turn right after.
+
+    The AI computation runs on a private working copy of the bot's turn
+    state (see PokerDiceGame.compute_bot_play) WITHOUT holding the global
+    state lock, for the same reason as the checkers bot turn above.
+    """
+    with _state_lock:
+        game, err = _get_game(pd_games, code, uid)
+        if err:
+            return err
+        if game.player_num(uid) != 1:
+            return {"error": "not_in_game"}
+        can_play = game.solo and game.phase == 'playing' and game.turn == 2
+        plan = game.prepare_bot_play() if can_play else None
+
+    if plan is not None:
+        plan = game.compute_bot_play(plan)
+
+    with _state_lock:
+        game = pd_games.get(code)
+        if game is None:
+            return {"ok": True, "state": None}
+        # Re-validate: nothing else can touch a solo game's bot turn, but the
+        # game could have been surrendered/evicted while we were computing.
+        if can_play and game.solo and game.phase == 'playing' and game.turn == 2:
+            if plan is not None:
+                game.commit_bot_play(plan)
+            else:
+                game._advance_turn(2)
         st = game.get_state(1)
-    _mark_active(game, uid)
-    if game.phase == 'finished':
-        _evict_game(code, pd_games, pd_player_games)
-    save()
-    return {"ok": True, "state": st}
+        _mark_active(game, uid)
+        if game.phase == 'finished':
+            _record_match_stats("poker_dice", game)
+            _evict_game(code, pd_games, pd_player_games)
+        save()
+        return {"ok": True, "state": st}
 
 
 def _handle_pd_surrender(data, uid, code):
     return _surrender_game(
         pd_games, pd_player_games, code, uid,
-        "🎲 Друг сдался в Покерных костях.", "surrender",
+        "🎲 Друг сдался в Покерных костях.", "surrender", "poker_dice",
     )
 
 
@@ -811,6 +888,12 @@ def _handle_active_games(data, uid, code):
 
 def _handle_bot_info(data, uid, code):
     return {"ok": True, "bot_username": config.BOT_USERNAME, "webapp_url": config.WEBAPP_URL}
+
+
+def _handle_stats(data, uid, code):
+    if not uid:
+        return {"error": "no uid"}
+    return {"ok": True, "stats": _stats.get_stats(uid)}
 
 
 def _handle_resolve_code(data, uid, code):
@@ -937,6 +1020,7 @@ def _handle_checkers_move(data, uid, code):
         else:
             game.winner = opp_color
         game.phase = "finished"
+        _record_match_stats("checkers", game)
         state = game.get_state(uid)
         _mark_active(game, uid)
         pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
@@ -979,6 +1063,7 @@ def _handle_checkers_move(data, uid, code):
 
     if finished:
         _evict_game(code, checkers_games, checkers_player_games)
+        _record_match_stats("checkers", game)
     _mark_active(game, uid)
     if finished:
         pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
@@ -1003,68 +1088,101 @@ def _handle_checkers_move(data, uid, code):
 def _handle_checkers_bot_turn(data, uid, code):
     """Run the AI's checkers move as its own step, separate from the request
     that confirmed the human player's move. Lets the client render the
-    player's own move immediately, then fetch the AI's move right after."""
-    game, err = _get_game(checkers_games, code, uid)
-    if err:
-        return err
-    if game.phase != "playing":
-        return {"ok": True, "state": game.get_state(uid), "finished": game.phase == "finished", "bot_move": None}
-    color = game.player_color(uid)
-    if color is None or not game.solo or game.turn != BLACK:
-        return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
+    player's own move immediately, then fetch the AI's move right after.
 
-    ai_diff = _checkers_ai_difficulty(game)
-    tb = 3.0 if game.difficulty >= 4 else 1.5
-    ai_mv = get_ai_move(game.board, BLACK, difficulty=ai_diff, time_budget=tb)
-    finished = False
-    bot_result = None
-    if ai_mv:
-        finished = game.make_move(ai_mv)
-        ai_captures = ai_mv[2] if len(ai_mv) > 2 else []
-        bot_result = {
-            "move": {
-                "start": list(ai_mv[0]),
-                "end": list(ai_mv[1][-1]),
-                "path": [list(s) for s in ai_mv[1]],
-                "captures": [list(c) for c in ai_captures],
+    The AI search itself (up to a few seconds at Hard/Expert) runs WITHOUT
+    holding the global state lock: get_ai_move() only reads the plain board
+    list it's given and never touches any shared game dict, so it's safe to
+    run unlocked. The lock is only held for the cheap read-validate step
+    (where a defensive copy of the board is taken) and the cheap commit step
+    afterwards, so a slow bot move here no longer freezes every other game on
+    the server for its whole duration -- see UNLOCKED_NOTIFY_PATHS below.
+    """
+    with _state_lock:
+        game, err = _get_game(checkers_games, code, uid)
+        if err:
+            return err
+        if game.phase != "playing":
+            return {"ok": True, "state": game.get_state(uid), "finished": game.phase == "finished", "bot_move": None}
+        color = game.player_color(uid)
+        if color is None or not game.solo or game.turn != BLACK:
+            return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
+        # Defensive copy: cheap for an 8x8 board, and guarantees the search
+        # below never sees a board mutated by a concurrent request on this
+        # same game while it's running unlocked.
+        board_snapshot = [row[:] for row in game.board]
+        ai_diff = _checkers_ai_difficulty(game)
+        tb = 3.0 if game.difficulty >= 4 else 1.5
+
+    # The expensive part: no lock held, and get_ai_move() touches nothing but
+    # the board_snapshot passed in.
+    ai_mv = get_ai_move(board_snapshot, BLACK, difficulty=ai_diff, time_budget=tb)
+
+    with _state_lock:
+        # Re-fetch: the game may have been surrendered/evicted by the other
+        # side while the AI was thinking.
+        game = checkers_games.get(code)
+        if not game or game.phase != "playing" or game.player_color(uid) is None or game.turn != BLACK:
+            state = game.get_state(uid) if game else None
+            return {"ok": True, "state": state, "finished": bool(game and game.phase == "finished"), "bot_move": None}
+
+        finished = False
+        bot_result = None
+        if ai_mv:
+            finished = game.make_move(ai_mv)
+            ai_captures = ai_mv[2] if len(ai_mv) > 2 else []
+            bot_result = {
+                "move": {
+                    "start": list(ai_mv[0]),
+                    "end": list(ai_mv[1][-1]),
+                    "path": [list(s) for s in ai_mv[1]],
+                    "captures": [list(c) for c in ai_captures],
+                }
             }
-        }
 
-    if finished:
-        _evict_game(code, checkers_games, checkers_player_games)
-    _mark_active(game, uid)
-    if finished:
-        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
-    else:
-        pending = []
-    save()
-    return ({
-        "ok": True,
-        "state": game.get_state(uid),
-        "finished": finished,
-        "bot_move": bot_result,
-    }, pending)
+        if finished:
+            _evict_game(code, checkers_games, checkers_player_games)
+            _record_match_stats("checkers", game)
+        _mark_active(game, uid)
+        if finished:
+            pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
+        else:
+            pending = []
+        save()
+        return ({
+            "ok": True,
+            "state": game.get_state(uid),
+            "finished": finished,
+            "bot_move": bot_result,
+        }, pending)
 
 
 def _handle_checkers_surrender(data, uid, code):
     return _surrender_game(
         checkers_games, checkers_player_games, code, uid,
-        "♟ Друг сдался в Шашках.", "surrender",
+        "♟ Друг сдался в Шашках.", "surrender", "checkers",
     )
 
 
 def _handle_checkers_hint(data, uid, code):
-    game, err = _get_game(checkers_games, code, uid)
-    if err:
-        return err
-    if game.phase != "playing":
-        return {"error": "not_playing"}
-    color = game.player_color(uid)
-    if color is None or game.turn != color:
-        return {"error": "not_your_turn"}
-    ai_diff = _checkers_ai_difficulty(game)
-    tb = 3.0 if game.difficulty >= 4 else 1.5
-    move = get_ai_move(game.board, color, difficulty=ai_diff, time_budget=tb)
+    """Compute a hint move for the current player. The AI search runs
+    without holding the global state lock -- see _handle_checkers_bot_turn
+    for why this is safe. Read-only, so there's no commit/re-validation step.
+    """
+    with _state_lock:
+        game, err = _get_game(checkers_games, code, uid)
+        if err:
+            return err
+        if game.phase != "playing":
+            return {"error": "not_playing"}
+        color = game.player_color(uid)
+        if color is None or game.turn != color:
+            return {"error": "not_your_turn"}
+        board_snapshot = [row[:] for row in game.board]
+        ai_diff = _checkers_ai_difficulty(game)
+        tb = 3.0 if game.difficulty >= 4 else 1.5
+
+    move = get_ai_move(board_snapshot, color, difficulty=ai_diff, time_budget=tb)
     if not move:
         return {"error": "no_move"}
     return {"ok": True, "hint": {"start": list(move[0]), "end": list(move[1][-1])}}
@@ -1168,6 +1286,7 @@ def _handle_bg_move(data, uid, code):
     # to call it, instead of the client guessing from the dice array.
     needs_bot_turn = bool(game.solo and game.phase == 'playing' and game.turn == -1)
     if game.phase == 'finished':
+        _record_match_stats("backgammon", game)
         pending = _notify_opponent(game, uid, "🎲 Игра в Нарды окончена.", "finished", force=True)
     elif not game.solo and game.turn != (1 if uid == game.player1_id else -1):
         pending = _notify_opponent(game, uid, "🎲 Ваш ход в Нардах.", f"move:{uid}")
@@ -1192,6 +1311,7 @@ def _handle_bg_bot_turn(data, uid, code):
         st = game.get_state(uid)
     _mark_active(game, uid)
     if game.phase == 'finished':
+        _record_match_stats("backgammon", game)
         _evict_game(code, bg_games, bg_player_games)
     save()
     return {"ok": True, "state": st}
@@ -1199,7 +1319,7 @@ def _handle_bg_bot_turn(data, uid, code):
 def _handle_bg_surrender(data, uid, code):
     return _surrender_game(
         bg_games, bg_player_games, code, uid,
-        "🎲 Друг сдался в Нардах.", "surrender",
+        "🎲 Друг сдался в Нардах.", "surrender", "backgammon",
     )
 
 
@@ -1229,6 +1349,7 @@ _HANDLERS = {
     "/api/pd_state": _handle_pd_state,
     "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
+    "/api/stats": _handle_stats,
     "/api/resolve_code": _handle_resolve_code,
     "/api/checkers_new_solo": _handle_checkers_new_solo,
     "/api/checkers_new_multi": _handle_checkers_new_multi,
@@ -1255,9 +1376,24 @@ _HANDLERS = {
 NOTIFY_PATHS = {
     "/api/join", "/api/confirm", "/api/roll_first", "/api/message_opponent", "/api/rematch",
     "/api/pd_join", "/api/pd_roll_first", "/api/pd_score", "/api/pd_surrender",
-    "/api/checkers_join", "/api/checkers_roll_first", "/api/checkers_move", "/api/checkers_bot_turn", "/api/checkers_surrender",
+    "/api/checkers_join", "/api/checkers_roll_first", "/api/checkers_move", "/api/checkers_surrender",
     "/api/bg_join", "/api/bg_roll_first", "/api/bg_move", "/api/bg_surrender",
 }
+
+# Endpoints whose expensive part is a CPU-bound AI search that can take up to
+# a few seconds (Hard/Expert difficulty). Wrapping the whole handler call in
+# the global STATE_LOCK -- as every other endpoint above is -- would freeze
+# every other game on the server for that whole duration; this used to be
+# exactly what happened here. These handlers manage their own, much narrower
+# locking internally instead: the lock is only held to read/validate/commit
+# game state, never while the AI is actually thinking. See their docstrings
+# in the Checkers/Poker Dice sections above for the exact mechanism.
+#
+# checkers_bot_turn still needs the notification envelope (it can end the
+# game), so it's split out from the plain default-locked set below rather
+# than reusing NOTIFY_PATHS, which always wraps the whole call in the lock.
+UNLOCKED_NOTIFY_PATHS = {"/api/checkers_bot_turn"}
+UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn"}
 
 # Handlers on these paths can end a strip game and must deliver the loser's
 # pre-committed stake photo to the winner before the game is evicted. They
@@ -1293,6 +1429,22 @@ def handle_api(path, body):
         uid = _authenticate(data)
         if uid is None:
             return {"error": "auth_failed"}
+
+    if path in UNLOCKED_NOTIFY_PATHS:
+        try:
+            result, pending_notifications = _split_notification_result(handler(data, uid, code))
+        except Exception as exc:
+            logger.exception("Unhandled error in %s: %s", path, exc)
+            return {"error": "internal"}
+        _enqueue_notifications(pending_notifications)
+        return result
+
+    if path in UNLOCKED_PATHS:
+        try:
+            return handler(data, uid, code)
+        except Exception as exc:
+            logger.exception("Unhandled error in %s: %s", path, exc)
+            return {"error": "internal"}
 
     if path in STAKE_PATHS:
         # The state mutation runs under the lock; the (slow) network send to
