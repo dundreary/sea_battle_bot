@@ -525,28 +525,23 @@ def _handle_roll_first(data, uid, code):
     bot_shots = None
     pending = []
     if res.get("winner"):
-        if game.solo:
-            # In solo the bot's die is rolled server-side, so the human never
-            # sees the roll screen the way a multiplayer opponent does. Surface
-            # the same "who won the dice" notification via in_game_messages so
-            # the client shows it as a toast, exactly like multiplayer.
-            my_roll = game.first_roll.get(1)
-            bot_roll = game.first_roll.get(2)
-            if game.turn == 2:
-                text = f"🎲 Бот выиграл кубик ({bot_roll} против {my_roll}) и ходит первым."
-            else:
-                text = f"🎲 Вы выиграли кубик ({my_roll} против {bot_roll}) и ходите первым."
-            game.in_game_messages = getattr(game, "in_game_messages", [])
-            game.in_game_messages.append({"recipient": uid, "text": text})
+        # IMPORTANT: keep the dice result visible on the client exactly like
+        # multiplayer. The client keeps drawing the roll screen (both dice +
+        # who won) as long as my_roll/opp_roll are both present, so we must NOT
+        # pre-empt it by taking the bot's opening shot here. The human first
+        # sees the result screen (phase is "playing", turn=winner, both dice
+        # set), and in solo the bot's first shot is taken only once the client
+        # acknowledges the roll via _handle_bot_opening_shot.
         if game.solo and game.turn == 2:
-            # Bot won the opening roll and moves first: take its opening shot.
-            bot_shots = _bot_shoots(game, uid)
-            _check_game_over(game)
-        # Game started: tell the player who moves first it's their turn.
+            # Mark that the bot still owes its opening shot; it is performed
+            # lazily when the client calls /api/bot_opening_shot after showing
+            # the dice result. _bot_shoots is intentionally deferred.
+            game.bot_pending_first = True
         pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
     _mark_active(game, uid)
     save()
-    return {"ok": True, "state": as_dict(game, uid), "roll": res, "bot_shots": bot_shots}, pending
+    return {"ok": True, "state": as_dict(game, uid), "roll": res,
+            "roll_resolved": bool(res.get("winner")), "bot_shots": bot_shots}, pending
 
 
 def _handle_reroll_first(data, uid, code):
@@ -562,6 +557,28 @@ def _handle_reroll_first(data, uid, code):
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": as_dict(game, uid)}
+
+
+def _handle_bot_opening_shot(data, uid, code):
+    """Solo only: take the bot's opening shot after it won the dice roll.
+
+    The opening-roll screen (both dice + who won) is shown to the human first;
+    only once the client acknowledges it do we let the bot fire its first shot.
+    Idempotent: once the shot is taken the pending flag is cleared.
+    """
+    game, err = _get_game(games, code, uid)
+    if err:
+        return err
+    if not game.solo:
+        return {"ok": False, "error": "not_solo"}
+    if game.phase != "playing" or game.turn != 2 or not getattr(game, "bot_pending_first", False):
+        return {"ok": True, "state": as_dict(game, uid), "bot_shots": None}
+    bot_shots = _bot_shoots(game, uid)
+    game.bot_pending_first = False
+    _check_game_over(game)
+    _mark_active(game, uid)
+    save()
+    return {"ok": True, "state": as_dict(game, uid), "bot_shots": bot_shots}
 
 
 def _handle_rematch(data, uid, code):
@@ -1346,6 +1363,7 @@ _HANDLERS = {
     "/api/confirm": _handle_confirm,
     "/api/roll_first": _handle_roll_first,
     "/api/reroll_first": _handle_reroll_first,
+    "/api/bot_opening_shot": _handle_bot_opening_shot,
     "/api/upload_stake": _handle_upload_stake,
     "/api/rematch": _handle_rematch,
     "/api/surrender": _handle_surrender,

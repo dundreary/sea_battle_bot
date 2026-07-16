@@ -194,6 +194,10 @@ class Game(BaseGame):
         # Per-player "stake" photo, committed before the game starts
         # (both participants must upload one to confirm placement).
         self.strip_stakes = {1: "", 2: ""}
+        # Set in solo when the bot won the opening dice roll: its first shot is
+        # deferred until the client has shown the dice-result screen and calls
+        # /api/bot_opening_shot. Prevents the human from skipping the result UI.
+        self.bot_pending_first = False
 
     def switch_turn(self):
         self.turn = 3 - self.turn
@@ -289,10 +293,11 @@ class Game(BaseGame):
             'turn': self.turn,
             'phase': self.phase,
             'ready': {str(k): v for k, v in self.ready.items()},
-            'rematch': {str(k): v for k, v in self.rematch.items()},
-            'first_roll': self.first_roll_dict(),
-            'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
-        }
+        'rematch': {str(k): v for k, v in self.rematch.items()},
+        'first_roll': self.first_roll_dict(),
+        'bot_pending_first': self.bot_pending_first,
+        'bot_ai': self.bot_ai.to_dict() if self.bot_ai else None,
+    }
 
     @staticmethod
     def from_dict(data):
@@ -306,6 +311,7 @@ class Game(BaseGame):
         game.phase = data['phase']
         game.ready = {int(k): v for k, v in data.get('ready', {}).items()}
         game.rematch = {int(k): v for k, v in data.get('rematch', {1: False, 2: False}).items()}
+        game.bot_pending_first = data.get('bot_pending_first', False)
         game.restore_first_roll(data)
         if data.get('bot_ai'):
             game.bot_ai = BotAI.from_dict(data['bot_ai'])

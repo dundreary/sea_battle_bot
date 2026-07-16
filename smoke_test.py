@@ -101,13 +101,22 @@ st = unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]
 check(st["phase"] == "roll", "solo enters roll phase after confirm")
 check(api.games[code_sr].first_roll[2] is not None, "bot die thrown server-side on confirm")
 # Force the bot to win the opening roll deterministically, then verify the
-# dice result is surfaced as an in-game message (matching multiplayer UX).
+# dice result screen is surfaced exactly like multiplayer: both dice present,
+# phase already "playing", and the bot's opening shot is deferred (pending).
 g = api.games[code_sr]
 g.first_roll = {1: 2, 2: 5}
 roll = unwrap(api._handle_roll_first({"code": code_sr}, uid, code_sr))
-roll_msg = (roll.get("state", {}) or {}).get("messages", [])
-check(any("выиграл кубик" in m for m in roll_msg),
-      "solo bot-win surfaces dice result in messages")
+check(roll.get("roll_resolved"), "solo bot-win roll resolved")
+st_botwin = roll["state"]
+check(st_botwin["my_roll"] is not None and st_botwin["opp_roll"] is not None,
+      "solo bot-win keeps both dice in state (result screen shows)")
+check(st_botwin["phase"] == "playing" and st_botwin["turn"] == 2,
+      "solo bot-win -> playing, bot turn")
+check(g.bot_pending_first, "solo bot-win defers bot opening shot")
+# The human acknowledges the dice screen; the bot then takes its opening shot.
+bot_out = unwrap(api._handle_bot_opening_shot({"code": code_sr}, uid, code_sr))
+check(bot_out.get("ok"), "solo bot opening shot ok")
+check(not api.games[code_sr].bot_pending_first, "solo bot opening shot consumed")
 # Symmetric case: fresh solo game where the human wins the opening roll.
 uid_h = 2202
 code_srh = unwrap(api._handle_new_solo({"strip": False, "difficulty": 2}, uid_h, None))["code"]
@@ -116,22 +125,12 @@ unwrap(api._handle_confirm({"code": code_srh}, uid_h, code_srh))
 gh = api.games[code_srh]
 gh.first_roll = {1: 6, 2: 1}
 roll2 = unwrap(api._handle_roll_first({"code": code_srh}, uid_h, code_srh))
-roll_msg2 = (roll2.get("state", {}) or {}).get("messages", [])
-check(any("выиграли кубик" in m for m in roll_msg2),
-      "solo human-win surfaces dice result in messages")
-for _ in range(10):
-    still_rolling = (
-        roll.get("roll", {}).get("tie")
-        or unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]["phase"] == "roll"
-    )
-    if not still_rolling:
-        break
-    unwrap(api._handle_reroll_first({"code": code_sr}, uid, code_sr))
-    roll = unwrap(api._handle_roll_first({"code": code_sr}, uid, code_sr))
-check(roll.get("ok"), "solo roll_first ok")
-st = unwrap(api._handle_state({"code": code_sr}, uid, code_sr))["state"]
-check(st["phase"] == "playing", "solo roll -> playing")
-check(st["turn"] in (1, 2), "solo turn in (1,2)")
+st_humanwin = roll2["state"]
+check(st_humanwin["my_roll"] is not None and st_humanwin["opp_roll"] is not None,
+      "solo human-win keeps both dice in state (result screen shows)")
+check(st_humanwin["phase"] == "playing" and st_humanwin["turn"] == 1,
+      "solo human-win -> playing, human turn")
+check(not api.games[code_srh].bot_pending_first, "solo human-win no pending bot shot")
 
 print("Checkers (solo move + AI reply + hint):")
 uid = 3001

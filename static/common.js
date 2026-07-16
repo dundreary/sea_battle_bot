@@ -16,6 +16,7 @@ const LANG = {
     rollWin: '🎉 Вы ходите первым!',
     rollLose: 'Соперник ходит первым',
     rollTie: '🤝 Ничья — бросайте ещё раз!',
+    rollContinue: 'Продолжить',
     rollWon: '🎉 Вы выиграли бросок!',
     rollLost: 'Соперник выиграл бросок',
     rollYouFirst: 'Вы ходите первым',
@@ -138,6 +139,18 @@ const LANG = {
     continue: '▶ Продолжить',
     minimize: 'Свернуть',
     activeGames: '▶ Активные игры',
+    statsMenu: '📊 Статистика',
+    statsTitle: 'Статистика',
+    statsWins: 'Победы',
+    statsLosses: 'Поражения',
+    statsDraws: 'Ничьи',
+    statsWinrate: 'Процент побед',
+    statsTotal: 'Всего игр',
+    statsHistory: 'Последние игры',
+    statsNoGames: 'Пока нет сыгранных игр',
+    statsResWin: 'Победа',
+    statsResLoss: 'Поражение',
+    statsResDraw: 'Ничья',
   },
   uk: {
     title: 'Морський бій',
@@ -156,6 +169,7 @@ const LANG = {
     rollWin: '🎉 Ви ходите першим!',
     rollLose: 'Суперник ходить першим',
     rollTie: '🤝 Нічия — киньте ще раз!',
+    rollContinue: 'Продовжити',
     rollWon: '🎉 Ви виграли кидок!',
     rollLost: 'Суперник виграв кидок',
     rollYouFirst: 'Ви ходите першим',
@@ -278,6 +292,18 @@ const LANG = {
     continue: '▶ Продовжити',
     minimize: 'Згорнути',
     activeGames: '▶ Активні ігри',
+    statsMenu: '📊 Статистика',
+    statsTitle: 'Статистика',
+    statsWins: 'Перемоги',
+    statsLosses: 'Поразки',
+    statsDraws: 'Нічиї',
+    statsWinrate: 'Відсоток перемог',
+    statsTotal: 'Усього ігор',
+    statsHistory: 'Останні ігри',
+    statsNoGames: 'Поки що немає зіграних ігор',
+    statsResWin: 'Перемога',
+    statsResLoss: 'Поразка',
+    statsResDraw: 'Нічия',
   },
   en: {
     title: 'Sea Battle',
@@ -296,6 +322,7 @@ const LANG = {
     rollWin: '🎉 You go first!',
     rollLose: 'Opponent goes first',
     rollTie: '🤝 Tie — roll again!',
+    rollContinue: 'Continue',
     rollWon: '🎉 You won the roll!',
     rollLost: 'Opponent won the roll',
     rollYouFirst: 'You go first',
@@ -418,6 +445,18 @@ const LANG = {
     continue: '▶ Continue',
     minimize: 'Minimize',
     activeGames: '▶ Active games',
+    statsMenu: '📊 Stats',
+    statsTitle: 'Statistics',
+    statsWins: 'Wins',
+    statsLosses: 'Losses',
+    statsDraws: 'Draws',
+    statsWinrate: 'Win rate',
+    statsTotal: 'Total games',
+    statsHistory: 'Recent games',
+    statsNoGames: 'No games played yet',
+    statsResWin: 'Win',
+    statsResLoss: 'Loss',
+    statsResDraw: 'Draw',
   }
 };
 
@@ -702,9 +741,13 @@ function firstRollHTML(s, rollFn, rerollFn){
     </div>`;
   }
   const won = s.my_roll > s.opp_roll;
+  // Once the dice are decided the roll screen becomes a result screen: both
+  // dice plus who moves first, with a Continue button. In solo, if the bot won
+  // the opening roll its first shot is taken when the human continues.
   return `<div class="roll-stage">
     <div class="roll-die-row">${mySide(s.my_roll,false)}<div class="roll-vs">VS</div>${oppSide(s.opp_roll,false)}</div>
     <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollWin') : t('rollLose')}</div>
+    <button class="btn primary roll-cta" id="rollDoneBtn" onclick="ackRoll()">▶ ${t('rollContinue')}</button>
   </div>`;
 }
 
@@ -776,6 +819,37 @@ async function doRerollFirst(endpoint, codeVal, refreshFn){
 
 function rollFirst(){ return doFirstRoll('/api/roll_first', gameCode, refreshState); }
 function rerollFirst(){ return doRerollFirst('/api/reroll_first', gameCode, refreshState); }
+async function ackRoll(){
+  if(!state) return;
+  // In solo, if the bot won the opening roll it owes its first shot. Take it
+  // now (the dice-result screen has already been shown to the human).
+  if(state.solo && state.phase==='playing' && state.turn===2){
+    const res = await api('/api/bot_opening_shot', {uid:getUid(), code:gameCode});
+    if(res && res.ok){
+      if(res.state){ state = res.state; updateUI(); }
+      const bs = res.bot_shots;
+      if(bs && bs.length){
+        const bn='ABCDEFGHIJ';
+        let botMsg='🤖 ';
+        for(const s of bs){
+          if(s.result==='hit')botMsg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
+          else if(s.result==='sunk')botMsg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
+          else if(s.result==='mine')botMsg+=` 💣${t('mine')}`;
+          else botMsg+=` ${t('botMiss')}`;
+        }
+        setStatus(botMsg,'');
+      }
+      if(state.all_sunk||state.my_all_sunk){
+        if(!document.querySelector('.overlay')){
+          showResult(state.all_sunk ? '🏆' : '💔', state.all_sunk ? t('win') : t('lose'), state.all_sunk ? t('winDesc') : t('loseDesc'), state.strip);
+        }
+        return;
+      }
+      return;
+    }
+  }
+  await refreshState();
+}
 function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
 function ckRerollFirst(){ return doRerollFirst('/api/checkers_reroll_first', ckCode, ckRefreshState); }
 function pdRollFirst(){ return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState); }
@@ -903,7 +977,7 @@ function updateUI(){
   }
   $('shipHint').innerHTML = '';
 
-  if(s.phase==='roll'){
+  if(s.phase==='roll' || (s.my_roll!=null && s.opp_roll!=null && s.my_roll!==s.opp_roll && !gameOver)){
     ownEl.classList.remove('my-turn');
     oppEl.classList.remove('my-turn');
     $('oppBoardWrap').style.display='none';
