@@ -518,60 +518,44 @@ class PokerDiceGame(BaseGame):
         returns the human player's result, so the slow part (AI thinking,
         especially the Expert-difficulty expectimax search) never blocks the
         response that confirms the player's own move.
+
+        Kept as a synchronous convenience wrapper around prepare/compute/
+        commit (below) for callers that don't need the unlocked-compute
+        split themselves.
         """
         if not self.solo or self.phase != 'playing' or self.turn != 2:
             return None
-        self._bot_play()
+        p = self.prepare_bot_play()
+        if p is None:
+            self._advance_turn(2)
+        else:
+            self.commit_bot_play(self.compute_bot_play(p))
         return self.get_state(1)
 
-    def _advance_turn(self, pnum: int, run_bot: bool = True):
-        p1_remaining = _remaining_categories(self.players[1]['scorecard'])
-        p2_remaining = _remaining_categories(self.players[2]['scorecard'])
+    def prepare_bot_play(self) -> Optional[Dict[str, Any]]:
+        """Build a private working copy of the bot's turn state, without
+        touching self.players[2]. Only dict/list copies -- cheap, safe to
+        call while holding the state lock. Returns None if the bot has no
+        remaining categories to score (caller should just advance the turn).
+        """
+        live = self.players[2]
+        if not _remaining_categories(live['scorecard']):
+            return None
+        p = self._fresh_player()
+        p['scorecard'] = dict(live['scorecard'])
+        return p
 
-        if not p1_remaining and not p2_remaining:
-            self.phase = 'finished'
-            return
+    def compute_bot_play(self, p: Dict[str, Any]) -> Dict[str, Any]:
+        """Fill in a working copy from prepare_bot_play() with a full bot
+        turn: rolls, keep decisions (up to Expert-difficulty exact
+        expectimax, which is the slow part) and final category choice.
 
-        if self.solo:
-            if pnum == 1:
-                if p2_remaining:
-                    self.turn = 2
-                    if run_bot:
-                        self._bot_play()
-                else:
-                    self.turn = 1
-                    if self.players[1]['scored']:
-                        self._reset_player(1)
-            else:
-                if p1_remaining:
-                    self.turn = 1
-                    self._reset_player(1)
-                else:
-                    self.phase = 'finished'
-        else:
-            next_pnum = 3 - pnum
-            next_rem = p1_remaining if next_pnum == 1 else p2_remaining
-            if next_rem:
-                self.turn = next_pnum
-                if self.players[next_pnum]['scored']:
-                    self._reset_player(next_pnum)
-            else:
-                curr_rem = p1_remaining if pnum == 1 else p2_remaining
-                if curr_rem:
-                    self.turn = pnum
-                    if self.players[pnum]['scored']:
-                        self._reset_player(pnum)
-                else:
-                    self.phase = 'finished'
-
-    def _bot_play(self):
-        p = self.players[2]
-        if not _remaining_categories(p['scorecard']):
-            self._advance_turn(2)
-            return
-
-        # Player 2 is never reset by _advance_turn, so reset it each bot turn.
-        self._reset_player(2)
+        Reads only self.difficulty, which is fixed at game creation and never
+        mutated afterwards, and otherwise touches only the local `p` dict --
+        never self.players or any other shared state. Safe to run without
+        holding the state lock even though it can take real time at Expert
+        difficulty.
+        """
         remaining = _remaining_categories(p['scorecard'])
         diff = self.difficulty
 
@@ -625,8 +609,63 @@ class PokerDiceGame(BaseGame):
         p['last_scored_category'] = best_cat
         p['last_scored_score'] = scored_points
         p['scored'] = True
+        return p
 
+    def commit_bot_play(self, p: Dict[str, Any]) -> None:
+        """Write a computed working copy back and advance the turn. Cheap --
+        call while holding the state lock."""
+        self.players[2] = p
         self._advance_turn(2)
+
+    def _advance_turn(self, pnum: int, run_bot: bool = True):
+        p1_remaining = _remaining_categories(self.players[1]['scorecard'])
+        p2_remaining = _remaining_categories(self.players[2]['scorecard'])
+
+        if not p1_remaining and not p2_remaining:
+            self.phase = 'finished'
+            return
+
+        if self.solo:
+            if pnum == 1:
+                if p2_remaining:
+                    self.turn = 2
+                    if run_bot:
+                        self._bot_play()
+                else:
+                    self.turn = 1
+                    if self.players[1]['scored']:
+                        self._reset_player(1)
+            else:
+                if p1_remaining:
+                    self.turn = 1
+                    self._reset_player(1)
+                else:
+                    self.phase = 'finished'
+        else:
+            next_pnum = 3 - pnum
+            next_rem = p1_remaining if next_pnum == 1 else p2_remaining
+            if next_rem:
+                self.turn = next_pnum
+                if self.players[next_pnum]['scored']:
+                    self._reset_player(next_pnum)
+            else:
+                curr_rem = p1_remaining if pnum == 1 else p2_remaining
+                if curr_rem:
+                    self.turn = pnum
+                    if self.players[pnum]['scored']:
+                        self._reset_player(pnum)
+                else:
+                    self.phase = 'finished'
+
+    def _bot_play(self):
+        """Synchronous convenience wrapper around prepare/compute/commit,
+        kept for any caller that mutates player 2's turn directly without
+        needing the unlocked-compute split."""
+        p = self.prepare_bot_play()
+        if p is None:
+            self._advance_turn(2)
+            return
+        self.commit_bot_play(self.compute_bot_play(p))
 
     def _get_winner(self):
         if self.phase != 'finished':
