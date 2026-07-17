@@ -151,6 +151,8 @@ const LANG = {
     statsResWin: 'Победа',
     statsResLoss: 'Поражение',
     statsResDraw: 'Ничья',
+    bgVariantShort: 'Короткие',
+    bgVariantLong: 'Длинные',
   },
   uk: {
     title: 'Морський бій',
@@ -304,6 +306,8 @@ const LANG = {
     statsResWin: 'Перемога',
     statsResLoss: 'Поразка',
     statsResDraw: 'Нічия',
+    bgVariantShort: 'Короткі',
+    bgVariantLong: 'Довгі',
   },
   en: {
     title: 'Sea Battle',
@@ -457,6 +461,8 @@ const LANG = {
     statsResWin: 'Win',
     statsResLoss: 'Loss',
     statsResDraw: 'Draw',
+    bgVariantShort: 'Short',
+    bgVariantLong: 'Long',
   }
 };
 
@@ -624,14 +630,25 @@ function showIncomingMessages(messages){
   modal.append(title,body,close); o.appendChild(modal); document.body.appendChild(o);
 }
 
-async function api(method,data){
+async function api(method,data,_isRetry){
   try{
     data = data || {};
     data.lang = lang;
     try{ data.init_data = window.Telegram.WebApp.initData || ''; }catch(e){ data.init_data = ''; }
     const r=await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     return await r.json()
-  }catch(e){setStatus(t('error'));return null}
+  }catch(e){
+    // A single quick retry absorbs the brief network blips that are common
+    // on mobile (wifi/cell handoff, a momentary drop) instead of surfacing a
+    // scary "connection error" for something that would have recovered a
+    // second later on its own.
+    if(!_isRetry){
+      await new Promise(res=>setTimeout(res,800));
+      return api(method,data,true);
+    }
+    setStatus(t('error'));
+    return null;
+  }
 }
 
 async function fetchBotInfo(retries=10){
@@ -648,20 +665,38 @@ async function fetchBotInfo(retries=10){
 
 function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
   boardEl.innerHTML='';
+  boardEl.setAttribute('role','grid');
   const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5,MINE=6,MINE_HIT=7;
+  const COLS='ABCDEFGHIJ';
+  // Screen-reader labels for each cell, kept in the currently selected UI
+  // language. Purely additive (aria-label + keyboard activation for
+  // shootable cells) -- doesn't change the existing visual/click behaviour.
+  const STATE_LABEL=({
+    ru:{empty:'пусто',ship:'корабль',hit:'попадание',miss:'мимо',sunk:'потоплен',mine:'мина'},
+    uk:{empty:'порожньо',ship:'корабель',hit:'влучання',miss:'повз',sunk:'потоплено',mine:'міна'},
+    en:{empty:'empty',ship:'ship',hit:'hit',miss:'miss',sunk:'sunk',mine:'mine'},
+  })[lang] || {empty:'empty',ship:'ship',hit:'hit',miss:'miss',sunk:'sunk',mine:'mine'};
   for(let r=0;r<10;r++)for(let c=0;c<10;c++){
     const cell=document.createElement('div');
     const v=grid[r*10+c];
     cell.className='cell';
-    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
-    else if(v===HIT){cell.classList.add('hit');cell.textContent='❌'}
-    else if(v===MINE_HIT){cell.classList.add('mine');if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}
-    else if(v===MISS){cell.classList.add('miss');cell.textContent='·'}
-    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖'}
+    let stateWord=STATE_LABEL.empty;
+    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');stateWord=STATE_LABEL.ship;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');stateWord=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
+    else if(v===HIT){cell.classList.add('hit');cell.textContent='❌';stateWord=STATE_LABEL.hit}
+    else if(v===MINE_HIT){cell.classList.add('mine');stateWord=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}
+    else if(v===MISS){cell.classList.add('miss');cell.textContent='·';stateWord=STATE_LABEL.miss}
+    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖';stateWord=STATE_LABEL.sunk}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
     else cell.classList.add('empty');
-    if(isOpponent&&!gameOver&&(v===EMPTY||v===SHIP))cell.classList.add('shootable');
-    if(isOpponent&&!gameOver)cell.onclick=()=>handleShot(r,c);
+    cell.setAttribute('aria-label', COLS[c]+(r+1)+': '+stateWord);
+    const shootable = isOpponent&&!gameOver&&(v===EMPTY||v===SHIP);
+    if(shootable){
+      cell.classList.add('shootable');
+      cell.setAttribute('role','button');
+      cell.tabIndex=0;
+      cell.onclick=()=>handleShot(r,c);
+      cell.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); handleShot(r,c); } };
+    }
     boardEl.appendChild(cell);
   }
 }
@@ -1286,6 +1321,11 @@ function showMainMenu(){
       <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
       <div class="card-desc">${t('startBtn')}</div>
     </div>
+    <div class="game-card" onclick="showStats()" style="margin-bottom:8px">
+      <div style="font-size:44px;line-height:64px">📊</div>
+      <div class="name" style="color:var(--accent-primary)">${t('statsMenu')}</div>
+      <div class="card-desc">${t('statsTitle')}</div>
+    </div>
     <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
       <img src="/static/mode-join.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
       <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
@@ -1297,6 +1337,61 @@ function showMainMenu(){
 }
 
 function showMenu(){ showMainMenu(); }
+
+// ---- Player stats (winrate + recent match history) -------------------------
+const STATS_GAME_LABEL = {sea_battle:'seaBattle', poker_dice:'pdTitle', checkers:'checkers', backgammon:'backgammon'};
+const STATS_GAME_ICON = {sea_battle:'⚓', poker_dice:'🎲', checkers:'♟', backgammon:'🎲'};
+const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsResDraw'};
+
+async function showStats(){
+  var lb=$('langBar');if(lb)lb.style.display='none';
+  hideAllGameAreas();
+  document.title = t('statsTitle');
+  setStatus('📊 ' + t('statsTitle'));
+  $('gameInfo').textContent='';
+  $('header').classList.remove('in-game');
+  $('app').insertBefore($('status'), $('app').firstChild);
+  $('actions').className='btn-col';
+  $('actions').innerHTML = `<div class="stats-loading">⏳</div>`;
+  const res = await api('/api/stats', {uid:getUid()});
+  if(!res || !res.ok){
+    setStatus(t('error'));
+    $('actions').innerHTML = `<button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>`;
+    return;
+  }
+  renderStats(res.stats);
+}
+
+function renderStats(st){
+  const winrateStr = st.winrate==null ? '—' : st.winrate+'%';
+  let html = `
+    <div class="stats-summary">
+      <div class="stats-big">${winrateStr}</div>
+      <div class="stats-big-label">${t('statsWinrate')}</div>
+      <div class="stats-row">
+        <div class="stats-cell win"><b>${st.wins}</b><span>${t('statsWins')}</span></div>
+        <div class="stats-cell loss"><b>${st.losses}</b><span>${t('statsLosses')}</span></div>
+        <div class="stats-cell draw"><b>${st.draws}</b><span>${t('statsDraws')}</span></div>
+      </div>
+      <div class="stats-total">${t('statsTotal')}: ${st.total}</div>
+    </div>`;
+  html += `<h3 class="stats-hist-title">${t('statsHistory')}</h3>`;
+  if(!st.history || !st.history.length){
+    html += `<div class="stats-empty">${t('statsNoGames')}</div>`;
+  } else {
+    html += '<div class="stats-history">';
+    for(const h of st.history.slice(0,20)){
+      const icon = STATS_GAME_ICON[h.game] || '🎮';
+      const gname = t(STATS_GAME_LABEL[h.game] || h.game);
+      const resLabel = t(STATS_RESULT_LABEL[h.result] || h.result);
+      const vs = h.solo ? t('withBot') : t('withFriend');
+      html += `<div class="stats-hist-row ${h.result}"><span class="stats-hist-icon">${icon}</span><span class="stats-hist-name">${gname} <small>${vs}</small></span><span class="stats-hist-result ${h.result}">${resLabel}</span></div>`;
+    }
+    html += '</div>';
+  }
+  html += `<button class="btn outline quit-btn" style="margin-top:12px" onclick="showMainMenu()">${t('quit')}</button>`;
+  $('actions').innerHTML = html;
+}
 
 let gameDifficulty = 4;
 

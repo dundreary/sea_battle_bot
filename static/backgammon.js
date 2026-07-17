@@ -23,8 +23,8 @@ function showBackgammon(){
   $('actions').innerHTML=`
     ${resumeHtml}
     <div class="bg-variant-row">
-      <button class="bg-variant-btn ${bgVariant==='short'?'active':''}" onclick="bgSetVariant('short')">Короткие</button>
-      <button class="bg-variant-btn ${bgVariant==='long'?'active':''}" onclick="bgSetVariant('long')">Длинные</button>
+      <button class="bg-variant-btn ${bgVariant==='short'?'active':''}" onclick="bgSetVariant('short')">${t('bgVariantShort')}</button>
+      <button class="bg-variant-btn ${bgVariant==='long'?'active':''}" onclick="bgSetVariant('long')">${t('bgVariantLong')}</button>
     </div>
     <div class="game-card" onclick="bgStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
