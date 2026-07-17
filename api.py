@@ -670,7 +670,13 @@ def _handle_surrender(data, uid, code):
         ship.hits = set(ship.cells)
         own._mark_dead_zone(ship)
     game.phase = "finished"
-    _record_match_stats("sea_battle", game)
+    # Record the surrendering player as the loser directly, rather than via
+    # _record_match_stats' board-state check: all_sunk() intentionally
+    # reports False for a fleet that was never placed (e.g. surrendering
+    # during the placement phase, before any ships exist), which would
+    # otherwise silently skip recording anything for this match.
+    p1_result = "loss" if uid == game.player1_id else "win"
+    _stats.record_match("sea_battle", game.code, game.player1_id, game.player2_id, game.solo, p1_result)
     state = as_dict(game, uid)
     _mark_active(game, uid)
     pending = _notify_opponent(game, uid, "⚓ Друг сдался в Морском бое.", "surrender", force=True)

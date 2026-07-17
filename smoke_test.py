@@ -37,7 +37,18 @@ unwrap(api._handle_place_auto({"code": code_sb}, uid, code_sb))
 res = unwrap(api._handle_confirm({"code": code_sb}, uid, code_sb))
 check(res.get("ok"), "confirm_placement")
 # Solo now opens with a die roll; throw the human's die to start play.
-unwrap(api._handle_roll_first({"code": code_sb}, uid, code_sb))
+roll0 = unwrap(api._handle_roll_first({"code": code_sb}, uid, code_sb))
+# The opening roll can be won by either side (or tie, requiring a reroll);
+# handle all three so this test doesn't depend on how the dice landed.
+guard = 0
+while roll0.get("roll", {}).get("tie") and guard < 30:
+    roll0 = unwrap(api._handle_reroll_first({"code": code_sb}, uid, code_sb))
+    roll0 = unwrap(api._handle_roll_first({"code": code_sb}, uid, code_sb))
+    guard += 1
+if api.games[code_sb].bot_pending_first:
+    # Bot won the opening roll; it only fires once the client acknowledges
+    # the roll result screen, exactly as in real play.
+    unwrap(api._handle_bot_opening_shot({"code": code_sb}, uid, code_sb))
 finished = False
 for r in range(10):
     for c in range(10):
@@ -153,8 +164,12 @@ check(state.get("ok"), "checkers state")
 check(state["state"]["phase"] == "roll", "checkers enters roll phase on join")
 started = False
 for _ in range(60):
-    api._handle_checkers_roll_first({"code": code_ckm}, uidA, code_ckm)
-    api._handle_checkers_roll_first({"code": code_ckm}, uidB, code_ckm)
+    rollA = unwrap(api._handle_checkers_roll_first({"code": code_ckm}, uidA, code_ckm))["roll"]
+    rollB = unwrap(api._handle_checkers_roll_first({"code": code_ckm}, uidB, code_ckm))["roll"]
+    if rollA.get("tie") or rollB.get("tie"):
+        api._handle_checkers_reroll_first({"code": code_ckm}, uidA, code_ckm)
+        api._handle_checkers_reroll_first({"code": code_ckm}, uidB, code_ckm)
+        continue
     st = unwrap(api._handle_checkers_state({"code": code_ckm}, uidA, code_ckm))["state"]
     if st["phase"] == "playing":
         started = True
@@ -178,8 +193,12 @@ st = unwrap(api._handle_pd_state({"code": code_pdm}, uidA, code_pdm))["state"]
 check(st["phase"] == "roll", "poker enters roll phase on join")
 started = False
 for _ in range(60):
-    api._handle_pd_roll_first({"code": code_pdm}, uidA, code_pdm)
-    api._handle_pd_roll_first({"code": code_pdm}, uidB, code_pdm)
+    rollA = unwrap(api._handle_pd_roll_first({"code": code_pdm}, uidA, code_pdm))["roll"]
+    rollB = unwrap(api._handle_pd_roll_first({"code": code_pdm}, uidB, code_pdm))["roll"]
+    if rollA.get("tie") or rollB.get("tie"):
+        api._handle_pd_reroll_first({"code": code_pdm}, uidA, code_pdm)
+        api._handle_pd_reroll_first({"code": code_pdm}, uidB, code_pdm)
+        continue
     st = unwrap(api._handle_pd_state({"code": code_pdm}, uidA, code_pdm))["state"]
     if st["phase"] == "playing":
         started = True
@@ -272,5 +291,47 @@ check(_res.get("ok"), "rematch vote ok")
 _res2 = unwrap(api._handle_rematch({"code": "REMTA"}, 22, "REMTA"))
 check(_res2.get("ok") and _res2.get("restarted"), "rematch restarts on second vote")
 check(api.games["REMTA"].phase == "placing", "api game restarted")
+
+print("Player stats (winrate + history recorded on match finish):")
+import stats as _stats_mod
+# NOTE: this block intentionally uses hardcoded ids/codes (1001, 2001, 2002,
+# a fresh code_stm -- not code_m) rather than the uid/uidA/uidB/code_m names
+# from earlier tests: those get reassigned many times by the time execution
+# reaches here, so reusing them would silently check the wrong player.
+
+# 1) Solo: reuse the game the very first test above already played to a real
+#    finish through the actual API (no shortcuts), and check the human's
+#    (uid 1001) record was updated -- and that the bot's placeholder id (0)
+#    never accumulates a phantom record of its own.
+s_solo = unwrap(api._handle_stats({}, 1001, None))["stats"]
+check(s_solo["total"] == 1, "solo match recorded exactly once for the human")
+check(s_solo["wins"] + s_solo["losses"] == 1, "solo match recorded as a win or a loss")
+check(s_solo["by_game"]["sea_battle"]["wins"] + s_solo["by_game"]["sea_battle"]["losses"] == 1,
+      "per-game breakdown updated")
+check(len(s_solo["history"]) == 1 and s_solo["history"][0]["solo"] is True,
+      "match recorded in history, flagged as solo")
+check(_stats_mod.get_stats(0)["total"] == 0, "bot's placeholder id (0) never accumulates a record")
+
+# 2) Multiplayer: a fresh 2-human game, finished via surrender for a
+#    deterministic, real API-driven result, then check both sides got the
+#    mirrored outcome. Surrendered before ship placement on purpose -- this
+#    is exactly the edge case that originally slipped through.
+uidA_st, uidB_st = 2001, 2002
+code_stm = unwrap(api._handle_new_multi({"strip": False}, uidA_st, None))["code"]
+unwrap(api._handle_join({"code": code_stm}, uidB_st, code_stm))
+surr = unwrap(api._handle_surrender({"code": code_stm}, uidA_st, code_stm))
+check(surr.get("ok"), "surrender ends the multiplayer game")
+sA = unwrap(api._handle_stats({}, uidA_st, None))["stats"]
+sB = unwrap(api._handle_stats({}, uidB_st, None))["stats"]
+check(sA["losses"] == 1 and sA["wins"] == 0, "surrendering player recorded as a loss")
+check(sB["wins"] == 1 and sB["losses"] == 0, "opponent recorded as a win")
+check(sB["winrate"] == 100.0, "winrate computed correctly")
+check(sA["history"][0]["opponent"] == uidB_st and sB["history"][0]["opponent"] == uidA_st,
+      "history on each side records the other as the opponent")
+check(sA["history"][0]["solo"] is False, "multiplayer match not flagged as solo")
+
+# 3) A brand-new player must get a well-formed, all-zero record, not an error.
+s_fresh = unwrap(api._handle_stats({}, 424242, None))["stats"]
+check(s_fresh["total"] == 0 and s_fresh["winrate"] is None, "unseen player gets a clean empty record")
 
 print("\nALL SMOKE TESTS PASSED")
