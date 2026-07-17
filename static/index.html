@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Games</title>
 <!-- Preload the 6 menu icons so they start fetching in parallel with the
      HTML/CSS instead of only after showMainMenu() runs and inserts <img>
@@ -21,6 +21,7 @@
 <body>
 
 <div class="header" id="header">
+  <div id="stripUnlockArea" style="height:28px;width:100%;cursor:pointer" onclick="tapStripUnlock()"></div>
   <div class="header-controls">
     <div class="lang-bar" id="langBar">
       <button class="lang-btn" onclick="setLang('ru')">RU</button>

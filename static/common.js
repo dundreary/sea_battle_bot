@@ -523,8 +523,8 @@ function updateSettingsUI(){
   const vibeBtnPd=document.getElementById('vibeBtnPd');
   const sndBtnCk=document.getElementById('sndBtnCk');
   const vibeBtnCk=document.getElementById('vibeBtnCk');
-  const sndIcon=_snd?'🔊':'🔇';
-  const vibeIcon=_vibe?'📳':'📴';
+  const chk = on => on ? '✅' : '⬜';
+  const sndIcon=chk(_snd), vibeIcon=chk(_vibe);
   if(sndBtn)sndBtn.textContent=sndIcon;
   if(vibeBtn)vibeBtn.textContent=vibeIcon;
   if(sndBtnPd)sndBtnPd.textContent=sndIcon;
@@ -561,13 +561,14 @@ function showSettings(){
   if(existing){existing.remove()}
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
   const curTheme = document.documentElement.className.indexOf('forest')>=0 ? 'forest' : 'ocean';
+  const chk = on => on ? '✅' : '⬜';
   o.innerHTML=`
     <div class="modal">
       <h2>⚙️ ${t('settings')}</h2>
       <div class="sett-row" onclick="setTheme('ocean');showSettings()"><span>🌊 Ocean</span><span class="sett-val">${curTheme==='ocean'?'✅':''}</span></div>
       <div class="sett-row" onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
-      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${_snd?'🔊':'🔇'}</span></div>
-      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${_vibe?'📳':'📴'}</span></div>
+      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
+      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
       <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -1287,7 +1288,7 @@ function pollGame(){
 }
 
 function showMainMenu(){
-  stripUnlocked=false;
+  stripUnlocked=false; _stripTaps=0;
   delete _rollAckShown[gameCode];
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
@@ -1318,27 +1319,27 @@ function showMainMenu(){
     <div id="activeGamesContainer"></div>
     <div class="game-grid">
       <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-        <div class="icon">🚢</div>
+        <img src="/static/sb-navy.svg" class="card-icon">
         <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
-        <div class="icon">🃏</div>
+        <img src="/static/pd-green.svg" class="card-icon">
         <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
-        <div class="icon">♟️</div>
+        <img src="/static/checkers-icon.svg" class="card-icon">
         <div class="name" style="color:#D4A96A">${t('checkers')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" onclick="showBackgammon()" style="margin-bottom:8px">
-        <div class="icon">🎲</div>
+        <img src="/static/backgammon-icon.svg" class="card-icon">
         <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card game-card-wide" onclick="universalJoinGame()" style="margin-bottom:8px">
-        <div class="icon">🔗</div>
+        <img src="/static/mode-join.svg" class="card-icon">
         <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
         <div class="card-desc">${t('joinBtn')}</div>
       </div>
@@ -1434,7 +1435,7 @@ function startSoloWithDifficulty(diff){
 
 function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
-  stripUnlocked=false;
+  stripUnlocked=false; _stripTaps=0;
   hideAllGameAreas();
   document.title = t('seaBattle');
   setStatus('');
@@ -1459,16 +1460,16 @@ function showSeaBattleMenu(){
       <div class="card-desc">${t('stripDesc')}</div>
     </div>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
-    <div id="stripUnlockArea" style="height:140px;width:100%;cursor:pointer" onclick="tapStripUnlock()"></div>
   `;
   fetchActiveGames();
 }
 
 function tapStripUnlock(){
+  if(!document.getElementById('stripCard')) return;
   const now=Date.now();
   if(now-_stripLastTap>1800)_stripTaps=0;   // reset if gap between taps > 1.8s (not "normal pace")
   _stripLastTap=now; _stripTaps++;
-  if(_stripTaps>=10){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
+  if(_stripTaps>=5){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
 }
 
 function chooseMultiMode(){
