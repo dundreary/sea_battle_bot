@@ -1012,7 +1012,14 @@ function updateUI(){
   }
   $('shipHint').innerHTML = '';
 
-  if(s.phase==='roll' || (s.my_roll!=null && s.opp_roll!=null && s.my_roll!==s.opp_roll && !gameOver)){
+  // Route to the roll screen purely by phase. Note: my_roll/opp_roll stay
+  // populated on the backend even after phase flips to 'playing' (kept
+  // around for a one-shot "you won the roll" banner elsewhere), so they must
+  // NOT be part of this check -- doing so used to make this screen (and its
+  // "Continue" button) re-render forever after a decisive roll, since
+  // refreshing state would always find the same still-set, still-decisive
+  // my_roll/opp_roll and show the roll screen again instead of the board.
+  if(s.phase==='roll'){
     ownEl.classList.remove('my-turn');
     oppEl.classList.remove('my-turn');
     $('oppBoardWrap').style.display='none';
