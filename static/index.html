@@ -21,10 +21,14 @@
 <body>
 
 <div class="header" id="header">
-  <div class="lang-bar" id="langBar">
-    <button class="lang-btn" onclick="setLang('ru')">RU</button>
-    <button class="lang-btn" onclick="setLang('uk')">UA</button>
-    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  <div class="header-controls">
+    <div class="lang-bar" id="langBar">
+      <button class="lang-btn" onclick="setLang('ru')">RU</button>
+      <button class="lang-btn" onclick="setLang('uk')">UA</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="top-btn" onclick="showStats()" title="Stats">📊</button>
+    <button class="top-btn" onclick="showSettings()" title="Settings">⚙️</button>
   </div>
   <div class="sub" id="gameInfo">—</div>
   <button class="btn primary" id="continueBtn" style="display:none;margin-top:8px;padding:8px 16px;font-size:13px" onclick="continueGame()"></button>
@@ -42,15 +46,8 @@
     <div class="board" id="oppBoard"></div>
   </div>
   <!-- Legend removed per request -->
-  <div class="btn-row" id="actions"></div>
-  <div class="theme-selector" id="themeSelector" style="display:none">
-    <button class="theme-btn active" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
-    <div class="theme-divider"></div>
-    <button class="theme-btn snd-btn" id="sndBtn" onclick="toggleSnd()">🔊</button>
-    <button class="theme-btn snd-btn" id="vibeBtn" onclick="toggleVibe()">📳</button>
-  </div>
-   <div id="pdArea" style="display:none">
+   <div class="btn-row" id="actions"></div>
+    <div id="pdArea" style="display:none">
     <div id="pdScorecardContainer"></div>
     <div class="pd-dice" id="pdDice"></div>
     <div id="pdOppHistory"></div>
@@ -61,9 +58,8 @@
     <div class="ck-board" id="ckBoard"></div>
     <div class="btn-row" id="ckActions" style="margin-top:14px;min-height:120px"></div>
   </div>
-  <div id="bgArea" style="display:none">
-    <div class="bg-rotate-hint" id="bgRotateHint">↻ Поверните телефон для удобной игры в Нарды</div>
-    <div id="bgBoard"></div>
+   <div id="bgArea" style="display:none">
+     <div id="bgBoard"></div>
     <div class="btn-row" id="bgActions" style="margin-top:14px;min-height:120px"></div>
   </div>
   </div>

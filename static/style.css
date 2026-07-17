@@ -81,11 +81,14 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
 .header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
 .header .sub{font-size:11px;color:var(--accent-primary-light)}
-.header.in-game{display:none}
+.header.in-game .sub{display:none}
 .board-label{display:none}
 .lang-bar{display:flex;gap:4px;justify-content:center;padding:4px 0}
 .lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer;transition:.15s}
 .lang-btn.active{background:var(--color-btn-primary-1);border-color:var(--accent-primary);color:#fff}
+.header-controls{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;padding:2px 0}
+.top-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-secondary);padding:4px 10px;border-radius:6px;font-size:16px;cursor:pointer;transition:.15s}
+.top-btn:hover{border-color:var(--accent-primary);color:var(--accent-primary)}
 .main{flex:1;width:100%;max-width:480px;padding:8px 12px 80px;display:flex;flex-direction:column;align-items:center}
 .status{text-align:center;padding:6px 0;font-size:14px;color:var(--text-secondary);min-height:28px}
 .status.battle{color:var(--color-warning);font-weight:600}
@@ -157,6 +160,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .game-card .card-icon-wide{width:100%;height:120px;display:block;margin:0 auto 8px}
 .game-card .name{font-size:18px;font-weight:600}
 .game-card .card-desc{font-size:12px;color:var(--text-muted);margin-top:4px}
+.game-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:340px;margin:0 auto 8px}
+.game-card-wide{grid-column:1 / -1}
 .active-games{width:100%;max-width:340px;margin-bottom:12px}
 .active-games h3{font-size:14px;color:var(--accent-primary);text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:8px}
 .active-game-row{background:var(--bg-board);border:1px solid var(--border-color);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;transition:.15s}
@@ -281,7 +286,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black.king{color:#FFD700}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
-.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;max-width:860px;min-height:300px;margin:6px auto;background:linear-gradient(160deg,#6b4226,#4a2c17);border:10px solid #3f2414;border-radius:6px;padding:10px;box-shadow:0 4px 18px rgba(0,0,0,.5),inset 0 0 24px rgba(0,0,0,.35);overflow:visible}
+.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;max-width:860px;min-height:300px;margin:6px auto;background:linear-gradient(160deg,#6b4226,#4a2c17);border:2px solid #3f2414;border-radius:6px;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,.35);overflow:visible}
 .bg-half{display:flex;flex-direction:column;flex:1;min-width:0;background:#e8cfa0;border-radius:2px}
 .bg-row{display:flex;gap:0;flex:1;min-height:0}
 .bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0;padding:2px 0;overflow:visible}
@@ -306,7 +311,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bg-count.black{color:#eee;border:1px solid #000}
 .bg-bar-v{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:34px;background:linear-gradient(160deg,#6b4226,#4a2c17);border-radius:3px;padding:4px;gap:3px;box-shadow:inset 0 0 10px rgba(0,0,0,.5),0 0 0 2px rgba(0,0,0,.2);margin:0 6px}
 .bg-bar-label{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;writing-mode:vertical-rl;letter-spacing:1px}
-.bg-off-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:54px;background:linear-gradient(160deg,#6b4226,#4a2c17);border-radius:4px;padding:8px;gap:8px;font-size:15px;font-weight:700;color:#f2e2bd;box-shadow:inset 0 0 10px rgba(0,0,0,.4);margin-left:6px;border:2px solid #3f2414}
+.bg-off-col{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:34px;background:linear-gradient(160deg,#6b4226,#4a2c17);border-radius:4px;padding:4px;gap:8px;font-size:12px;font-weight:700;color:#f2e2bd;box-shadow:inset 0 0 10px rgba(0,0,0,.4);margin-left:6px;border:2px solid #3f2414}
 .bg-dice{display:flex;gap:12px;justify-content:center;margin:12px 0;flex-wrap:wrap}
 .bg-die{width:52px;height:52px;background:#f2e2bd;color:#3f2414;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.35);border:1px solid #b8975f}
 .bg-die.used{opacity:.3}
@@ -317,15 +322,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bg-variant-btn{flex:1;padding:10px;border:1px solid var(--border-color);background:var(--surface-2,#1b2230);color:var(--text-secondary);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
 .bg-variant-btn.active{background:var(--accent-primary,#3a86ff);color:#fff;border-color:transparent}
 .bg-home-label{font-size:9px;color:var(--text-hint);text-align:center;padding:1px 0;width:100%}
-.bg-rotate-hint{display:none;background:rgba(79,195,247,.12);border:1px solid var(--accent-primary,#3a86ff);color:var(--accent-primary-light,#80deea);border-radius:10px;padding:8px 12px;margin:6px auto;max-width:860px;text-align:center;font-size:13px}
 @media (orientation:landscape){
   .bg-board-h{max-width:920px;min-height:340px}
   .bg-checker{width:clamp(22px,4.6vh,34px);height:clamp(22px,4.6vh,34px)}
-  .bg-off-col{min-width:60px}
+  .bg-off-col{min-width:34px}
 }
-@media (orientation:portrait){
-  .bg-rotate-hint{display:block}
-}
+
 
 
 /* ---- AI "thinking" overlay + reveal banner ---- */

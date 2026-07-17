@@ -512,17 +512,6 @@ function pdRenderActions(st){
     </div>`;
   }
 
-  // Theme / sound controls at the bottom
-  const sndIcon = typeof _snd !== 'undefined' && !_snd ? '🔇' : '🔊';
-  const vibeIcon = typeof _vibe !== 'undefined' && !_vibe ? '📴' : '📳';
-  html += `<div class="pd-theme-bar">
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='ocean'||!localStorage.getItem('sb_theme')?'active':''}" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='forest'?'active':''}" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
-    <div class="theme-divider"></div>
-    <button class="theme-btn snd-btn" id="sndBtnPd" onclick="toggleSnd()">${sndIcon}</button>
-    <button class="theme-btn snd-btn" id="vibeBtnPd" onclick="toggleVibe()">${vibeIcon}</button>
-  </div>`;
-
   el.innerHTML = html;
 }
 

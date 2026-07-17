@@ -183,15 +183,6 @@ function ckShowGame(st){
       <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
     </div>`;
   }
-  const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
-  const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
-  html+=`<div class="pd-theme-bar">
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='ocean'||!localStorage.getItem('sb_theme')?'active':''}" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='forest'?'active':''}" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
-    <div class="theme-divider"></div>
-    <button class="theme-btn snd-btn" id="sndBtnCk" onclick="toggleSnd()">${sndIcon}</button>
-    <button class="theme-btn snd-btn" id="vibeBtnCk" onclick="toggleVibe()">${vibeIcon}</button>
-  </div>`;
   el.innerHTML=html;
   if(!st.solo){
     $('status').style.cursor='pointer';

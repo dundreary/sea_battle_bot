@@ -115,8 +115,6 @@ function bgShowGame(st, keepSelection=false){
   }
   hideAllGameAreas();
   $('bgArea').style.display='';
-  const rh=$('bgRotateHint');
-  if(rh) rh.textContent='↻ '+{ru:'Поверните телефон для удобной игры в Нарды',uk:'Поверніть телефон для зручної гри в Нарди',en:'Rotate your phone to landscape for a better board'}[lang];
   setThemeSelectorVisibility(false);
   $('header').classList.add('in-game');
   document.title=t('backgammon');
@@ -402,15 +400,6 @@ function bgRenderActions(st){
       <button class="btn outline" onclick="leaveBgGame()">${t('minimize')}</button>
     </div>`;
   }
-  const sndIcon=typeof _snd!=='undefined'&&!_snd?'🔇':'🔊';
-  const vibeIcon=typeof _vibe!=='undefined'&&!_vibe?'📴':'📳';
-  html+=`<div class="pd-theme-bar">
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='ocean'||!localStorage.getItem('sb_theme')?'active':''}" data-theme="ocean" onclick="setTheme('ocean')">🌊 Ocean</button>
-    <button class="theme-btn ${localStorage.getItem('sb_theme')==='forest'?'active':''}" data-theme="forest" onclick="setTheme('forest')">🌲 Forest</button>
-    <div class="theme-divider"></div>
-    <button class="theme-btn snd-btn" id="sndBtnBg" onclick="toggleSnd()">${sndIcon}</button>
-    <button class="theme-btn snd-btn" id="vibeBtnBg" onclick="toggleVibe()">${vibeIcon}</button>
-  </div>`;
   el.insertAdjacentHTML('beforeend', html);
 }
 

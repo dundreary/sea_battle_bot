@@ -141,6 +141,10 @@ const validThemes = ['ocean', 'forest', 'custom'];
 - Theme sharing between users
 - Per-element color customization
 
+## 📝 Recent UI Changes
+
+Theme, sound, and vibration controls were **moved out of the individual games** into a single **Settings panel (⚙️)** in the top bar. The old in-game theme/sound bars no longer render during gameplay (`setThemeSelectorVisibility(false)` is called on entering any game). See `README.md → Недавние изменения интерфейса` for the user-facing summary.
+
 ---
 
 **Status:** ✅ Complete and ready for production

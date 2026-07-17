@@ -533,7 +533,8 @@ function updateSettingsUI(){
   if(vibeBtnCk)vibeBtnCk.textContent=vibeIcon;
 }
 function setThemeSelectorVisibility(visible){
-  $('themeSelector').style.display=visible?'flex':'none';
+  const el=$('themeSelector'); if(!el)return;
+  el.style.display=visible?'flex':'none';
 }
 
 function setTheme(themeName){
@@ -559,12 +560,14 @@ function showSettings(){
   const existing=$('settingsOverlay');
   if(existing){existing.remove()}
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
-  const s=_snd?'✅':'❌',v=_vibe?'✅':'❌';
+  const curTheme = document.documentElement.className.indexOf('forest')>=0 ? 'forest' : 'ocean';
   o.innerHTML=`
     <div class="modal">
       <h2>⚙️ ${t('settings')}</h2>
-      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val">${s}</span></div>
-      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val">${v}</span></div>
+      <div class="sett-row" onclick="setTheme('ocean');showSettings()"><span>🌊 Ocean</span><span class="sett-val">${curTheme==='ocean'?'✅':''}</span></div>
+      <div class="sett-row" onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
+      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${_snd?'🔊':'🔇'}</span></div>
+      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${_vibe?'📳':'📴'}</span></div>
       <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -789,6 +792,7 @@ function firstRollHTML(s, rollFn, rerollFn){
 // One-shot guard keyed by game code: the winner banner must appear only once
 // when the opening roll resolves, not on every polling refresh afterwards.
 const _rollBannerShown = {};
+const _rollAckShown = {};
 
 function armRollBanner(code){
   if(code) delete _rollBannerShown[code];
@@ -856,6 +860,7 @@ function rollFirst(){ return doFirstRoll('/api/roll_first', gameCode, refreshSta
 function rerollFirst(){ return doRerollFirst('/api/reroll_first', gameCode, refreshState); }
 async function ackRoll(){
   if(!state) return;
+  _rollAckShown[gameCode] = true;
   // In solo, if the bot won the opening roll it owes its first shot. Take it
   // now (the dice-result screen has already been shown to the human).
   if(state.solo && state.phase==='playing' && state.turn===2){
@@ -1008,6 +1013,7 @@ function updateUI(){
         `;
       }
     setThemeSelectorVisibility(false);
+    delete _rollAckShown[gameCode];
     return;
   }
   $('shipHint').innerHTML = '';
@@ -1019,7 +1025,8 @@ function updateUI(){
   // "Continue" button) re-render forever after a decisive roll, since
   // refreshing state would always find the same still-set, still-decisive
   // my_roll/opp_roll and show the roll screen again instead of the board.
-  if(s.phase==='roll'){
+  const rollDecided = s.my_roll != null && s.opp_roll != null && s.my_roll !== s.opp_roll;
+  if(s.phase==='roll' || (rollDecided && !_rollAckShown[gameCode])){
     ownEl.classList.remove('my-turn');
     oppEl.classList.remove('my-turn');
     $('oppBoardWrap').style.display='none';
@@ -1033,7 +1040,6 @@ function updateUI(){
   }
 
   $('oppBoardWrap').style.display='block';
-  setThemeSelectorVisibility(true);
   updateSettingsUI();
   $('ownBoardWrap').after($('status'));
 
@@ -1281,6 +1287,8 @@ function pollGame(){
 }
 
 function showMainMenu(){
+  stripUnlocked=false;
+  delete _rollAckShown[gameCode];
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
   gameCode=null;state=null;
@@ -1308,35 +1316,32 @@ function showMainMenu(){
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
-    <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-      <img src="/static/sb-navy.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
-      <div class="card-desc">${t('startBtn')}</div>
-    </div>
-    <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
-      <img src="/static/pd-green.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
-      <div class="card-desc">${t('startBtn')}</div>
-    </div>
-    <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
-      <img src="/static/checkers-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:#D4A96A">${t('checkers')}</div>
-      <div class="card-desc">${t('startBtn')}</div>
-    </div>
-    <div class="game-card" onclick="showBackgammon()" style="margin-bottom:8px">
-      <img src="/static/backgammon-icon.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
-      <div class="card-desc">${t('startBtn')}</div>
-    </div>
-    <div class="game-card" onclick="showStats()" style="margin-bottom:8px">
-      <div style="font-size:44px;line-height:64px">📊</div>
-      <div class="name" style="color:var(--accent-primary)">${t('statsMenu')}</div>
-      <div class="card-desc">${t('statsTitle')}</div>
-    </div>
-    <div class="game-card" onclick="universalJoinGame()" style="margin-bottom:8px">
-      <img src="/static/mode-join.svg" style="width:64px;height:64px;display:block;margin:0 auto 8px">
-      <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
-      <div class="card-desc">${t('joinBtn')}</div>
+    <div class="game-grid">
+      <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
+        <div class="icon">🚢</div>
+        <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
+        <div class="card-desc">${t('startBtn')}</div>
+      </div>
+      <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
+        <div class="icon">🃏</div>
+        <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
+        <div class="card-desc">${t('startBtn')}</div>
+      </div>
+      <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
+        <div class="icon">♟️</div>
+        <div class="name" style="color:#D4A96A">${t('checkers')}</div>
+        <div class="card-desc">${t('startBtn')}</div>
+      </div>
+      <div class="game-card" onclick="showBackgammon()" style="margin-bottom:8px">
+        <div class="icon">🎲</div>
+        <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
+        <div class="card-desc">${t('startBtn')}</div>
+      </div>
+      <div class="game-card game-card-wide" onclick="universalJoinGame()" style="margin-bottom:8px">
+        <div class="icon">🔗</div>
+        <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
+        <div class="card-desc">${t('joinBtn')}</div>
+      </div>
     </div>
   `;
   updateContinueButton();
@@ -1347,7 +1352,7 @@ function showMenu(){ showMainMenu(); }
 
 // ---- Player stats (winrate + recent match history) -------------------------
 const STATS_GAME_LABEL = {sea_battle:'seaBattle', poker_dice:'pdTitle', checkers:'checkers', backgammon:'backgammon'};
-const STATS_GAME_ICON = {sea_battle:'⚓', poker_dice:'🎲', checkers:'♟', backgammon:'🎲'};
+const STATS_GAME_ICON = {sea_battle:'🚢', poker_dice:'🃏', checkers:'♟️', backgammon:'🎲'};
 const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsResDraw'};
 
 async function showStats(){
@@ -1401,6 +1406,7 @@ function renderStats(st){
 }
 
 let gameDifficulty = 4;
+let stripUnlocked=false; let _stripTaps=0, _stripLastTap=0;
 
 function showBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -1428,6 +1434,7 @@ function startSoloWithDifficulty(diff){
 
 function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  stripUnlocked=false;
   hideAllGameAreas();
   document.title = t('seaBattle');
   setStatus('');
@@ -1446,14 +1453,22 @@ function showSeaBattleMenu(){
       <div class="name">${t('vsFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <div class="game-card" onclick="newMulti(true)" style="margin-bottom:8px">
+    <div class="game-card" onclick="newMulti(true)" id="stripCard" style="display:none;margin-bottom:8px">
       <img src="/static/mode-shirt.svg" class="card-icon">
       <div class="name">${t('stripMode')}</div>
       <div class="card-desc">${t('stripDesc')}</div>
     </div>
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
+    <div id="stripUnlockArea" style="height:140px;width:100%;cursor:pointer" onclick="tapStripUnlock()"></div>
   `;
   fetchActiveGames();
+}
+
+function tapStripUnlock(){
+  const now=Date.now();
+  if(now-_stripLastTap>1800)_stripTaps=0;   // reset if gap between taps > 1.8s (not "normal pace")
+  _stripLastTap=now; _stripTaps++;
+  if(_stripTaps>=10){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
 }
 
 function chooseMultiMode(){
@@ -1533,6 +1548,7 @@ async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=s
 }
 
 function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
+  stripUnlocked=false;
   const o=document.createElement('div');
   o.className='overlay';
   const won = icon==='🏆';
@@ -1596,6 +1612,8 @@ async function requestRematch(){
 }
 
 async function leaveGame(surrender){
+  stripUnlocked=false;
+  delete _rollAckShown[gameCode];
   if(surrender){
     var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
     if(!confirm(msg))return;
@@ -1627,16 +1645,16 @@ async function fetchActiveGames(){
   var html='<div class="active-games"><h3>'+t('activeGames')+'</h3>';
   for(const g of res.games){
     if(g.type==='sea_battle'){
-      var badge=g.my_turn?'<span class="badge playing">⚓ '+t('yourTurn')+'</span>':'<span class="badge">⚓ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">⚓ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      var badge=g.my_turn?'<span class="badge playing">🚢 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">🚢 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
     else if(g.type==='poker_dice'){
-      var badge=g.my_turn?'<span class="badge playing">🎲 '+t('yourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      var badge=g.my_turn?'<span class="badge playing">🃏 '+t('yourTurn')+'</span>':'<span class="badge">🃏 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🃏 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
     else if(g.type==='checkers'){
-      var badge=g.my_turn?'<span class="badge playing">♟ '+t('yourTurn')+'</span>':'<span class="badge">♟ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      var badge=g.my_turn?'<span class="badge playing">♟️ '+t('yourTurn')+'</span>':'<span class="badge">♟️ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
+      html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟️ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
     }
     else if(g.type==='backgammon'){
       var badge=g.my_turn?'<span class="badge playing">🎲 '+t('bgYourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';

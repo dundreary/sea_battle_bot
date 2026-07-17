@@ -44,16 +44,16 @@ All colors are defined as CSS custom properties under `body.palette-{name}` sele
 - Defaults to 'ocean' if not set
 
 ### UI
-- **Theme Selector:** Located in the main menu
+- **Theme Selector:** Located in the Settings panel (⚙️ button in the top bar)
 - **Buttons:** 🌊 Ocean, 🌲 Forest
 - **Active State:** Selected theme button highlighted
-- **Position:** Below the game board, above action buttons
+- **Position:** Inside the Settings overlay (theme/sound/vibration moved out of the individual games)
 
 ## How to Use
 
 ### For Players
-1. Go to the main menu
-2. Click the theme button (🌊 / 🌲)
+1. Open the Settings panel from the top bar (⚙️)
+2. Tap the theme you want (🌊 Ocean or 🌲 Forest)
 3. Your choice is automatically saved
 4. Theme applies immediately with smooth transition
 
