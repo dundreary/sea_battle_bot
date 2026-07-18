@@ -147,7 +147,7 @@ async function pdRefreshState(){
   // Replay the opponent's throws live in the shared dice tray the moment their
   // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
   await pdMaybeAnimateOpponent(st);
-  pdShowGame(st);
+  if(!pdAnimating) pdShowGame(st);
 }
 
 function pdShowGame(st){
@@ -380,6 +380,7 @@ function pdRenderDice(st){
   async function pdAnimateBotTurn(history, cat, pts){
     if(pdAnimating) return;
     pdAnimating = true;
+    if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
     const savedKept = pdKept;
     pdKept = new Set();
 
@@ -423,6 +424,7 @@ function pdRenderDice(st){
       }
     };
 
+    try {
     for(let h = 0; h < history.length; h++){
       const entry = history[h] || {};
       const kept = entry.kept || [];
@@ -457,13 +459,15 @@ function pdRenderDice(st){
     label.textContent = cat
       ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
       : t('pdOppHand');
-
+    } finally {
     // Release the fixed height now that the final layout is settled so the
     // container can size naturally for the human's turn.
     cont.style.height = '';
     cont.style.minHeight = '';
     pdKept = savedKept;
     pdAnimating = false;
+    pdPoll();
+    }
   }
 
 
