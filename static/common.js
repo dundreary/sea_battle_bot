@@ -849,7 +849,7 @@ function showRollWinnerBanner(st, code){
   setTimeout(() => overlay.remove(), 3200);
 }
 
-async function doFirstRoll(endpoint, codeVal, refreshFn){
+async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rollBtn');
   if(btn) btn.disabled = true;
   const dieEl = document.querySelector('.roll-die-col:first-child .roll-die3d');
@@ -866,14 +866,20 @@ async function doFirstRoll(endpoint, codeVal, refreshFn){
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
   if(anim) clearInterval(anim);
   await refreshFn();
+  if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
+    afterRoll(res);
+  }
 }
 
-async function doRerollFirst(endpoint, codeVal, refreshFn){
+async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rerollBtn');
   if(btn) btn.disabled = true;
   try{ sfxClick(); }catch(e){}
-  await api(endpoint, {uid:getUid(), code:codeVal});
+  const res = await api(endpoint, {uid:getUid(), code:codeVal});
   await refreshFn();
+  if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
+    afterRoll(res);
+  }
 }
 
 function rollFirst(){ return doFirstRoll('/api/roll_first', gameCode, refreshState); }
@@ -912,8 +918,8 @@ async function ackRoll(){
 }
 function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
 function ckRerollFirst(){ return doRerollFirst('/api/checkers_reroll_first', ckCode, ckRefreshState); }
-function pdRollFirst(){ return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState); }
-function pdRerollFirst(){ return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState); }
+function pdRollFirst(){ return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
+function pdRerollFirst(){ return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
 function bgRollFirst(){ return doFirstRoll('/api/bg_roll_first', bgCode, bgRefreshState); }
 function bgRerollFirst(){ return doRerollFirst('/api/bg_reroll_first', bgCode, bgRefreshState); }
 

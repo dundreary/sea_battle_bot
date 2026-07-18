@@ -1,5 +1,5 @@
 // ---- Poker Dice ----
-let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='';
+let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false;
 
 const PD_DOTS = [
   [[1,1]],
@@ -385,11 +385,15 @@ function pdRenderDice(st){
 
 
     const cont = $('pdDice');
-    // Clear any stale min-height/sizing left by pdShowGame (e.g. the opening
-    // roll path renders the first-roll HTML into #pdDice, leaving it in a
-    // different layout state than a normal mid-game bot turn). Resetting here
-    // makes the opening-roll replay render identically to a normal bot turn.
+    // Pin the container's current height before we clear/rebuild it. Between
+    // throws the label text length changes and dice go from empty to filled,
+    // which can change the container height and make the dice row jump
+    // up/down. Fixing the height keeps the row vertically stable. (The opening
+    // roll path renders different HTML into #pdDice; reading offsetHeight here
+    // captures whatever is currently laid out.)
+    const fixedH = cont.offsetHeight || 0;
     cont.style.minHeight = '';
+    cont.style.height = fixedH ? fixedH + 'px' : '';
     cont.innerHTML = '';
     const label = document.createElement('div');
     label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px';
@@ -454,6 +458,10 @@ function pdRenderDice(st){
       ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
       : t('pdOppHand');
 
+    // Release the fixed height now that the final layout is settled so the
+    // container can size naturally for the human's turn.
+    cont.style.height = '';
+    cont.style.minHeight = '';
     pdKept = savedKept;
     pdAnimating = false;
   }
@@ -613,6 +621,20 @@ async function pdRunBotTurn(){
   // Replay the AI's throws in the shared dice tray, then show our own turn.
   await pdMaybeAnimateOpponent(res.state);
   pdShowGame(res.state);
+}
+
+// Called by doFirstRoll/doRerollFirst when the opening-roll response says the
+// bot won the toss and owes its first move. The opening-roll winner banner
+// (showRollWinnerBanner) is shown by pdShowGame during the refresh above. Wait
+// for it to auto-dismiss (~2.5s), THEN play the bot's first move so the two
+// stages (banner, then bot opening) are sequential rather than mashed together.
+function pdAfterOpeningRoll(){
+  if(pdOpeningPending) return;
+  pdOpeningPending = true;
+  setTimeout(async () => {
+    pdOpeningPending = false;
+    await pdRunBotTurn();
+  }, 2700);
 }
 
 function pdRenderResult(st){

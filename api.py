@@ -798,11 +798,12 @@ def _handle_pd_roll_first(data, uid, code):
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
-    # In Poker Dice the opening-roll winner takes the first turn. If the bot
-    # won, run its opening turn now (reusing the same logic as
-    # _handle_pd_bot_turn -- game.bot_turn()) so control returns to the human.
-    if game.solo and game.phase == "playing" and game.turn == 2:
-        game.bot_turn()
+    # In Poker Dice the opening-roll winner takes the first turn. Instead of
+    # running the bot's opening turn synchronously here (which would bake its
+    # full move into the same response as the "who goes first" result), tell
+    # the client it owes a bot turn. The client triggers it later via
+    # /api/pd_bot_turn (handler _handle_pd_bot_turn -> game.bot_turn()).
+    needs_bot_turn = bool(game.solo and game.phase == "playing" and game.turn == 2)
     _mark_active(game, uid)
     save()
     pending = []
@@ -811,7 +812,8 @@ def _handle_pd_roll_first(data, uid, code):
         pending = _notify_recipient(
             game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
     return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
-             "roll_resolved": bool(res.get("winner"))}, pending)
+             "roll_resolved": bool(res.get("winner")),
+             "needs_bot_turn": needs_bot_turn}, pending)
 
 
 def _handle_pd_reroll_first(data, uid, code):
@@ -832,8 +834,7 @@ def _handle_pd_reroll_first(data, uid, code):
         res = game.apply_first_roll(pnum)
         if res is None:
             return {"ok": False, "error": "invalid_roll"}
-        if game.phase == "playing" and game.turn == 2:
-            game.bot_turn()
+        needs_bot_turn = bool(game.solo and game.phase == "playing" and game.turn == 2)
         _mark_active(game, uid)
         save()
         pending = []
@@ -842,7 +843,8 @@ def _handle_pd_reroll_first(data, uid, code):
             pending = _notify_recipient(
                 game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
         return ({"ok": True, "state": game.get_state(pnum), "roll": res,
-                 "roll_resolved": bool(res.get("winner"))}, pending)
+                 "roll_resolved": bool(res.get("winner")),
+                 "needs_bot_turn": needs_bot_turn}, pending)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(pnum)}
