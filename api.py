@@ -640,6 +640,8 @@ def _do_pd_new_solo(data, uid):
     difficulty = int(data.get('difficulty', 4))
     game = PDGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
+    game.phase = "roll"
+    game.reset_first_roll()
     return _register_new_game(pd_games, pd_player_games, game, game.get_state(1))
 
 
@@ -971,6 +973,8 @@ def _do_checkers_new_solo(data, uid):
     difficulty = data.get("difficulty", 4)
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
+    game.phase = "roll"
+    game.reset_first_roll()
     return _register_new_game(checkers_games, checkers_player_games, game, game.get_state(uid))
 
 
@@ -1014,9 +1018,10 @@ def _handle_checkers_roll_first(data, uid, code):
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
-    # In solo, apply_first_roll keeps the human in the White (player1) slot
-    # and moves first (the bot never opens), so after the roll it is always
-    # the human's turn -- no bot move is triggered here.
+    # In solo, apply_first_roll now respects the opening roll: if the bot wins
+    # it moves first (turn=BLACK) and the client triggers the bot opening move
+    # via ckRunBotTurn(); if the human wins the human opens. No server-side
+    # bot move is triggered here.
     _mark_active(game, uid)
     save()
     pending = []
@@ -1262,6 +1267,8 @@ def _do_bg_new_solo(data, uid):
     c = generate_unique_code(BGGame.generate_code, bg_games)
     game = BGGame(c, uid, solo=True, difficulty=difficulty, variant=variant)
     game.player2_id = 0
+    game.phase = "roll"
+    game.reset_first_roll()
     return _register_new_game(bg_games, bg_player_games, game, game.get_state(uid))
 
 def _handle_bg_new_multi(data, uid, code):
@@ -1295,9 +1302,10 @@ def _handle_bg_roll_first(data, uid, code):
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
-    # In solo, apply_first_roll keeps the human in the White (player1) slot
-    # and moves first (the bot never opens), so after the roll it is always
-    # the human's turn -- no bot move is triggered here.
+    # In solo, apply_first_roll now respects the opening roll: if the bot wins
+    # it moves first (turn=BLACK) and the client triggers the bot opening move
+    # via bgRunBotTurn(); if the human wins the human opens. No server-side
+    # bot move is triggered here.
     _mark_active(game, uid)
     save()
     pending = []

@@ -147,6 +147,11 @@ print("Checkers (solo move + AI reply + hint):")
 uid = 3001
 res = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid, None))
 code_ck = res["code"]
+g = api.checkers_games[code_ck]
+g.phase = "roll"
+g.reset_first_roll()
+g.first_roll = {1: 6, 2: 1}
+unwrap(api._handle_checkers_roll_first({"code": code_ck}, uid, code_ck))
 out = api._handle_checkers_move(
     {"code": code_ck, "start_r": 5, "start_c": 0, "end_r": 4, "end_c": 1}, uid, code_ck)
 check(unwrap(out).get("ok"), "checkers move")
@@ -180,6 +185,7 @@ print("Poker Dice (solo roll + score):")
 uid = 4001
 res = unwrap(api._handle_pd_new_solo({"difficulty": 3}, uid, None))
 code_pd = res["code"]
+unwrap(api._handle_pd_roll_first({"code": code_pd}, uid, code_pd))
 out = api._handle_pd_roll({"code": code_pd, "keep": []}, uid, code_pd)
 check(unwrap(out).get("ok"), "poker dice roll")
 out = api._handle_pd_score({"code": code_pd, "category": "chance"}, uid, code_pd)
@@ -209,6 +215,23 @@ print("Backgammon (solo roll + move + bot reply):")
 uid = 5001
 res = unwrap(api._handle_bg_new_solo({"difficulty": 2}, uid, None))
 code_bg = res["code"]
+g_bg = api.bg_games[code_bg]
+g_bg.phase = "roll"
+g_bg.reset_first_roll()
+out = unwrap(api._handle_bg_roll_first({"code": code_bg}, uid, code_bg))
+roll = out.get("roll", {})
+guard = 0
+# Drive the tie/reroll loop the client would: reroll on a tie. Also, if the
+# bot wins the opening roll it takes the first turn, so the human can't call
+# _handle_bg_roll yet -- keep rolling until the human opens (winner == 1),
+# which is what the downstream assertions expect.
+while (roll.get("tie") or roll.get("winner") == 2) and guard < 40:
+    g_bg.phase = "roll"
+    g_bg.reset_first_roll()
+    api._handle_bg_reroll_first({"code": code_bg}, uid, code_bg)
+    out = unwrap(api._handle_bg_roll_first({"code": code_bg}, uid, code_bg))
+    roll = out.get("roll", {})
+    guard += 1
 out = api._handle_bg_roll({"code": code_bg}, uid, code_bg)
 resp = unwrap(out)
 check(resp.get("ok"), "backgammon roll")
@@ -234,6 +257,22 @@ print("Backgammon (long narde: shared head, no hitting, same direction):")
 uid = 5002
 res = unwrap(api._handle_bg_new_solo({"difficulty": 2, "variant": "long"}, uid, None))
 code_bg_l = res["code"]
+g_bg_l = api.bg_games[code_bg_l]
+g_bg_l.phase = "roll"
+g_bg_l.reset_first_roll()
+out = unwrap(api._handle_bg_roll_first({"code": code_bg_l}, uid, code_bg_l))
+roll = out.get("roll", {})
+guard = 0
+# Drive the tie/reroll loop the client would: reroll on a tie. Also, if the
+# bot wins the opening roll it takes the first turn, so the human can't call
+# _handle_bg_roll yet -- keep rolling until the human opens (winner == 1).
+while (roll.get("tie") or roll.get("winner") == 2) and guard < 40:
+    g_bg_l.phase = "roll"
+    g_bg_l.reset_first_roll()
+    api._handle_bg_reroll_first({"code": code_bg_l}, uid, code_bg_l)
+    out = unwrap(api._handle_bg_roll_first({"code": code_bg_l}, uid, code_bg_l))
+    roll = out.get("roll", {})
+    guard += 1
 out = api._handle_bg_roll({"code": code_bg_l}, uid, code_bg_l)
 resp = unwrap(out)
 check(resp.get("ok"), "long narde roll")
