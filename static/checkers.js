@@ -121,7 +121,7 @@ async function ckRefreshState(){
   ckShowGame(res.state);
 }
 
-function ckShowGame(st){
+async function ckShowGame(st){
   ckState=st;
   showIncomingMessages(st.messages);
   ckSelected=null;
@@ -159,6 +159,16 @@ function ckShowGame(st){
     setStatus('🎲 '+t('rollTitle'),'');
     el.innerHTML = firstRollHTML(st, 'ckRollFirst', 'ckRerollFirst') +
       `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+    return;
+  }
+  if(st.phase==='playing' && st.solo && !st.my_turn && !window._ckBotOpening){
+    window._ckBotOpening = true;
+    try{
+      setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
+      await ckRunBotTurn();
+    }finally{
+      window._ckBotOpening = false;
+    }
     return;
   }
   if(st.my_turn){

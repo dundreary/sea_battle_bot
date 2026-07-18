@@ -106,7 +106,7 @@ async function bgRefreshState(){
   bgShowGame(res.state);
 }
 
-function bgShowGame(st, keepSelection=false){
+async function bgShowGame(st, keepSelection=false){
   bgState=st;
   showIncomingMessages(st.messages);
   if(!keepSelection){
@@ -131,6 +131,17 @@ function bgShowGame(st, keepSelection=false){
     el.className='btn-col';
     el.innerHTML = firstRollHTML(st, 'bgRollFirst', 'bgRerollFirst') +
       `<button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
+    return;
+  }
+
+  if(st.phase==='playing' && st.solo && !st.my_turn && !window._bgBotOpening){
+    window._bgBotOpening = true;
+    try{
+      setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
+      await bgRunBotTurn();
+    }finally{
+      window._bgBotOpening = false;
+    }
     return;
   }
 
