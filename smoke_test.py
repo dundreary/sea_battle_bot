@@ -471,6 +471,8 @@ check(out.get("roll_resolved"), "checkers bot-win roll resolved")
 st_cb = out["state"]
 check(st_cb["my_roll"] is not None and st_cb["opp_roll"] is not None,
       "checkers bot-win both dice set")
+check(st_cb["my_roll"] < st_cb["opp_roll"],
+      "checkers bot-win -> human's die shown correctly as the LOWER (losing) die")
 check(st_cb["phase"] == "playing", "checkers bot-win -> playing phase")
 # The roll winner (the bot) is swapped into WHITE/player1 and moves first; the
 # human (loser) becomes BLACK and sits at the bottom, moving second.

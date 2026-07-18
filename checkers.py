@@ -241,6 +241,9 @@ class CheckersGame(BaseGame):
             # human's black pieces sit at the bottom and the human moves second.
             if winner == 2:
                 self.player1_id, self.player2_id = self.player2_id, self.player1_id
+                # dice are keyed by player slot; re-key them so the human's die
+                # stays attributed to the human after the slot swap.
+                self.first_roll = {1: self.first_roll.get(2), 2: self.first_roll.get(1)}
             self.turn = WHITE
             self.phase = "playing"
         return res
