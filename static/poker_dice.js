@@ -1,5 +1,5 @@
 // ---- Poker Dice ----
-let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '';
+let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
 
 const PD_DOTS = [
   [[1,1]],
@@ -170,7 +170,7 @@ function pdShowGame(st){
   $('pdActions').style.minHeight = '120px';
   $('pdDice').innerHTML='';
   $('pdDice').style.minHeight = '';
-  $('pdScorecardContainer').style.minHeight = '420px';
+  $('pdScorecardContainer').style.minHeight = '';
   $('pdResult').innerHTML='';
   $('pdOppHistory').innerHTML='';
 
@@ -396,7 +396,6 @@ function pdRenderDice(st){
   // tray: the dice spin on the first throw, the kept dice are highlighted and
   // the discarded ones spin again in place, up to the third throw. No separate
   // / duplicated "opponent table" — everything happens in #pdDice.
-  let pdAnimating = false;
 
   async function pdMaybeAnimateOpponent(st){
     const hist = st.opponent_roll_history || [];
@@ -410,11 +409,11 @@ function pdRenderDice(st){
     // before this animation); the bot's new score is revealed only by the
     // pdShowGame call that follows the animation, so the dice spin to their
     // result before the table updates.
-    await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points);
+    await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points, st);
     return true;
   }
 
-  async function pdAnimateBotTurn(history, cat, pts){
+  async function pdAnimateBotTurn(history, cat, pts, st){
     if(pdAnimating) return;
     pdAnimating = true;
     if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
@@ -514,6 +513,7 @@ function pdRenderDice(st){
     cont.style.minHeight = '';
     pdKept = savedKept;
     pdAnimating = false;
+    pdShowGame(st);
     pdPoll();
     }
   }

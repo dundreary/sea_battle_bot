@@ -607,7 +607,10 @@ function detectLang(){
 
 function t(key, ...args){
   let s = LANG[lang][key] || LANG.ru[key] || key;
-  if(args.length) s = s.replace('{0}', args[0]).replace('{1}', args[1]);
+  if(args.length){
+    s = s.replace(/\{\{(\d+)\}\}/g, (m,i)=> (args[+i]!==undefined?args[+i]:m))
+         .replace(/\{(\d+)\}/g, (m,i)=> (args[+i]!==undefined?args[+i]:m));
+  }
   return s;
 }
 
@@ -727,12 +730,18 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
 async function refreshState(){
   if(!gameCode)return;
   const res=await api('/api/state',{uid:getUid(),code:gameCode});
-  if(!res||!res.ok){
+  if(res === null){
+    // transient network failure (api already retried once) — keep the saved game,
+    // just tell the user we're reconnecting; the poll will retry.
+    setStatus({ru:'🔄 Переподключение…',uk:'🔄 Перепідключення…',en:'🔄 Reconnecting…'}[lang], '');
+    return;
+  }
+  if(!res.ok){
     localStorage.removeItem('sb_game');
     setStatus(t('gameOver'));
     $('actions').className='btn-row';
     $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
-    return
+    return;
   }
   if(!gameCode)return;
   state=res.state;
@@ -991,9 +1000,9 @@ function updateUI(){
     }
     if(s.all_sunk && s.strip && !s.opp_stake && !s.strip_photo){
       setStatus('⏳ ' + {ru:'Ожидание фото...',uk:'Очікування фото...',en:'Waiting for photo...'}[lang], 'battle');
-      if(!window._stripPhotoWaitTimer){
-        window._stripPhotoWaitTimer = setTimeout(() => {
-          window._stripPhotoWaitTimer = null;
+      if(!_stripPhotoWaitTimer){
+        _stripPhotoWaitTimer = setTimeout(() => {
+          _stripPhotoWaitTimer = null;
           if(pollTimer){clearInterval(pollTimer);pollTimer=null}
           localStorage.removeItem('sb_game');
           showResult('🏆',t('win'),{ru:'Соперник не отправил фото',uk:'Суперник не надіслав фото',en:'Opponent did not send a photo'}[lang], true);
@@ -1343,6 +1352,7 @@ async function universalJoinGame(){
 }
 
 let pollTimer=null;
+let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 // True while a rematch on the same code is pending, so the finished-game
 // cleanup (stop polling / drop saved code) is skipped until the new round
 // actually starts.
@@ -1714,6 +1724,7 @@ function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
 }
 
 async function requestRematch(){
+  if(rematchPending) return;
   // Both this player and the opponent must opt in; the server restarts the
   // SAME game (same code) once both agree, so nobody re-enters the code.
   const ov = document.querySelector('.overlay');
