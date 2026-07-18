@@ -915,15 +915,13 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
   if(spinEls.length){
-    spinEls.forEach(d => d.classList.add('roll-die-spinning'));
-    anim = setInterval(()=>{
-      for(const dieEl of spinEls){
-        const n = 1 + Math.floor(Math.random()*6);
-        const pips = DIE_PIPS[n] || [];
-        const svg = dieEl.querySelector('svg');
-        if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
-      }
-    }, 70);
+    spinEls.forEach(d => {
+      d.classList.add('roll-die-spinning');
+      // set a single random face once (visual only; authoritative value comes from refresh)
+      const svg = d.querySelector('svg');
+      if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
+    });
+    anim = true; // still used by the MIN_ANIM wait below; keep the variable name
   }
   try{ sfxRoll(); }catch(e){}
   const start = Date.now();
@@ -931,7 +929,6 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const elapsed = Date.now() - start;
   const MIN = 1100;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
-  if(anim) clearInterval(anim);
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
@@ -946,15 +943,13 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
   if(spinEls.length){
-    spinEls.forEach(d => d.classList.add('roll-die-spinning'));
-    anim = setInterval(()=>{
-      for(const dieEl of spinEls){
-        const n = 1 + Math.floor(Math.random()*6);
-        const pips = DIE_PIPS[n] || [];
-        const svg = dieEl.querySelector('svg');
-        if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
-      }
-    }, 70);
+    spinEls.forEach(d => {
+      d.classList.add('roll-die-spinning');
+      // set a single random face once (visual only; authoritative value comes from refresh)
+      const svg = d.querySelector('svg');
+      if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
+    });
+    anim = true; // still used by the MIN_ANIM wait below; keep the variable name
   }
   try{ sfxClick(); }catch(e){}
   const start = Date.now();
@@ -962,7 +957,6 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const elapsed = Date.now() - start;
   const MIN = 1100;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
-  if(anim) clearInterval(anim);
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){

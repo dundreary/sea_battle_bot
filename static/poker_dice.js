@@ -10,6 +10,19 @@ const PD_DOTS = [
   [[0,0],[0,2],[1,1],[2,0],[2,2]],
   [[0,0],[0,2],[1,0],[1,2],[2,0],[2,2]],
 ];
+
+function pdFaceDotsHtml(v){
+  if(!v) return '';
+  const dots = PD_DOTS[v-1] || [];
+  return dots.map(([r,c]) => `<div class="dot" style="grid-row:${r+1};grid-column:${c+1}"></div>`).join('');
+}
+function pdDieInner(){
+  // 6 stacked faces, values 1..6; only one visible at rest via .pd-faces transform
+  let h='<div class="pd-faces">';
+  for(let v=1; v<=6; v++) h += `<div class="pd-face" data-v="${v}">${pdFaceDotsHtml(v)}</div>`;
+  return h + '</div>';
+}
+
 const PD_CATEGORIES = ['ones','twos','threes','fours','fives','sixes','pair','two_pairs','three_of_kind','four_of_kind','full_house','small_straight','large_straight','five_of_kind','chance'];
 const PD_CAT_NAMES = {
   ru: ['Единицы','Двойки','Тройки','Четверки','Пятерки','Шестерки','Пара','Две пары','Тройка','Каре','Фулл-хаус','М.стрит','Б.стрит','Покер','Шанс'],
@@ -181,29 +194,17 @@ function pdShowGame(st){
       const key = (pdCode||'') + ':' + st.opp_roll;
       if(pdOppRollSpun !== key){
         pdOppRollSpun = key;
-        // Pause polling and mark animating so the 2s re-render can't detach
-        // the bot-die node mid-spin (mirrors pdAnimateBotTurn's pattern).
         if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
         pdAnimating = true;
         const botDie = document.querySelectorAll('.roll-die-col .roll-die3d')[1];
         if(botDie){
           const svg = botDie.querySelector('svg');
-          // Do NOT blank the die. Instead tumble it with changing faces:
-          // rewrite the svg circles to a random 1-6 face every ~120ms.
+          if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = (DIE_PIPS[n]||[]); svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
+          // Spin is pure CSS (roll-die-spinning rotation); face set once randomly, then authoritative on land.
           botDie.classList.add('roll-die-spinning');
-          const tumble = setInterval(() => {
-            if(!svg) return;
-            const n = 1 + Math.floor(Math.random() * 6);
-            const pips = (DIE_PIPS[n] || []);
-            svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
-          }, 120);
           setTimeout(() => {
-            clearInterval(tumble);
             botDie.classList.remove('roll-die-spinning');
-            // Land exactly on the true value so the die matches the banner
-            // (which also uses st.opp_roll).
-            const pips = (DIE_PIPS[st.opp_roll] || []);
-            if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+            if(svg){ const pips = (DIE_PIPS[st.opp_roll] || []); svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
             pdAnimating = false;
             pdPoll();
           }, 1000);
@@ -318,16 +319,9 @@ function pdRenderDice(st){
       die.className='pd-dot-die';
       if(showOpp) die.style.cursor='default';
       const val = showDice[i] || 0;
-      if(val){
-        const dots = PD_DOTS[val-1] || [];
-        for(const [r,c] of dots){
-          const dot=document.createElement('div');
-          dot.className='dot';
-          dot.style.gridRow=r+1;
-          dot.style.gridColumn=c+1;
-          die.appendChild(dot);
-        }
-      }
+      die.innerHTML = pdDieInner();
+      const f = die.querySelector('.pd-faces');
+      if(f){ f.style.opacity = val ? '1' : '0'; f.style.transform = 'translateY(-' + ((val?val-1:0)*100/6) + '%)'; }
       die.dataset.idx=i;
       if(st.my_turn && !showOpp && !st.scored && st.rolls_left>0){
         if(pdKept.has(i)) die.classList.add('kept');
@@ -346,6 +340,7 @@ function pdRenderDice(st){
       const die=document.createElement('div');
       die.className='pd-dot-die';
       die.style.cursor='default';
+      die.innerHTML = pdDieInner();
       cont.appendChild(die);
     }
   } else {
@@ -365,16 +360,9 @@ function pdRenderDice(st){
       die.style.cursor='default';
 
       const val = dice[i] || 0;
-      if(val){
-        const dots = PD_DOTS[val-1] || [];
-        for(const [r,c] of dots){
-          const dot=document.createElement('div');
-          dot.className='dot';
-          dot.style.gridRow=r+1;
-          dot.style.gridColumn=c+1;
-          die.appendChild(dot);
-        }
-      }
+      die.innerHTML = pdDieInner();
+      const f = die.querySelector('.pd-faces');
+      if(f){ f.style.opacity = val ? '1' : '0'; f.style.transform = 'translateY(-' + ((val?val-1:0)*100/6) + '%)'; }
       cont.appendChild(die);
     }
   }
@@ -431,21 +419,21 @@ function pdRenderDice(st){
       die.className = 'pd-dot-die';
       die.style.cursor = 'default';
       die.dataset.idx = i;
+      die.innerHTML = pdDieInner();
       cont.appendChild(die);
       diceEls.push(die);
     }
 
     const setDie = (el, val) => {
-      el.innerHTML = '';
-      if(val){
-        const dots = PD_DOTS[val - 1] || [];
-        for(const [r, c] of dots){
-          const dot = document.createElement('div');
-          dot.className = 'dot';
-          dot.style.gridRow = r + 1;
-          dot.style.gridColumn = c + 1;
-          el.appendChild(dot);
-        }
+      const f = el.querySelector('.pd-faces');
+      if(f){
+        f.style.opacity = val ? '1' : '0';
+        f.style.transform = 'translateY(-' + ((val?val-1:0)*100/6) + '%)';
+      } else {
+        // Fallback: (shouldn't happen) rebuild the faces stack, then land it.
+        el.innerHTML = pdDieInner();
+        const nf = el.querySelector('.pd-faces');
+        if(nf){ nf.style.opacity = val ? '1' : '0'; nf.style.transform = 'translateY(-' + ((val?val-1:0)*100/6) + '%)'; }
       }
     };
 
@@ -467,21 +455,7 @@ function pdRenderDice(st){
       sfxRoll();
       const spinEls = isFirst ? diceEls : rerolled.map(i => diceEls[i]);
       for(const el of spinEls) el.classList.add('rolling');
-      // Tumbling-with-changing-faces: while the spin is active, randomize the
-      // spinning dice pips in place (rebuild only the inner dots of the
-      // existing die element — do NOT replace the element). Purely cosmetic;
-      // the final faces are set authoritatively from entry.dice below.
-      const tumble = setInterval(() => {
-        for(const el of spinEls){
-          const rv = 1 + Math.floor(Math.random() * 6);
-          const dots = PD_DOTS[rv - 1] || [];
-          el.innerHTML = dots.map(([r, c]) =>
-            `<div class="dot" style="grid-row:${r + 1};grid-column:${c + 1}"></div>`
-          ).join('');
-        }
-      }, 120);
       await _aiDelay(1100);
-      clearInterval(tumble);
       for(const el of spinEls) el.classList.remove('rolling');
       // Set the final faces once, after the rotation ends.
       for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
@@ -604,50 +578,27 @@ async function pdDoRoll(){
     if(!keep.includes(parseInt(el.dataset.idx))) el.classList.add('rolling');
   }
 
-  // Tumbling-with-changing-faces: while the spin is active, randomize each
-  // non-kept die's pips in place (rebuild only the inner dots of the existing
-  // die element — do NOT replace the element). Purely cosmetic; the final
-  // faces are set authoritatively from res.state.dice below.
-  const spinKeep = keep.map(k => parseInt(k));
-  const tumble = setInterval(() => {
-    for(const el of diceEls){
-      if(spinKeep.includes(parseInt(el.dataset.idx))) continue;
-      const rv = 1 + Math.floor(Math.random() * 6);
-      const dots = PD_DOTS[rv - 1] || [];
-      el.innerHTML = dots.map(([r, c]) =>
-        `<div class="dot" style="grid-row:${r + 1};grid-column:${c + 1}"></div>`
-      ).join('');
-    }
-  }, 120);
-
+  // Spin is pure CSS (.rolling class); final faces set below from authoritative state.
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   const elapsed=Date.now()-start;
   const remain=Math.max(0,MIN_ANIM-elapsed);
   if(!res||!res.ok){
-    clearInterval(tumble);
     for(const el of diceEls) el.classList.remove('rolling');
     setStatus(t('error'));
     return;
   }
 
   await new Promise(r=>setTimeout(r,remain));
-  clearInterval(tumble);
   for(const el of diceEls) el.classList.remove('rolling');
 
-  // Set the final dice faces once (no per-frame innerHTML churn).
+  // Set the final dice faces once (no per-frame innerHTML churn); the inline
+  // transform on .pd-faces lands each die on its final value.
   const finalDice = (res.state && res.state.dice) || [];
   for(let i=0;i<diceEls.length;i++){
     const el=diceEls[i];
     const val=finalDice[i]||0;
-    el.innerHTML='';
-    const dots=PD_DOTS[val-1]||[];
-    for(const[r,c]of dots){
-      const dot=document.createElement('div');
-      dot.className='dot';
-      dot.style.gridRow=r+1;
-      dot.style.gridColumn=c+1;
-      el.appendChild(dot);
-    }
+    const f = el.querySelector('.pd-faces');
+    if(f){ f.style.opacity = val ? '1':'0'; f.style.transform = 'translateY(-' + ((val?val-1:0)*100/6) + '%)'; }
   }
 
   pdShowGame(res.state);
