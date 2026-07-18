@@ -813,6 +813,7 @@ function firstRollHTML(s, rollFn, rerollFn){
 // when the opening roll resolves, not on every polling refresh afterwards.
 const _rollBannerShown = {};
 const _rollAckShown = {};
+const _sbAutoAck = {};
 
 function armRollBanner(code){
   if(code) delete _rollBannerShown[code];
@@ -1040,6 +1041,7 @@ function updateUI(){
       }
     setThemeSelectorVisibility(false);
     delete _rollAckShown[gameCode];
+    delete _sbAutoAck[gameCode];
     return;
   }
   $('shipHint').innerHTML = '';
@@ -1060,6 +1062,13 @@ function updateUI(){
     setStatus('🎲 '+t('rollTitle'),'');
     armRollBanner(gameCode);
     showRollWinnerBanner(s, gameCode);
+    if(rollDecided){
+      const rb = $('rollDoneBtn'); if(rb) rb.style.display = 'none';
+      if(!_sbAutoAck[gameCode]){
+        _sbAutoAck[gameCode] = true;
+        setTimeout(() => { ackRoll(); }, 3300);
+      }
+    }
     $('actions').className='btn-col';
     $('actions').innerHTML = firstRollHTML(s, 'rollFirst', 'rerollFirst') +
       `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
