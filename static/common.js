@@ -860,12 +860,18 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
     anim = setInterval(()=>{
       const n = 1 + Math.floor(Math.random()*6);
       const pips = DIE_PIPS[n] || [];
-      dieEl.querySelector('svg').innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+      const svg = dieEl.querySelector('svg');
+      if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
     }, 70);
   }
   try{ sfxRoll(); }catch(e){}
+  const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
+  const elapsed = Date.now() - start;
+  const MIN = 1100;
+  if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   if(anim) clearInterval(anim);
+  if(dieEl) dieEl.classList.remove('roll-die-spinning');
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
@@ -875,8 +881,25 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
 async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rerollBtn');
   if(btn) btn.disabled = true;
+  const dieEl = document.querySelector('.roll-die-col:first-child .roll-die3d');
+  let anim = null;
+  if(dieEl){
+    dieEl.classList.add('roll-die-spinning');
+    anim = setInterval(()=>{
+      const n = 1 + Math.floor(Math.random()*6);
+      const pips = DIE_PIPS[n] || [];
+      const svg = dieEl.querySelector('svg');
+      if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+    }, 70);
+  }
   try{ sfxClick(); }catch(e){}
+  const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
+  const elapsed = Date.now() - start;
+  const MIN = 1100;
+  if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
+  if(anim) clearInterval(anim);
+  if(dieEl) dieEl.classList.remove('roll-die-spinning');
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
@@ -1724,25 +1747,42 @@ async function fetchActiveGames(){
   }
   var html='<div class="active-games"><h3>'+t('activeGames')+'</h3>';
   for(const g of res.games){
+    const exitBtn='<button class="active-game-exit" title="'+{ru:'Выйти',uk:'Вийти',en:'Exit'}[lang]+'" onclick="event.stopPropagation();abandonGame(\''+g.type+'\',\''+g.code+'\')">✕</button>';
     if(g.type==='sea_battle'){
       var badge=g.my_turn?'<span class="badge playing">🚢 '+t('yourTurn')+'</span>':'<span class="badge">🚢 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">🚢 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      html+='<div class="active-game-row" onclick="resumeSB(\''+g.code+'\')"><div class="info"><span class="label">🚢 </span><span class="code">'+g.code+'</span></div>'+badge+exitBtn+'</div>';
     }
     else if(g.type==='poker_dice'){
       var badge=g.my_turn?'<span class="badge playing">🃏 '+t('yourTurn')+'</span>':'<span class="badge">🃏 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🃏 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      html+='<div class="active-game-row" onclick="resumePd(\''+g.code+'\')"><div class="info"><span class="label">🃏 </span><span class="code">'+g.code+'</span></div>'+badge+exitBtn+'</div>';
     }
     else if(g.type==='checkers'){
       var badge=g.my_turn?'<span class="badge playing">♟️ '+t('yourTurn')+'</span>':'<span class="badge">♟️ '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟️ </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      html+='<div class="active-game-row" onclick="resumeCk(\''+g.code+'\')"><div class="info"><span class="label">♟️ </span><span class="code">'+g.code+'</span></div>'+badge+exitBtn+'</div>';
     }
     else if(g.type==='backgammon'){
       var badge=g.my_turn?'<span class="badge playing">🎲 '+t('bgYourTurn')+'</span>':'<span class="badge">🎲 '+{ru:'ожидание...',uk:'очікування...',en:'waiting...'}[lang]+'</span>';
-      html+='<div class="active-game-row" onclick="resumeBg(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+'</div>';
+      html+='<div class="active-game-row" onclick="resumeBg(\''+g.code+'\')"><div class="info"><span class="label">🎲 </span><span class="code">'+g.code+'</span></div>'+badge+exitBtn+'</div>';
     }
   }
   html+='</div>';
   cont.innerHTML=html;
+}
+
+async function abandonGame(type, code){
+  if(!code) return;
+  let endpoint = null;
+  if(type==='poker_dice') endpoint='/api/pd_surrender';
+  else if(type==='sea_battle') endpoint='/api/surrender';
+  else if(type==='checkers') endpoint='/api/checkers_surrender';
+  else if(type==='backgammon') endpoint='/api/bg_surrender';
+  if(!endpoint) return;
+  const key = type==='poker_dice'?'pd_game':type==='sea_battle'?'sb_game':type==='checkers'?'ck_game':'bg_game';
+  localStorage.removeItem(key);
+  try {
+    await api(endpoint, {uid:getUid(), code:code});
+  } catch(e) {}
+  fetchActiveGames();
 }
 
 function resumeSB(code){

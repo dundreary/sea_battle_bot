@@ -442,12 +442,10 @@ function pdRenderDice(st){
       sfxRoll();
       const spinEls = isFirst ? diceEls : rerolled.map(i => diceEls[i]);
       for(const el of spinEls) el.classList.add('rolling');
-      const animId = setInterval(() => {
-        for(const el of spinEls) setDie(el, Math.floor(Math.random() * 6) + 1);
-      }, 80);
+      // Spin purely via CSS transform — do NOT rewrite die contents per frame.
       await _aiDelay(1100);
-      clearInterval(animId);
       for(const el of spinEls) el.classList.remove('rolling');
+      // Set the final faces once, after the rotation ends.
       for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
       await _aiDelay(350);
     }
@@ -566,36 +564,34 @@ async function pdDoRoll(){
   for(const el of diceEls){
     if(!keep.includes(parseInt(el.dataset.idx))) el.classList.add('rolling');
   }
-  const animId=setInterval(()=>{
-    for(const el of diceEls){
-      const dieIdx=parseInt(el.dataset.idx);
-      if(keep.includes(dieIdx)) continue;
-      el.innerHTML='';
-      const val=Math.floor(Math.random()*6)+1;
-      const dots=PD_DOTS[val-1]||[];
-      for(const[r,c]of dots){
-        const dot=document.createElement('div');
-        dot.className='dot';
-        dot.style.gridRow=r+1;
-        dot.style.gridColumn=c+1;
-        el.appendChild(dot);
-      }
-    }
-  },80);
 
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   const elapsed=Date.now()-start;
   const remain=Math.max(0,MIN_ANIM-elapsed);
   if(!res||!res.ok){
-    clearInterval(animId);
     for(const el of diceEls) el.classList.remove('rolling');
     setStatus(t('error'));
     return;
   }
 
   await new Promise(r=>setTimeout(r,remain));
-  clearInterval(animId);
   for(const el of diceEls) el.classList.remove('rolling');
+
+  // Set the final dice faces once (no per-frame innerHTML churn).
+  const finalDice = (res.state && res.state.dice) || [];
+  for(let i=0;i<diceEls.length;i++){
+    const el=diceEls[i];
+    const val=finalDice[i]||0;
+    el.innerHTML='';
+    const dots=PD_DOTS[val-1]||[];
+    for(const[r,c]of dots){
+      const dot=document.createElement('div');
+      dot.className='dot';
+      dot.style.gridRow=r+1;
+      dot.style.gridColumn=c+1;
+      el.appendChild(dot);
+    }
+  }
 
   pdShowGame(res.state);
 }
