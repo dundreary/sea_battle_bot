@@ -191,6 +191,10 @@ async function ckShowGame(st){
   }
 }
 
+function ariaCellLabel(r,c,piece,isSrc){
+  return 'Клетка '+String.fromCharCode(65+c)+(8-r)+(piece?', шашка':'')+(isSrc?' (выбрать)':' (ход сюда)');
+}
+
 function ckRenderBoard(st){
   const board=$('ckBoard');
   board.innerHTML='';
@@ -222,17 +226,27 @@ function ckRenderBoard(st){
         const isKing=piece===3||piece===4;
         el.className='ck-piece '+color+(isKing?' king':'');
         if(lastCells.has(canIdx))el.classList.add('last-move');
+        el.setAttribute('role','img');
+        el.setAttribute('aria-label', piece===1||piece===3 ? 'белая шашка'+(isKing?' король':'') : 'чёрная шашка'+(isKing?' король':''));
         cell.appendChild(el);
       }
       if(isDark&&st.my_turn&&highlighted.has(visIdx)){
         cell.classList.add('highlight-src');
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
+        cell.setAttribute('role','button');
+        cell.tabIndex = 0;
+        cell.setAttribute('aria-label', ariaCellLabel(r,c, piece, true));
+        cell.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); ckCellClick(r,c); } };
       }
       if(isDark&&ckDests&&ckDests.has(visIdx)){
         cell.classList.add('highlight-dest');
         cell.style.cursor='pointer';
         cell.onclick=()=>ckCellClick(r,c);
+        cell.setAttribute('role','button');
+        cell.tabIndex = 0;
+        cell.setAttribute('aria-label', ariaCellLabel(r,c, piece, false));
+        cell.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); ckCellClick(r,c); } };
       }
       if(ckHint){
         if(ckHint[0]===r && ckHint[1]===c) cell.classList.add('highlight-src');

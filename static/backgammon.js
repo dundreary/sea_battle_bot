@@ -223,6 +223,8 @@ function bgRenderBoard(st){
     for(let j=0;j<vis;j++){
       const ch=document.createElement('div');
       ch.className='bg-checker '+BG_CHECKER_COLORS[color];
+      ch.setAttribute('role','img');
+      ch.setAttribute('aria-label', color===1?'шашка белых':'шашка чёрных');
       if(bgSelected===idx){ ch.classList.add('bg-selected'); }
       if(aiCells.has(idx)){ ch.classList.add('ai-move'); }
       if(myTurn && bgSelected===null && moveMap[idx]){
@@ -281,6 +283,10 @@ function bgRenderBoard(st){
         const sel=document.createElement('div');
         sel.style.cssText='position:absolute;inset:0;z-index:1';
         sel.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
+        sel.setAttribute('role','button');
+        sel.tabIndex=0;
+        sel.setAttribute('aria-label','Пункт '+(idx+1)+', выбрать');
+        sel.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgSelectSource(idx);}};
         pt.appendChild(sel);
       }
       // Tap a destination point to move there.
@@ -290,6 +296,10 @@ function bgRenderBoard(st){
         const hitArea=document.createElement('div');
         hitArea.style.cssText='position:absolute;inset:0;z-index:2';
         hitArea.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,idx);};
+        hitArea.setAttribute('role','button');
+        hitArea.tabIndex=0;
+        hitArea.setAttribute('aria-label','Пункт '+(idx+1)+', ход сюда');
+        hitArea.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgDoMove(bgSelected,idx);}};
         pt.appendChild(hitArea);
       }
       row.appendChild(pt);
@@ -312,8 +322,14 @@ function bgRenderBoard(st){
     for(let j=0;j<bar[0];j++){
       const ch=document.createElement('div');
       ch.className='bg-checker white';
-      if(myTurn && bgSelected===null && moveMap[-1]) ch.style.cursor='pointer';
-      if(myTurn && bgSelected===null && moveMap[-1]) ch.onclick=()=>bgSelectSource(-1);
+      if(myTurn && bgSelected===null && moveMap[-1]){
+        ch.style.cursor='pointer';
+        ch.onclick=()=>bgSelectSource(-1);
+        ch.setAttribute('role','button');
+        ch.tabIndex=0;
+        ch.setAttribute('aria-label','Бар, выбрать шашку');
+        ch.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgSelectSource(-1);}};
+      }
       barCol.appendChild(ch);
     }
     for(let j=0;j<bar[1];j++){
@@ -339,6 +355,10 @@ function bgRenderBoard(st){
     offCol.classList.add('bg-target');
     offCol.style.cursor='pointer';
     offCol.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
+    offCol.setAttribute('role','button');
+    offCol.tabIndex=0;
+    offCol.setAttribute('aria-label','Вывод (off), снять шашку');
+    offCol.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgDoMove(bgSelected,-1);}};
   }
 
   wrap.appendChild(leftHalf);
