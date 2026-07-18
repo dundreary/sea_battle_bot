@@ -948,6 +948,13 @@ def _handle_stats(data, uid, code):
     return {"ok": True, "stats": _stats.get_stats(uid)}
 
 
+def _handle_reset_stats(data, uid, code):
+    if not uid:
+        return {"ok": False, "error": "unauthorized"}
+    _stats.reset_stats(uid)
+    return {"ok": True, "stats": _stats.get_stats(uid)}
+
+
 def _handle_resolve_code(data, uid, code):
     c = data.get("code", "").strip().upper()
     if not c:
@@ -1173,7 +1180,14 @@ def _handle_checkers_bot_turn(data, uid, code):
         if game.phase != "playing":
             return {"ok": True, "state": game.get_state(uid), "finished": game.phase == "finished", "bot_move": None}
         color = game.player_color(uid)
-        if color is None or not game.solo or game.turn != BLACK:
+        if color is None or not game.solo:
+            return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
+        # In solo the bot is the other participant; work out its actual colour.
+        # After the opening roll the winner is always WHITE, so the bot may be
+        # WHITE (it won) or BLACK (the human won). The bot only plays when it's
+        # the bot's turn, i.e. when `turn` matches the bot's colour.
+        bot_color = opponent(color)
+        if game.turn != bot_color:
             return {"ok": True, "state": game.get_state(uid), "finished": False, "bot_move": None}
         # Defensive copy: cheap for an 8x8 board, and guarantees the search
         # below never sees a board mutated by a concurrent request on this
@@ -1184,13 +1198,13 @@ def _handle_checkers_bot_turn(data, uid, code):
 
     # The expensive part: no lock held, and get_ai_move() touches nothing but
     # the board_snapshot passed in.
-    ai_mv = get_ai_move(board_snapshot, BLACK, difficulty=ai_diff, time_budget=tb)
+    ai_mv = get_ai_move(board_snapshot, bot_color, difficulty=ai_diff, time_budget=tb)
 
     with _state_lock:
         # Re-fetch: the game may have been surrendered/evicted by the other
         # side while the AI was thinking.
         game = checkers_games.get(code)
-        if not game or game.phase != "playing" or game.player_color(uid) is None or game.turn != BLACK:
+        if not game or game.phase != "playing" or game.player_color(uid) is None or game.turn != opponent(game.player_color(uid)):
             state = game.get_state(uid) if game else None
             return {"ok": True, "state": state, "finished": bool(game and game.phase == "finished"), "bot_move": None}
 
@@ -1435,6 +1449,7 @@ _HANDLERS = {
     "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
     "/api/stats": _handle_stats,
+    "/api/reset_stats": _handle_reset_stats,
     "/api/resolve_code": _handle_resolve_code,
     "/api/checkers_new_solo": _handle_checkers_new_solo,
     "/api/checkers_new_multi": _handle_checkers_new_multi,

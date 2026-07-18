@@ -145,6 +145,8 @@ const LANG = {
     statsLosses: 'Поражения',
     statsDraws: 'Ничьи',
     statsWinrate: 'Процент побед',
+    resetStats: 'Сбросить статистику',
+    resetStatsConfirm: 'Сбросить всю статистику? Это действие нельзя отменить.',
     statsTotal: 'Всего игр',
     statsHistory: 'Последние игры',
     statsNoGames: 'Пока нет сыгранных игр',
@@ -300,6 +302,8 @@ const LANG = {
     statsLosses: 'Поразки',
     statsDraws: 'Нічиї',
     statsWinrate: 'Відсоток перемог',
+    resetStats: 'Скинути статистику',
+    resetStatsConfirm: 'Скинути всю статистику? Цю дію не можна скасувати.',
     statsTotal: 'Усього ігор',
     statsHistory: 'Останні ігри',
     statsNoGames: 'Поки що немає зіграних ігор',
@@ -455,6 +459,8 @@ const LANG = {
     statsLosses: 'Losses',
     statsDraws: 'Draws',
     statsWinrate: 'Win rate',
+    resetStats: 'Reset statistics',
+    resetStatsConfirm: 'Reset all statistics? This cannot be undone.',
     statsTotal: 'Total games',
     statsHistory: 'Recent games',
     statsNoGames: 'No games played yet',
@@ -569,6 +575,9 @@ function showSettings(){
       <div class="sett-row" onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
       <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
       <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
+      <div class="sett-row lang-btn" onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
+      <div class="sett-row lang-btn" onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
+      <div class="sett-row lang-btn" onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
       <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -1402,8 +1411,17 @@ function renderStats(st){
     }
     html += '</div>';
   }
+  html += `<button class="btn danger" style="margin-top:12px" onclick="resetStats()">🗑️ ${t('resetStats') || 'Reset statistics'}</button>`;
   html += `<button class="btn outline quit-btn" style="margin-top:12px" onclick="showMainMenu()">${t('quit')}</button>`;
   $('actions').innerHTML = html;
+}
+
+function resetStats(){
+  if(!confirm(t('resetStatsConfirm') || 'Reset all statistics? This cannot be undone.')) return;
+  api('/api/reset_stats', {uid:getUid()}).then(res=>{
+    if(res && res.ok){ renderStats(res.stats); }
+    else { alert('Failed to reset statistics.'); }
+  }).catch(()=>alert('Failed to reset statistics.'));
 }
 
 let gameDifficulty = 4;
@@ -1469,7 +1487,7 @@ function tapStripUnlock(){
   const now=Date.now();
   if(now-_stripLastTap>1800)_stripTaps=0;   // reset if gap between taps > 1.8s (not "normal pace")
   _stripLastTap=now; _stripTaps++;
-  if(_stripTaps>=5){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
+  if(_stripTaps>=10){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
 }
 
 function chooseMultiMode(){

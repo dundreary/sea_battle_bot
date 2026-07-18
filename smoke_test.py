@@ -185,7 +185,14 @@ print("Poker Dice (solo roll + score):")
 uid = 4001
 res = unwrap(api._handle_pd_new_solo({"difficulty": 3}, uid, None))
 code_pd = res["code"]
-unwrap(api._handle_pd_roll_first({"code": code_pd}, uid, code_pd))
+g_pd = api.pd_games[code_pd]
+g_pd.phase = "roll"; g_pd.reset_first_roll()
+roll = unwrap(api._handle_pd_roll_first({"code": code_pd}, uid, code_pd))["roll"]
+guard = 0
+while roll.get("tie") and guard < 40:
+    api._handle_pd_reroll_first({"code": code_pd}, uid, code_pd)
+    roll = unwrap(api._handle_pd_roll_first({"code": code_pd}, uid, code_pd))["roll"]
+    guard += 1
 out = api._handle_pd_roll({"code": code_pd, "keep": []}, uid, code_pd)
 check(unwrap(out).get("ok"), "poker dice roll")
 out = api._handle_pd_score({"code": code_pd, "category": "chance"}, uid, code_pd)
@@ -406,7 +413,7 @@ st_c = out["state"]
 check(st_c["my_roll"] is not None and st_c["opp_roll"] is not None,
       "checkers solo both dice set")
 check(st_c["phase"] == "playing", "checkers solo -> playing phase")
-check(st_c["my_turn"] == (st_c["my_roll"] > st_c["opp_roll"]),
+check(st_c["my_turn"] == (st_c["my_color"] == st_c["turn"]),
       "checkers solo: opening-roll winner moves first")
 
 print("  Poker Dice solo opening roll (random):")
@@ -465,8 +472,19 @@ st_cb = out["state"]
 check(st_cb["my_roll"] is not None and st_cb["opp_roll"] is not None,
       "checkers bot-win both dice set")
 check(st_cb["phase"] == "playing", "checkers bot-win -> playing phase")
-check(st_cb["turn"] == 2, "checkers bot-win -> bot turn (BLACK)")
-check(st_cb["my_turn"] is False, "checkers bot-win -> bot opens first")
+# The roll winner (the bot) is swapped into WHITE/player1 and moves first; the
+# human (loser) becomes BLACK and sits at the bottom, moving second.
+check(st_cb["my_color"] == 2, "checkers bot-win -> human is BLACK (loser)")
+check(st_cb["turn"] == 1, "checkers bot-win -> WHITE (bot) turn, bot opens first")
+check(st_cb["my_turn"] is False, "checkers bot-win -> not human's turn (bot opens)")
+# The bot (now WHITE) must actually make its opening move via the dedicated
+# bot-turn endpoint -- exactly what the client's ckRunBotTurn triggers.
+bot_out = unwrap(api._handle_checkers_bot_turn({"code": code_cb}, uid_cb, code_cb))
+check(bot_out.get("ok"), "checkers bot-win bot opening move ok")
+check(bot_out.get("bot_move") is not None, "checkers bot-win bot actually moved")
+st_cb2 = bot_out["state"]
+check(st_cb2["my_color"] == 2, "checkers bot-win human still BLACK after bot move")
+check(st_cb2["my_turn"] is True, "checkers bot-win control returns to human (BLACK) after bot move")
 
 print("  Backgammon solo opening roll (bot wins -> bot opens first):")
 uid_bb = 5004

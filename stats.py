@@ -94,6 +94,25 @@ def get_stats(uid) -> Dict[str, Any]:
     }
 
 
+def reset_stats(uid) -> None:
+    """Reset a player's statistics and history to a clean all-zero state.
+
+    Unlike ``_fresh_record`` (which omits the computed ``total``/``winrate``
+    fields), this mirrors the exact shape ``get_stats`` returns so a freshly
+    reset record is byte-for-byte compatible with the cached structure.
+    """
+    uid = str(uid)
+    _stats[uid] = {
+        "wins": 0, "losses": 0, "draws": 0, "total": 0,
+        "winrate": 0.0,
+        "by_game": {"sea_battle": {"wins": 0, "losses": 0, "draws": 0},
+                    "poker_dice": {"wins": 0, "losses": 0, "draws": 0},
+                    "checkers": {"wins": 0, "losses": 0, "draws": 0},
+                    "backgammon": {"wins": 0, "losses": 0, "draws": 0}},
+        "history": [],
+    }
+
+
 def to_dict() -> Dict[str, Any]:
     return _stats
 

@@ -221,30 +221,27 @@ class CheckersGame(BaseGame):
     def apply_first_roll(self, pnum):
         """Opening-roll wrapper: the roll winner moves first.
 
-        Colour was previously fixed by join order (player1 always White), so
-        the roll only decided move order, not colour. Now the roll is
-        respected in all modes: the winner moves first as White (player1),
-        the loser is Black (player2) -- exactly like Sea Battle and Poker
-        Dice.
+        The roll winner ALWAYS becomes WHITE (player1) and moves first; the
+        loser becomes BLACK (player2). This holds in both multiplayer and solo.
 
-        In multiplayer a winning player 2 is swapped into the player1 slot
-        (which player_color() already maps to White), so after the swap the
-        winner is always White. In SOLO mode the human is player1 and the bot
-        is player2, so no swap is needed: the winner simply gets the
-        corresponding turn (WHITE if the human won, BLACK if the bot won).
-        Because the existing bot-turn handler only acts when the bot is BLACK,
-        setting turn=BLACK when the bot wins means the bot opens first, as
-        intended -- no handler changes required.
+        In solo the human is player1 and the bot player2. If the bot (player2)
+        wins the roll we swap the two player slots so the human becomes BLACK
+        (the loser) and the bot WHITE (the winner). The human's black pieces
+        then sit at the bottom of the board (rendered by checkers.js via
+        `flip = my_color === 2`) and the human moves second -- which is exactly
+        the required behaviour. The bot-opening path is triggered because for
+        the human `my_turn == (turn == my_color) == (WHITE == BLACK) == false`.
         """
         res = self.roll_for_first(pnum)
         if res and res.get("winner"):
             winner = res["winner"]
-            if winner == 2 and not self.solo:
+            # Winner always becomes WHITE (player1) and moves first; the loser
+            # becomes BLACK (player2). In solo, if the bot (player2) wins, swap so
+            # the human becomes BLACK (the loser) and the bot WHITE -- then the
+            # human's black pieces sit at the bottom and the human moves second.
+            if winner == 2:
                 self.player1_id, self.player2_id = self.player2_id, self.player1_id
-            if (winner == 1) or (winner == 2 and not self.solo):
-                self.turn = WHITE
-            else:
-                self.turn = BLACK
+            self.turn = WHITE
             self.phase = "playing"
         return res
 
