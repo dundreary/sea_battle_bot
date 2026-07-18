@@ -1052,6 +1052,8 @@ function updateUI(){
     $('oppBoardWrap').style.display='none';
     $('app').insertBefore($('status'), $('app').firstChild);
     setStatus('🎲 '+t('rollTitle'),'');
+    armRollBanner(gameCode);
+    showRollWinnerBanner(s, gameCode);
     $('actions').className='btn-col';
     $('actions').innerHTML = firstRollHTML(s, 'rollFirst', 'rerollFirst') +
       `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
@@ -1458,7 +1460,6 @@ function savePlayerName(v){
 
 function showBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
-  setStripLockVisible(true);
   document.title = t('seaBattle');
   setStatus(t('selectDifficulty'));
   $('gameInfo').textContent='';
@@ -1485,7 +1486,7 @@ function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(true);
   stripUnlocked=false; _stripTaps=0;
-  const lb2=document.getElementById('stripLockBtn'); if(lb2)lb2.textContent='🔒';
+  const lb2=document.getElementById('stripLockBtn'); if(lb2){lb2.textContent='🔒'; lb2.classList.remove('strip-unlocked');}
   const sc=document.getElementById('stripCard'); if(sc)sc.style.display='none';
   hideAllGameAreas();
   document.title = t('seaBattle');
@@ -1522,10 +1523,10 @@ function tapStripLock(){
   const btn=document.getElementById('stripLockBtn');
   if(_stripTaps>=5){
     stripUnlocked=true; _stripTaps=0;
-    if(btn)btn.textContent='🔓';
+    if(btn){ btn.textContent='🔓'; btn.classList.add('strip-unlocked'); btn.title='Разблокировано'; }
     const c=document.getElementById('stripCard'); if(c)c.style.display='';
   } else if(btn){
-    btn.textContent='🔒';
+    btn.textContent='🔒'; btn.classList.remove('strip-unlocked');
   }
 }
 
