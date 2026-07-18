@@ -518,6 +518,13 @@ def _handle_roll_first(data, uid, code):
     if err:
         return err
     if game.phase != "roll":
+        r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
+        if r1 is not None and r2 is not None and r1 != r2:
+            # Already resolved (a single-click reroll resolved it); return the
+            # current result without mutating game state.
+            res = game.roll_for_first(game.player_num(uid))
+            return ({"ok": True, "state": as_dict(game, uid), "roll": res,
+                     "roll_resolved": bool(res.get("winner")), "bot_shots": None}, [])
         return {"ok": False, "error": "not_rolling"}
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
@@ -550,10 +557,30 @@ def _handle_reroll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
-    game.reroll_first(game.player_num(uid))
+    pnum = game.player_num(uid)
+    game.reroll_first(pnum)
+    # Re-throw the human's die (cleared by reroll_first). In solo the bot can't
+    # click reroll, so also throw its die here and RESOLVE immediately, so a
+    # single "Перебросить" click re-throws both dice instead of sending the
+    # human back to the "Бросить" screen. In friend mode only the human's die
+    # is re-thrown; the opponent's die stays None -> the client shows "waiting
+    # for opponent" and resolution happens when they roll.
+    game.roll_for_first(pnum)
     if game.solo:
-        # The bot can't click the reroll button, so re-throw its die here.
         game.roll_for_first(2)
+        res = game.apply_first_roll(pnum)
+        if res is None:
+            return {"ok": False, "error": "invalid_roll"}
+        bot_shots = None
+        pending = []
+        if res.get("winner"):
+            if game.turn == 2:
+                game.bot_pending_first = True
+            pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
+        _mark_active(game, uid)
+        save()
+        return ({"ok": True, "state": as_dict(game, uid), "roll": res,
+                 "roll_resolved": bool(res.get("winner")), "bot_shots": bot_shots}, pending)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": as_dict(game, uid)}
@@ -757,6 +784,11 @@ def _handle_pd_roll_first(data, uid, code):
     if err:
         return err
     if game.phase != "roll":
+        r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
+        if r1 is not None and r2 is not None and r1 != r2:
+            res = game.roll_for_first(game.player_num(uid))
+            return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+                     "roll_resolved": bool(res.get("winner"))}, [])
         return {"ok": False, "error": "not_rolling"}
     # In solo the bot can't click the roll button, so make sure its die is
     # already on the table before we resolve the winner (otherwise the roll
@@ -788,13 +820,32 @@ def _handle_pd_reroll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
-    game.reroll_first(game.player_num(uid))
+    pnum = game.player_num(uid)
+    game.reroll_first(pnum)
+    # Re-throw the human's die, then the bot's die in solo so the tie resolves
+    # on a single reroll click. In friend mode only the human's die is
+    # re-thrown; the opponent's die stays None (client waits for them).
+    game.roll_for_first(pnum)
     if game.solo:
-        # The bot can't click the reroll button, so re-throw its die here.
-        game.roll_for_first(2)
+        if game.first_roll.get(2) is None:
+            game.roll_for_first(2)
+        res = game.apply_first_roll(pnum)
+        if res is None:
+            return {"ok": False, "error": "invalid_roll"}
+        if game.phase == "playing" and game.turn == 2:
+            game.bot_turn()
+        _mark_active(game, uid)
+        save()
+        pending = []
+        if res.get("winner"):
+            first_uid = game.player1_id if game.turn == 1 else game.player2_id
+            pending = _notify_recipient(
+                game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
+        return ({"ok": True, "state": game.get_state(pnum), "roll": res,
+                 "roll_resolved": bool(res.get("winner"))}, pending)
     _mark_active(game, uid)
     save()
-    return {"ok": True, "state": game.get_state(game.player_num(uid))}
+    return {"ok": True, "state": game.get_state(pnum)}
 
 
 def _handle_pd_roll(data, uid, code):
@@ -1015,6 +1066,11 @@ def _handle_checkers_roll_first(data, uid, code):
     if err:
         return err
     if game.phase != "roll":
+        r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
+        if r1 is not None and r2 is not None and r1 != r2:
+            res = game.roll_for_first(game.player_num(uid))
+            return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+                     "roll_resolved": bool(res.get("winner"))}, [])
         return {"ok": False, "error": "not_rolling"}
     # In solo the bot can't click the roll button, so make sure its die is
     # already on the table before we resolve the winner. Without it
@@ -1045,10 +1101,26 @@ def _handle_checkers_reroll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
-    game.reroll_first(game.player_num(uid))
+    pnum = game.player_num(uid)
+    game.reroll_first(pnum)
+    # Re-throw the human's die, then the bot's die in solo so the tie resolves
+    # on a single reroll click. In friend mode only the human's die is
+    # re-thrown; the opponent's die stays None (client waits for them).
+    game.roll_for_first(pnum)
     if game.solo:
-        # The bot can't click the reroll button, so re-throw its die here.
-        game.roll_for_first(2)
+        if game.first_roll.get(2) is None:
+            game.roll_for_first(2)
+        res = game.apply_first_roll(pnum)
+        if res is None:
+            return {"ok": False, "error": "invalid_roll"}
+        _mark_active(game, uid)
+        save()
+        pending = []
+        if res.get("winner"):
+            pending = _notify_recipient(
+                game, game.current_player, "♟ Ваш ход в Шашках.", "started")
+        return ({"ok": True, "state": game.get_state(uid), "roll": res,
+                 "roll_resolved": bool(res.get("winner"))}, pending)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(uid)}
@@ -1307,6 +1379,11 @@ def _handle_bg_roll_first(data, uid, code):
     if err:
         return err
     if game.phase != "roll":
+        r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
+        if r1 is not None and r2 is not None and r1 != r2:
+            res = game.roll_for_first(game.player_num(uid))
+            return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+                     "roll_resolved": bool(res.get("winner"))}, [])
         return {"ok": False, "error": "not_rolling"}
     # In solo the bot can't click the roll button, so make sure its die is
     # already on the table before we resolve the winner (otherwise the roll
@@ -1336,10 +1413,26 @@ def _handle_bg_reroll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
-    game.reroll_first(game.player_num(uid))
+    pnum = game.player_num(uid)
+    game.reroll_first(pnum)
+    # Re-throw the human's die, then the bot's die in solo so the tie resolves
+    # on a single reroll click. In friend mode only the human's die is
+    # re-thrown; the opponent's die stays None (client waits for them).
+    game.roll_for_first(pnum)
     if game.solo:
-        # The bot can't click the reroll button, so re-throw its die here.
-        game.roll_for_first(2)
+        if game.first_roll.get(2) is None:
+            game.roll_for_first(2)
+        res = game.apply_first_roll(pnum)
+        if res is None:
+            return {"ok": False, "error": "invalid_roll"}
+        _mark_active(game, uid)
+        save()
+        pending = []
+        if res.get("winner"):
+            pending = _notify_recipient(
+                game, game.current_player, "🎲 Ваш ход в Нардах.", "started")
+        return ({"ok": True, "state": game.get_state(uid), "roll": res,
+                 "roll_resolved": bool(res.get("winner"))}, pending)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(uid)}
