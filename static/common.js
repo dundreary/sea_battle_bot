@@ -853,15 +853,18 @@ function showRollWinnerBanner(st, code){
 async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rollBtn');
   if(btn) btn.disabled = true;
-  const dieEl = document.querySelector('.roll-die-col:first-child .roll-die3d');
+  const pending = Array.from(document.querySelectorAll('.roll-die-pending'));
+  const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
-  if(dieEl){
-    dieEl.classList.add('roll-die-spinning');
+  if(spinEls.length){
+    spinEls.forEach(d => d.classList.add('roll-die-spinning'));
     anim = setInterval(()=>{
-      const n = 1 + Math.floor(Math.random()*6);
-      const pips = DIE_PIPS[n] || [];
-      const svg = dieEl.querySelector('svg');
-      if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+      for(const dieEl of spinEls){
+        const n = 1 + Math.floor(Math.random()*6);
+        const pips = DIE_PIPS[n] || [];
+        const svg = dieEl.querySelector('svg');
+        if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+      }
     }, 70);
   }
   try{ sfxRoll(); }catch(e){}
@@ -871,7 +874,7 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 1100;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   if(anim) clearInterval(anim);
-  if(dieEl) dieEl.classList.remove('roll-die-spinning');
+  spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
@@ -881,15 +884,18 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
 async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rerollBtn');
   if(btn) btn.disabled = true;
-  const dieEl = document.querySelector('.roll-die-col:first-child .roll-die3d');
+  const pending = Array.from(document.querySelectorAll('.roll-die-pending'));
+  const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
-  if(dieEl){
-    dieEl.classList.add('roll-die-spinning');
+  if(spinEls.length){
+    spinEls.forEach(d => d.classList.add('roll-die-spinning'));
     anim = setInterval(()=>{
-      const n = 1 + Math.floor(Math.random()*6);
-      const pips = DIE_PIPS[n] || [];
-      const svg = dieEl.querySelector('svg');
-      if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+      for(const dieEl of spinEls){
+        const n = 1 + Math.floor(Math.random()*6);
+        const pips = DIE_PIPS[n] || [];
+        const svg = dieEl.querySelector('svg');
+        if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+      }
     }, 70);
   }
   try{ sfxClick(); }catch(e){}
@@ -899,7 +905,7 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 1100;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   if(anim) clearInterval(anim);
-  if(dieEl) dieEl.classList.remove('roll-die-spinning');
+  spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
@@ -942,8 +948,8 @@ async function ackRoll(){
 }
 function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
 function ckRerollFirst(){ return doRerollFirst('/api/checkers_reroll_first', ckCode, ckRefreshState); }
-function pdRollFirst(){ return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
-function pdRerollFirst(){ return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
+function pdRollFirst(){ pdOppRollSpun=''; return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
+function pdRerollFirst(){ pdOppRollSpun=''; return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
 function bgRollFirst(){ return doFirstRoll('/api/bg_roll_first', bgCode, bgRefreshState); }
 function bgRerollFirst(){ return doRerollFirst('/api/bg_reroll_first', bgCode, bgRefreshState); }
 

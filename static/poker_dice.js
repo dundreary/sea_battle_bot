@@ -1,5 +1,5 @@
 // ---- Poker Dice ----
-let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false;
+let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '';
 
 const PD_DOTS = [
   [[1,1]],
@@ -102,6 +102,7 @@ async function pdStartSolo(){
   pdCode=res.code;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
+  pdOppRollSpun = '';
   pdShowGame(res.state);
 }
 
@@ -111,6 +112,7 @@ async function pdNewMulti(){
   pdCode=res.code;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
+  pdOppRollSpun = '';
   pdShowGame(res.state);
   pdPoll();
 }
@@ -121,6 +123,7 @@ async function pdJoin(code){
   pdCode=code.toUpperCase();
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
+  pdOppRollSpun = '';
   pdShowGame(res.state);
   pdPoll();
 }
@@ -183,6 +186,31 @@ function pdShowGame(st){
     $('pdScorecardContainer').innerHTML='';
     $('pdScorecardContainer').style.minHeight='';
     $('pdDice').innerHTML = firstRollHTML(st, 'pdRollFirst', 'pdRerollFirst');
+    // Spin the bot's die when the opening toss has resolved (solo auto-roll)
+    // so it isn't just shown statically. Guard by code+value so it runs once.
+    if(st.opp_roll != null){
+      const key = (pdCode||'') + ':' + st.opp_roll;
+      if(pdOppRollSpun !== key){
+        pdOppRollSpun = key;
+        // Pause polling and mark animating so the 2s re-render can't detach
+        // the bot-die node mid-spin (mirrors pdAnimateBotTurn's pattern).
+        if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
+        pdAnimating = true;
+        const botDie = document.querySelectorAll('.roll-die-col .roll-die3d')[1];
+        if(botDie){
+          const svg = botDie.querySelector('svg');
+          if(svg) svg.innerHTML = '';               // blank it
+          botDie.classList.add('roll-die-spinning');
+          setTimeout(() => {
+            botDie.classList.remove('roll-die-spinning');
+            const pips = (DIE_PIPS[st.opp_roll] || []);
+            if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+            pdAnimating = false;
+            pdPoll();
+          }, 1000);
+        }
+      }
+    }
     $('pdActions').innerHTML = `<button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>`;
     setStatus('🎲 '+t('rollTitle'),'');
     return;
