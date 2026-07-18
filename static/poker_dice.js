@@ -37,6 +37,7 @@ function pdHandName(name){
 
 function showPokerDice(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   $('header').classList.remove('in-game');
@@ -75,6 +76,7 @@ let pdDifficulty = 4;
 
 function showPdBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   document.title=t('pdTitle');
   setStatus(t('selectDifficulty'));
   $('gameInfo').textContent='';
@@ -383,6 +385,11 @@ function pdRenderDice(st){
 
 
     const cont = $('pdDice');
+    // Clear any stale min-height/sizing left by pdShowGame (e.g. the opening
+    // roll path renders the first-roll HTML into #pdDice, leaving it in a
+    // different layout state than a normal mid-game bot turn). Resetting here
+    // makes the opening-roll replay render identically to a normal bot turn.
+    cont.style.minHeight = '';
     cont.innerHTML = '';
     const label = document.createElement('div');
     label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px';

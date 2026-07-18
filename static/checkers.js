@@ -7,6 +7,7 @@ let ckDifficulty = 4;
 
 function showCkBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   document.title = t('checkers');
   setStatus(t('selectDifficulty'));
   $('gameInfo').textContent='';
@@ -30,6 +31,7 @@ function ckStartWithDifficulty(diff){
 
 function showCheckers(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   document.title=t('checkers');

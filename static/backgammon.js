@@ -6,6 +6,7 @@ const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
 
 function showBackgammon(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
   document.title=t('backgammon');

@@ -1308,6 +1308,7 @@ function pollGame(){
 
 function showMainMenu(){
   stripUnlocked=false; _stripTaps=0;
+  setStripLockVisible(false);
   delete _rollAckShown[gameCode];
   $('ownBoardWrap').style.display='none';
   $('oppBoardWrap').style.display='none';
@@ -1378,6 +1379,7 @@ const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsR
 
 async function showStats(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(false);
   hideAllGameAreas();
   document.title = t('statsTitle');
   setStatus('📊 ' + t('statsTitle'));
@@ -1456,6 +1458,7 @@ function savePlayerName(v){
 
 function showBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(true);
   document.title = t('seaBattle');
   setStatus(t('selectDifficulty'));
   $('gameInfo').textContent='';
@@ -1480,6 +1483,7 @@ function startSoloWithDifficulty(diff){
 
 function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
+  setStripLockVisible(true);
   stripUnlocked=false; _stripTaps=0;
   const lb2=document.getElementById('stripLockBtn'); if(lb2)lb2.textContent='🔒';
   const sc=document.getElementById('stripCard'); if(sc)sc.style.display='none';
@@ -1523,6 +1527,11 @@ function tapStripLock(){
   } else if(btn){
     btn.textContent='🔒';
   }
+}
+
+function setStripLockVisible(v){
+  const b=document.getElementById('stripLockBtn');
+  if(b)b.style.display = v ? '' : 'none';
 }
 
 function chooseMultiMode(){
@@ -1602,6 +1611,7 @@ async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=s
 }
 
 function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
+  setStripLockVisible(false);
   stripUnlocked=false;
   const o=document.createElement('div');
   o.className='overlay';
