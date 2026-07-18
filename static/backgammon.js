@@ -1,6 +1,8 @@
 // ---- Backgammon ----
 let bgCode=null, bgState=null, bgPollTimer=null, bgSeenRoll='';
 let bgSelected=null, bgMoveTargets=[], bgVariant='short';
+let _lastBGSig=null;
+let _bgRefreshing=false;
 
 const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
 
@@ -52,6 +54,7 @@ async function bgStartSolo(){
   const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: 2, variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
+  _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
   $('actions').innerHTML='';
   bgShowGame(res.state);
@@ -61,6 +64,7 @@ async function bgNewMulti(){
   const res=await api('/api/bg_new_multi',{uid:getUid(), variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
+  _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
   bgPoll();
@@ -70,6 +74,7 @@ async function bgJoin(code){
   const res=await api('/api/bg_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
   bgCode=code.toUpperCase();
+  _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
   bgPoll();
@@ -85,6 +90,9 @@ function bgPoll(){
 
 async function bgRefreshState(){
   if(!bgCode)return;
+  if(_bgRefreshing)return;
+  _bgRefreshing=true;
+  try{
   const res=await api('/api/bg_state',{uid:getUid(),code:bgCode});
   if(!res||!res.ok){
     localStorage.removeItem('bg_game');
@@ -104,7 +112,13 @@ async function bgRefreshState(){
       showRevealBanner('🎲 '+{ru:'Соперник выбросил '+dice,uk:'Суперник викидав '+dice,en:'Opponent rolled '+dice}[lang]);
     }
   }
+  const sig = JSON.stringify([st.phase, st.board, st.bar, st.off, st.turn, st.my_color, st.my_turn, st.solo, st.opponent_joined, st.winner, st.last_move, st.dice, st.used_dice, st.legal_moves]);
+  if(sig===_lastBGSig) return;
+  _lastBGSig = sig;
   bgShowGame(res.state);
+  }finally{
+    _bgRefreshing=false;
+  }
 }
 
 async function bgShowGame(st, keepSelection=false){
@@ -135,13 +149,13 @@ async function bgShowGame(st, keepSelection=false){
     return;
   }
 
-  if(st.phase==='playing' && st.solo && !st.my_turn && !window._bgBotOpening){
-    window._bgBotOpening = true;
+  if(st.phase==='playing' && st.solo && !st.my_turn && !_bgBotOpening){
+    _bgBotOpening = true;
     try{
       setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
       await bgRunBotTurn();
     }finally{
-      window._bgBotOpening = false;
+      _bgBotOpening = false;
     }
     return;
   }
@@ -409,7 +423,7 @@ function bgRenderActions(st){
   }else if(st.phase==='playing'){
     html+=`<div class="btn-row" style="margin-top:8px">
       <button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveBgGame()">${t('minimize')}</button>
+      <button class="btn outline" onclick="leaveBgGame()" title="Игра сохранится">${t('minimize')}</button>
     </div>`;
   }
   el.insertAdjacentHTML('beforeend', html);
@@ -487,19 +501,20 @@ function shareBgGame(){
 }
 
 async function bgSurrender(){
-  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
-  if(!confirm(msg)) return;
-  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
-  const code = bgCode;
-  bgCode=null;bgState=null;
-  $('bgArea').style.display='none';
-  localStorage.removeItem('bg_game');
-  await api('/api/bg_surrender',{uid:getUid(),code});
-  showMainMenu();
+  const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  confirmDialog(t('surrender')||'Surrender?', msg, () => {
+    if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+    const code = bgCode;
+    bgCode=null;bgState=null;
+    $('bgArea').style.display='none';
+    localStorage.removeItem('bg_game');
+    api('/api/bg_surrender',{uid:getUid(),code}).then(()=>showMainMenu());
+  });
 }
 
 function resumeBg(code){
   bgCode=code;
+  _lastBGSig=null;
   localStorage.setItem('bg_game',code);
   $('actions').innerHTML='';
   bgRefreshState();

@@ -1,5 +1,6 @@
 // ---- Poker Dice ----
 let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
+let _lastPDSig = null, _pdRefreshing = false;
 
 const PD_DOTS = [
   [[1,1]],
@@ -56,7 +57,7 @@ function showPokerDice(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
-    <div class="game-card" onclick="showPdBotDifficulty()" style="margin-bottom:8px">
+    <div class="game-card" onclick="pdStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('pdSolo')}</div>
       <div class="card-desc">${t('withBot')}</div>
@@ -72,34 +73,11 @@ function showPokerDice(){
   `;
 }
 
-let pdDifficulty = 4;
-
-function showPdBotDifficulty(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  setStripLockVisible(false);
-  document.title=t('pdTitle');
-  setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent='';
-  $('header').classList.remove('in-game');
-  $('actions').className='btn-row stack';
-  $('actions').innerHTML=`
-    <button class="btn outline" onclick="pdStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn outline" onclick="pdStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
-    <button class="btn outline" onclick="pdStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
-    <button class="btn primary" onclick="pdStartWithDifficulty(4)" style="width:100%">🧠 ${t('stExpert')}</button>
-    <button class="btn outline quit-btn" onclick="showPokerDice()" style="margin-top:8px">${t('quit')}</button>
-  `;
-}
-
-function pdStartWithDifficulty(diff){
-  pdDifficulty = diff;
-  pdStartSolo();
-}
-
 async function pdStartSolo(){
-  const res=await api('/api/pd_new_solo',{uid:getUid(), difficulty: pdDifficulty});
+  const res=await api('/api/pd_new_solo',{uid:getUid(), difficulty: getDifficulty()});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
+  _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
   pdOppRollSpun = '';
@@ -110,6 +88,7 @@ async function pdNewMulti(){
   const res=await api('/api/pd_new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
+  _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
   pdOppRollSpun = '';
@@ -121,6 +100,7 @@ async function pdJoin(code){
   const res=await api('/api/pd_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
   pdCode=code.toUpperCase();
+  _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
   pdOppRollSpun = '';
@@ -138,19 +118,28 @@ function pdPoll(){
 
 async function pdRefreshState(){
   if(!pdCode)return;
-  const res=await api('/api/pd_state',{uid:getUid(),code:pdCode});
-  if(!res||!res.ok){
-    localStorage.removeItem('pd_game');
-    pdCode=null;
-    showPokerDice();
-    return;
+  if(_pdRefreshing) return;
+  _pdRefreshing=true;
+  try{
+    const res=await api('/api/pd_state',{uid:getUid(),code:pdCode});
+    if(!res||!res.ok){
+      localStorage.removeItem('pd_game');
+      pdCode=null;
+      showPokerDice();
+      return;
+    }
+    if(!pdCode)return;
+    const st=res.state;
+    const sig = JSON.stringify([st.phase, st.dice, st.my_turn, st.rolls_left, st.scored, st.scorecard_all, st.opponent_scorecard_all, st.categories_left, st.turn, st.solo, st.opponent_joined]);
+    if(sig===_lastPDSig) return;
+    _lastPDSig = sig;
+    // Replay the opponent's throws live in the shared dice tray the moment their
+    // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
+    await pdMaybeAnimateOpponent(st);
+    if(!pdAnimating) pdShowGame(st);
+  } finally {
+    _pdRefreshing=false;
   }
-  if(!pdCode)return;
-  const st=res.state;
-  // Replay the opponent's throws live in the shared dice tray the moment their
-  // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
-  await pdMaybeAnimateOpponent(st);
-  if(!pdAnimating) pdShowGame(st);
 }
 
 function pdShowGame(st){
@@ -575,7 +564,7 @@ function pdRenderActions(st){
   }else{
     html += `<div class="btn-row" style="margin-top:8px">
       <button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
+      <button class="btn outline" onclick="leavePdGame()" title="Игра сохранится">${t('minimize')}</button>
     </div>`;
   }
 
@@ -775,11 +764,13 @@ function leavePdGame(){
 }
 
 async function pdSurrender(){
-  if(!confirm({ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang])) return;
-  const res=await api('/api/pd_surrender',{uid:getUid(),code:pdCode});
-  if(!res||!res.ok){setStatus(t('error'));return}
-  localStorage.removeItem('pd_game');
-  pdShowGame(res.state);
+  const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  confirmDialog(t('surrender')||'Surrender?', msg, async () => {
+    const res=await api('/api/pd_surrender',{uid:getUid(),code:pdCode});
+    if(!res||!res.ok){setStatus(t('error'));return}
+    localStorage.removeItem('pd_game');
+    pdShowGame(res.state);
+  });
 }
 
 function sharePdGame(){
@@ -790,6 +781,7 @@ function sharePdGame(){
 
 function resumePd(code){
   pdCode=code;
+  _lastPDSig=null;
   localStorage.setItem('pd_game',code);
   pdKept = new Set();
   $('actions').innerHTML='';

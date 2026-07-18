@@ -2,32 +2,7 @@
 let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='', ckHint=null;
 
 const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
-
-let ckDifficulty = 4;
-
-function showCkBotDifficulty(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  setStripLockVisible(false);
-  document.title = t('checkers');
-  setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent='';
-  $('shipHint').innerHTML = '';
-  $('header').classList.remove('in-game');
-  $('app').insertBefore($('status'), $('app').firstChild);
-  $('actions').className='btn-row stack';
-  $('actions').innerHTML=`
-    <button class="btn outline" onclick="ckStartWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn outline" onclick="ckStartWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
-    <button class="btn outline" onclick="ckStartWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
-    <button class="btn primary" onclick="ckStartWithDifficulty(4)" style="width:100%">💀 ${t('stExpert')}</button>
-    <button class="btn outline quit-btn" onclick="showCheckers()" style="margin-top:8px">${t('quit')}</button>
-  `;
-}
-
-function ckStartWithDifficulty(diff){
-  ckDifficulty = diff;
-  ckStartSolo();
-}
+let _lastCKSig=null, _ckRefreshing=false;
 
 function showCheckers(){
   var lb=$('langBar');if(lb)lb.style.display='none';
@@ -48,7 +23,7 @@ function showCheckers(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
-    <div class="game-card" onclick="showCkBotDifficulty()" style="margin-bottom:8px">
+    <div class="game-card" onclick="ckStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
       <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
@@ -65,9 +40,10 @@ function showCheckers(){
 }
 
 async function ckStartSolo(){
-  const res=await api('/api/checkers_new_solo',{uid:getUid(), difficulty: ckDifficulty});
+  const res=await api('/api/checkers_new_solo',{uid:getUid(), difficulty: getDifficulty()});
   if(!res||!res.ok){setStatus(t('error'));return}
   ckCode=res.code;
+  _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
   ckShowGame(res.state);
 }
@@ -76,6 +52,7 @@ async function ckNewMulti(){
   const res=await api('/api/checkers_new_multi',{uid:getUid()});
   if(!res||!res.ok){setStatus(t('error'));return}
   ckCode=res.code;
+  _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
   ckShowGame(res.state);
   ckPoll();
@@ -85,6 +62,7 @@ async function ckJoin(code){
   const res=await api('/api/checkers_join',{uid:getUid(),code:code.toUpperCase()});
   if(!res||!res.ok){setStatus(t('joinError'));return}
   ckCode=code.toUpperCase();
+  _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
   ckShowGame(res.state);
   ckPoll();
@@ -93,6 +71,7 @@ async function ckJoin(code){
 let ckPollTimer=null;
 function ckPoll(){
   if(ckPollTimer)clearInterval(ckPollTimer);
+  _lastCKSig=null;
   ckPollTimer=setInterval(async()=>{
     if(!ckCode){clearInterval(ckPollTimer);ckPollTimer=null;return}
     await ckRefreshState();
@@ -101,26 +80,35 @@ function ckPoll(){
 
 async function ckRefreshState(){
   if(!ckCode)return;
-  const res=await api('/api/checkers_state',{uid:getUid(),code:ckCode});
-  if(!res||!res.ok){
-    localStorage.removeItem('ck_game');
-    ckCode=null;
-    showCheckers();
-    return;
-  }
-  if(!ckCode)return;
-  const st=res.state;
-  // Real-time opponent reveal: when the friend just moved and it is now
-  // our turn, announce their move (their last move is highlighted too).
-  if(!st.solo && st.last_move && st.turn===st.my_color){
-    const m=st.last_move;
-    const key=m[0].join(',')+'->'+m[1][m[1].length-1].join(',');
-    if(key!==ckSeenMove){
-      ckSeenMove=key;
-      showRevealBanner('♟ '+{ru:'Ход соперника',uk:'Хід суперника',en:"Opponent's move"}[lang]);
+  if(_ckRefreshing) return;
+  _ckRefreshing=true;
+  try{
+    const res=await api('/api/checkers_state',{uid:getUid(),code:ckCode});
+    if(!res||!res.ok){
+      localStorage.removeItem('ck_game');
+      ckCode=null;
+      showCheckers();
+      return;
     }
+    if(!ckCode)return;
+    const st=res.state;
+    // Real-time opponent reveal: when the friend just moved and it is now
+    // our turn, announce their move (their last move is highlighted too).
+    if(!st.solo && st.last_move && st.turn===st.my_color){
+      const m=st.last_move;
+      const key=m[0].join(',')+'->'+m[1][m[1].length-1].join(',');
+      if(key!==ckSeenMove){
+        ckSeenMove=key;
+        showRevealBanner('♟ '+{ru:'Ход соперника',uk:'Хід суперника',en:"Opponent's move"}[lang]);
+      }
+    }
+    const sig = JSON.stringify([st.phase, st.board, st.turn, st.my_color, st.my_turn, st.solo, st.opponent_joined, st.winner, st.last_move]);
+    if(sig===_lastCKSig) return;
+    _lastCKSig = sig;
+    ckShowGame(res.state);
+  } finally {
+    _ckRefreshing=false;
   }
-  ckShowGame(res.state);
 }
 
 async function ckShowGame(st){
@@ -163,13 +151,13 @@ async function ckShowGame(st){
       `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
     return;
   }
-  if(st.phase==='playing' && st.solo && !st.my_turn && !window._ckBotOpening){
-    window._ckBotOpening = true;
+  if(st.phase==='playing' && st.solo && !st.my_turn && !_ckBotOpening){
+    _ckBotOpening = true;
     try{
       setStatus('♟ '+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
       await ckRunBotTurn();
     }finally{
-      window._ckBotOpening = false;
+      _ckBotOpening = false;
     }
     return;
   }
@@ -192,7 +180,7 @@ async function ckShowGame(st){
   }else{
     html+=`<div class="btn-row" style="margin-top:8px">
       <button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
+      <button class="btn outline" onclick="leaveCkGame()" title="Игра сохранится">${t('minimize')}</button>
     </div>`;
   }
   el.innerHTML=html;
@@ -337,15 +325,15 @@ function shareCkGame(){
   try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(ckCode)}`)}catch(e){}
 }
 
-async function ckSurrender(){
-  var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
-  if(!confirm(msg)) return;
-  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
-  const code = ckCode;
-  ckCode = null; ckState = null;
-  $('ckArea').style.display='none';
-  localStorage.removeItem('ck_game');
-  await api('/api/checkers_surrender',{uid:getUid(),code});
-  showMainMenu();
+function ckSurrender(){
+  const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+  confirmDialog(t('surrender')||'Surrender?', msg, () => {
+    if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+    const code = ckCode;
+    ckCode = null; ckState = null;
+    $('ckArea').style.display='none';
+    localStorage.removeItem('ck_game');
+    api('/api/checkers_surrender',{uid:getUid(),code}).then(()=>showMainMenu());
+  });
 }
 

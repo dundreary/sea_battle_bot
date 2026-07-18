@@ -581,6 +581,8 @@ function showSettings(){
       <div class="sett-row" onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
       <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
       <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
+      <div class="sett-row" onclick="setDifficulty(2);showSettings()"><span>🎯 ${t('stMedium')}</span><span class="sett-val">${gameDifficulty===2?'✅':''}</span></div>
+      <div class="sett-row" onclick="setDifficulty(4);showSettings()"><span>💀 ${t('stExpert')}</span><span class="sett-val">${gameDifficulty===4?'✅':''}</span></div>
       <div class="sett-row lang-btn" onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
       <div class="sett-row lang-btn" onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
       <div class="sett-row lang-btn" onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
@@ -656,6 +658,43 @@ function showIncomingMessages(messages){
   modal.append(title,body,close); o.appendChild(modal); document.body.appendChild(o);
 }
 
+// ---- In-app confirm/prompt (replace native browser dialogs) ----------------
+function confirmDialog(title, message, onYes, yesLabel, noLabel){
+  const o=document.createElement('div'); o.className='overlay';
+  o.innerHTML=`<div class="modal"><h2>${title}</h2><p>${message}</p>
+    <button class="btn success" style="width:100%;margin:6px 0" id="cdYes">${yesLabel||t('surrender')}</button>
+    <button class="btn outline" style="width:100%;margin:6px 0" onclick="this.closest('.overlay').remove()">${noLabel||t('close')}</button></div>`;
+  document.body.appendChild(o);
+  o.querySelector('#cdYes').onclick=()=>{ o.remove(); onYes(); };
+}
+
+function promptDialog(title, placeholder, onDone){
+  const o=document.createElement('div'); o.className='overlay';
+  o.innerHTML=`<div class="modal"><h2>${title}</h2>
+    <input id="pdInput" class="sett-input" maxlength="64" placeholder="${placeholder}">
+    <button class="btn success" style="width:100%;margin:6px 0" id="pdOk">OK</button>
+    <button class="btn outline" style="width:100%;margin:6px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button></div>`;
+  document.body.appendChild(o);
+  const inp=o.querySelector('#pdInput'); inp.focus();
+  const done=()=>{ const v=inp.value.trim(); o.remove(); if(v) onDone(v); };
+  o.querySelector('#pdOk').onclick=done;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') done(); });
+}
+
+// Retry helper for network failures after api()'s internal retry has been
+// exhausted. Renders a small tappable "↻" in the status line; clicking it
+// re-runs the failed action (e.g. a shot) without losing game state.
+let _retryFn=null;
+function showRetry(msg, fn){
+  _retryFn=fn;
+  setStatus(`${msg} <span id="retryBtn" style="display:inline-block;margin-left:8px;padding:4px 10px;border:1px solid var(--accent-primary);border-radius:6px;cursor:pointer">↻</span>`,'battle');
+  const b=document.getElementById('retryBtn'); if(b) b.onclick=()=>{ if(_retryFn) _retryFn(); };
+}
+
+// Localized reassurance shown on the "minimize" (Свернуть) button: the game
+// is only minimized, not ended, so progress is saved.
+function minimizeTitle(){ return {ru:'Игра сохранится',uk:'Гру збережено',en:'Game will be saved'}[lang]||'Game will be saved'; }
+
 async function api(method,data,_isRetry){
   try{
     data = data || {};
@@ -729,23 +768,33 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
 
 async function refreshState(){
   if(!gameCode)return;
-  const res=await api('/api/state',{uid:getUid(),code:gameCode});
-  if(res === null){
-    // transient network failure (api already retried once) — keep the saved game,
-    // just tell the user we're reconnecting; the poll will retry.
-    setStatus({ru:'🔄 Переподключение…',uk:'🔄 Перепідключення…',en:'🔄 Reconnecting…'}[lang], '');
-    return;
+  if(_sbRefreshing)return;   // a previous poll is still in flight; skip
+  _sbRefreshing=true;
+  try{
+    const res=await api('/api/state',{uid:getUid(),code:gameCode});
+    if(res === null){
+      // transient network failure (api already retried once) — keep the saved game,
+      // just tell the user we're reconnecting; the poll will retry.
+      setStatus({ru:'🔄 Переподключение…',uk:'🔄 Перепідключення…',en:'🔄 Reconnecting…'}[lang], '');
+      return;
+    }
+    if(!res.ok){
+      localStorage.removeItem('sb_game');
+      setStatus(t('gameOver'));
+      $('actions').className='btn-row';
+      $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
+      return;
+    }
+    if(!gameCode)return;
+    state=res.state;
+    // Dedup idle polls: only re-render when something actually changed.
+    const sig = JSON.stringify([state.own,state.opp,state.turn,state.phase,state.my_roll,state.opp_roll,state.all_sunk,state.my_all_sunk,state.ready,state.solo]);
+    if(sig===_lastSBSig) return;   // idle poll: nothing changed, skip full re-render
+    _lastSBSig = sig;
+    updateUI();
+  } finally {
+    _sbRefreshing=false;
   }
-  if(!res.ok){
-    localStorage.removeItem('sb_game');
-    setStatus(t('gameOver'));
-    $('actions').className='btn-row';
-    $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
-    return;
-  }
-  if(!gameCode)return;
-  state=res.state;
-  updateUI();
 }
 
 function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
@@ -1048,7 +1097,7 @@ function updateUI(){
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
          <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
-         <button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>
+         <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>
        `;
       }else{
         if(!s.solo){
@@ -1074,7 +1123,7 @@ function updateUI(){
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            <button class="${startBtnClass}" onclick="${startOnclick}">${startLabel}</button>
            ${!s.solo ? `<button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
-           ${!s.solo ? `<button class="btn outline" onclick="leaveGame()">${t('minimize')}</button>` : ''}
+           ${!s.solo ? `<button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>` : ''}
         `;
       }
     setThemeSelectorVisibility(false);
@@ -1127,8 +1176,8 @@ function updateUI(){
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`
-        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
       <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }else{
@@ -1136,8 +1185,8 @@ function updateUI(){
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>`
-        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()">${t('minimize')}</button></div>
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
       <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }
@@ -1346,12 +1395,14 @@ async function joinByCode(code){
 }
 
 async function universalJoinGame(){
-  const code = prompt(t('joinPlaceholder'));
-  if(!code) return;
-  await joinByCode(code.toUpperCase());
+  promptDialog(t('joinTitle'), t('joinPlaceholder'), (code)=>{
+    if(code) joinByCode(code.toUpperCase());
+  });
 }
 
 let pollTimer=null;
+let _lastSBSig=null;      // last serialized state signature for poll dedup
+let _sbRefreshing=false;  // in-flight guard so a slow poll can't overlap
 let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 // True while a rematch on the same code is pending, so the finished-game
 // cleanup (stop polling / drop saved code) is skipped until the new round
@@ -1490,14 +1541,19 @@ function renderStats(st){
 }
 
 function resetStats(){
-  if(!confirm(t('resetStatsConfirm') || 'Reset all statistics? This cannot be undone.')) return;
-  api('/api/reset_stats', {uid:getUid()}).then(res=>{
-    if(res && res.ok){ renderStats(res.stats); }
-    else { alert('Failed to reset statistics.'); }
-  }).catch(()=>alert('Failed to reset statistics.'));
+  confirmDialog(t('resetStats')||'Reset statistics', t('resetStatsConfirm')||'Reset all statistics? This cannot be undone.', ()=>{
+    api('/api/reset_stats', {uid:getUid()}).then(res=>{
+      if(res && res.ok){ renderStats(res.stats); }
+      else { alert('Failed to reset statistics.'); }
+    }).catch(()=>alert('Failed to reset statistics.'));
+  });
+  return;
 }
 
 let gameDifficulty = 4;
+(function(){ const d = localStorage.getItem('sb_diff'); if(d==='2'||d==='4') gameDifficulty = +d; })();
+function getDifficulty(){ return gameDifficulty===2 ? 2 : 4; }
+function setDifficulty(v){ gameDifficulty = (v===2?2:4); try{localStorage.setItem('sb_diff', String(gameDifficulty));}catch(e){} }
 let stripUnlocked=false; let _stripTaps=0, _stripLastTap=0;
 
 let playerName = localStorage.getItem('sb_name') || '';
@@ -1516,30 +1572,6 @@ function savePlayerName(v){
   renderPlayerName();
 }
 
-function showBotDifficulty(){
-  var lb=$('langBar');if(lb)lb.style.display='none';
-  document.title = t('seaBattle');
-  setStatus(t('selectDifficulty'));
-  $('gameInfo').textContent='';
-  $('shipHint').innerHTML = '';
-  $('header').classList.remove('in-game');
-  $('app').insertBefore($('status'), $('app').firstChild);
-  $('actions').className='btn-row stack';
-  $('actions').innerHTML=`
-    <button class="btn outline" onclick="startSoloWithDifficulty(1)" style="width:100%">🌟 ${t('stEasy')}</button>
-    <button class="btn outline" onclick="startSoloWithDifficulty(2)" style="width:100%">🎯 ${t('stMedium')}</button>
-    <button class="btn outline" onclick="startSoloWithDifficulty(3)" style="width:100%">🔥 ${t('stHard')}</button>
-    <button class="btn primary" onclick="startSoloWithDifficulty(4)" style="width:100%">💀 ${t('stExpert')}</button>
-    <button class="btn outline quit-btn" onclick="showSeaBattleMenu()" style="margin-top:8px">${t('quit')}</button>
-  `;
-  fetchActiveGames();
-}
-
-function startSoloWithDifficulty(diff){
-  gameDifficulty = diff;
-  startSolo();
-}
-
 function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(true);
@@ -1554,9 +1586,9 @@ function showSeaBattleMenu(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-    <div class="game-card" onclick="showBotDifficulty()" style="margin-bottom:8px">
-      <img src="/static/mode-bot.svg" class="card-icon">
-      <div class="name">${t('vsBot')}</div>
+      <div class="game-card" onclick="startSolo()" style="margin-bottom:8px">
+        <img src="/static/mode-bot.svg" class="card-icon">
+        <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
     <div class="game-card" onclick="chooseMultiMode()" style="margin-bottom:8px">
@@ -1618,7 +1650,8 @@ async function confirmPlace(){
 async function handleShot(r,c){
   if(!state||!state.my_turn)return;
   const res=await api('/api/shoot',{uid:getUid(),code:gameCode,r,c});
-  if(!res||!res.ok){setStatus(t('errorShot'));return}
+  if(res===null){ showRetry(t('error'), ()=>handleShot(r,c)); return; }  // network failure after api's internal retry
+  if(!res.ok){ setStatus(t('errorShot')); return; }
 
   let msg='';
   if(res.result.result==='hit'){msg=t('hit');sfxHit()}
@@ -1661,12 +1694,14 @@ async function handleShot(r,c){
 
 async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=state){
   if(!gameState || gameState.solo || !code)return;
-  const message = window.prompt(t('messagePrompt'));
-  if(message === null)return;
-  const text = message.trim();
-  if(!text)return;
-  const res = await api('/api/message_opponent',{uid:getUid(),code,message:text,game});
-  setStatus(res && res.ok ? t('messageSent') : t('messageError'), res && res.ok ? '' : 'battle');
+  promptDialog(t('message'), t('messagePrompt'), (message)=>{
+    if(!message) return;
+    const text = message.trim();
+    if(!text)return;
+    api('/api/message_opponent',{uid:getUid(),code,message:text,game}).then(res=>{
+      setStatus(res && res.ok ? t('messageSent') : t('messageError'), res && res.ok ? '' : 'battle');
+    });
+  });
 }
 
 function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
@@ -1739,8 +1774,18 @@ async function leaveGame(surrender){
   stripUnlocked=false;
   delete _rollAckShown[gameCode];
   if(surrender){
-    var msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
-    if(!confirm(msg))return;
+    const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
+    confirmDialog(t('surrender')||'Surrender?', msg, ()=>{
+      if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+      const _code = gameCode;
+      localStorage.removeItem('sb_game');
+      gameCode=null;state=null;
+      $('ownBoardWrap').style.display='none';
+      $('oppBoardWrap').style.display='none';
+      api('/api/surrender',{uid:getUid(),code:_code});
+      showMainMenu();
+    });
+    return;
   }
   // Clear poll timer BEFORE any async operation to prevent refreshState/updateUI from re-showing boards
   if(pollTimer){clearInterval(pollTimer);pollTimer=null}
