@@ -756,9 +756,19 @@ def _handle_pd_roll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
+    # In solo the bot can't click the roll button, so make sure its die is
+    # already on the table before we resolve the winner (otherwise the roll
+    # never resolves and the client hangs).
+    if game.solo and game.first_roll.get(2) is None:
+        game.roll_for_first(2)
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
+    # In Poker Dice the opening-roll winner takes the first turn. If the bot
+    # won, run its opening turn now (reusing the same logic as
+    # _handle_pd_bot_turn -- game.bot_turn()) so control returns to the human.
+    if game.solo and game.phase == "playing" and game.turn == 2:
+        game.bot_turn()
     _mark_active(game, uid)
     save()
     pending = []
@@ -766,7 +776,8 @@ def _handle_pd_roll_first(data, uid, code):
         first_uid = game.player1_id if game.turn == 1 else game.player2_id
         pending = _notify_recipient(
             game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
-    return {"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res}, pending
+    return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+             "roll_resolved": bool(res.get("winner"))}, pending)
 
 
 def _handle_pd_reroll_first(data, uid, code):
@@ -776,6 +787,9 @@ def _handle_pd_reroll_first(data, uid, code):
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
     game.reroll_first(game.player_num(uid))
+    if game.solo:
+        # The bot can't click the reroll button, so re-throw its die here.
+        game.roll_for_first(2)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(game.player_num(uid))}
@@ -991,16 +1005,26 @@ def _handle_checkers_roll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
+    # In solo the bot can't click the roll button, so make sure its die is
+    # already on the table before we resolve the winner. Without it
+    # roll_for_first() never sees both dice, the winner stays None, and the
+    # client hangs on "waiting for opponent to roll".
+    if game.solo and game.first_roll.get(2) is None:
+        game.roll_for_first(2)
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
+    # In solo, apply_first_roll keeps the human in the White (player1) slot
+    # and moves first (the bot never opens), so after the roll it is always
+    # the human's turn -- no bot move is triggered here.
     _mark_active(game, uid)
     save()
     pending = []
     if res.get("winner"):
         pending = _notify_recipient(
             game, game.current_player, "♟ Ваш ход в Шашках.", "started")
-    return {"ok": True, "state": game.get_state(uid), "roll": res}, pending
+    return ({"ok": True, "state": game.get_state(uid), "roll": res,
+             "roll_resolved": bool(res.get("winner"))}, pending)
 
 
 def _handle_checkers_reroll_first(data, uid, code):
@@ -1010,6 +1034,9 @@ def _handle_checkers_reroll_first(data, uid, code):
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
     game.reroll_first(game.player_num(uid))
+    if game.solo:
+        # The bot can't click the reroll button, so re-throw its die here.
+        game.roll_for_first(2)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(uid)}
@@ -1260,16 +1287,26 @@ def _handle_bg_roll_first(data, uid, code):
         return err
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
+    # In solo the bot can't click the roll button, so make sure its die is
+    # already on the table before we resolve the winner (otherwise the roll
+    # never resolves and the client hangs on "waiting for opponent to roll").
+    if game.solo and game.first_roll.get(2) is None:
+        game.roll_for_first(2)
     res = game.apply_first_roll(game.player_num(uid))
     if res is None:
         return {"ok": False, "error": "invalid_roll"}
+    # In solo, apply_first_roll keeps the human in the White (player1) slot
+    # and moves first (the bot never opens), so after the roll it is always
+    # the human's turn -- no bot move is triggered here.
     _mark_active(game, uid)
     save()
     pending = []
     if res.get("winner"):
         pending = _notify_recipient(
             game, game.current_player, "🎲 Ваш ход в Нардах.", "started")
-    return {"ok": True, "state": game.get_state(uid), "roll": res}, pending
+    return ({"ok": True, "state": game.get_state(uid), "roll": res,
+             "roll_resolved": bool(res.get("winner"))}, pending)
+
 
 def _handle_bg_reroll_first(data, uid, code):
     game, err = _get_game(bg_games, code, uid)
@@ -1278,6 +1315,9 @@ def _handle_bg_reroll_first(data, uid, code):
     if game.phase != "roll":
         return {"ok": False, "error": "not_rolling"}
     game.reroll_first(game.player_num(uid))
+    if game.solo:
+        # The bot can't click the reroll button, so re-throw its die here.
+        game.roll_for_first(2)
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": game.get_state(uid)}

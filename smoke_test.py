@@ -334,4 +334,116 @@ check(sA["history"][0]["solo"] is False, "multiplayer match not flagged as solo"
 s_fresh = unwrap(api._handle_stats({}, 424242, None))["stats"]
 check(s_fresh["total"] == 0 and s_fresh["winrate"] is None, "unseen player gets a clean empty record")
 
+print("SOLO opening rolls resolve for Checkers / Poker Dice / Backgammon:")
+def drive_solo_roll(roll_fn, reroll_fn, code, uid):
+    """Drive a solo game's opening roll to a decisive result.
+
+    Mimics the client: it shows the opening-roll screen (phase 'roll'),
+    the human clicks roll, and on a tie it clicks reroll. The bot can't
+    click anything, so the handlers are responsible for the bot's die.
+    """
+    g = None
+    if 'checkers_games' in dir(api):
+        g = api.checkers_games.get(code) or api.pd_games.get(code) or api.bg_games.get(code)
+    # Put the game into the roll phase with a clean dice slate, exactly as the
+    # frontend does when it renders the opening-roll screen in solo mode.
+    g.phase = "roll"
+    g.reset_first_roll()
+    out = unwrap(roll_fn({"code": code}, uid, code))
+    guard = 0
+    while out.get("roll", {}).get("tie") and guard < 40:
+        reroll_fn({"code": code}, uid, code)
+        out = unwrap(roll_fn({"code": code}, uid, code))
+        guard += 1
+    return out
+
+print("  Checkers solo opening roll:")
+uid_c = 3002
+res = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid_c, None))
+code_c = res["code"]
+out = drive_solo_roll(api._handle_checkers_roll_first, api._handle_checkers_reroll_first, code_c, uid_c)
+check(out.get("roll_resolved"), "checkers solo roll resolved")
+st_c = out["state"]
+check(st_c["my_roll"] is not None and st_c["opp_roll"] is not None,
+      "checkers solo both dice set")
+check(st_c["phase"] == "playing", "checkers solo -> playing phase")
+check(st_c["my_turn"] == (st_c["my_roll"] > st_c["opp_roll"]),
+      "checkers solo: opening-roll winner moves first")
+
+print("  Poker Dice solo opening roll (random):")
+uid_p = 4002
+res = unwrap(api._handle_pd_new_solo({"difficulty": 2}, uid_p, None))
+code_p = res["code"]
+out = drive_solo_roll(api._handle_pd_roll_first, api._handle_pd_reroll_first, code_p, uid_p)
+check(out.get("roll_resolved"), "poker dice solo roll resolved")
+st_p = out["state"]
+check(st_p["my_roll"] is not None and st_p["opp_roll"] is not None,
+      "poker dice solo both dice set")
+check(st_p["phase"] == "playing", "poker dice solo -> playing phase")
+check(st_p["my_turn"] is True, "poker dice solo human's turn after opening roll")
+
+print("  Poker Dice solo opening roll (bot wins -> takes first turn):")
+uid_pb = 4003
+res = unwrap(api._handle_pd_new_solo({"difficulty": 2}, uid_pb, None))
+code_pb = res["code"]
+gpb = api.pd_games[code_pb]
+gpb.phase = "roll"
+gpb.reset_first_roll()
+gpb.first_roll = {1: 2, 2: 5}  # bot (player 2) wins clearly
+out = unwrap(api._handle_pd_roll_first({"code": code_pb}, uid_pb, code_pb))
+check(out.get("roll_resolved"), "poker dice bot-win roll resolved")
+st_pb = out["state"]
+check(st_pb["my_roll"] is not None and st_pb["opp_roll"] is not None,
+      "poker dice bot-win both dice set")
+check(st_pb["phase"] == "playing", "poker dice bot-win -> playing phase")
+check(st_pb["turn"] == 1, "poker dice bot-win -> human turn (bot already moved)")
+check(st_pb["my_turn"] is True, "poker dice bot-win human's turn")
+
+print("  Backgammon solo opening roll:")
+uid_b = 5003
+res = unwrap(api._handle_bg_new_solo({"difficulty": 2}, uid_b, None))
+code_b = res["code"]
+out = drive_solo_roll(api._handle_bg_roll_first, api._handle_bg_reroll_first, code_b, uid_b)
+check(out.get("roll_resolved"), "backgammon solo roll resolved")
+st_b = out["state"]
+check(st_b["my_roll"] is not None and st_b["opp_roll"] is not None,
+      "backgammon solo both dice set")
+check(st_b["phase"] == "playing", "backgammon solo -> playing phase")
+check(st_b["my_turn"] == (st_b["my_roll"] > st_b["opp_roll"]),
+      "backgammon solo: opening-roll winner moves first")
+
+print("  Checkers solo opening roll (bot wins -> bot opens first):")
+uid_cb = 3003
+res = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid_cb, None))
+code_cb = res["code"]
+gcb = api.checkers_games[code_cb]
+gcb.phase = "roll"
+gcb.reset_first_roll()
+gcb.first_roll = {1: 2, 2: 5}  # bot (player 2) wins clearly
+out = unwrap(api._handle_checkers_roll_first({"code": code_cb}, uid_cb, code_cb))
+check(out.get("roll_resolved"), "checkers bot-win roll resolved")
+st_cb = out["state"]
+check(st_cb["my_roll"] is not None and st_cb["opp_roll"] is not None,
+      "checkers bot-win both dice set")
+check(st_cb["phase"] == "playing", "checkers bot-win -> playing phase")
+check(st_cb["turn"] == 2, "checkers bot-win -> bot turn (BLACK)")
+check(st_cb["my_turn"] is False, "checkers bot-win -> bot opens first")
+
+print("  Backgammon solo opening roll (bot wins -> bot opens first):")
+uid_bb = 5004
+res = unwrap(api._handle_bg_new_solo({"difficulty": 2}, uid_bb, None))
+code_bb = res["code"]
+gbb = api.bg_games[code_bb]
+gbb.phase = "roll"
+gbb.reset_first_roll()
+gbb.first_roll = {1: 2, 2: 5}  # bot (player 2) wins clearly
+out = unwrap(api._handle_bg_roll_first({"code": code_bb}, uid_bb, code_bb))
+check(out.get("roll_resolved"), "backgammon bot-win roll resolved")
+st_bb = out["state"]
+check(st_bb["my_roll"] is not None and st_bb["opp_roll"] is not None,
+      "backgammon bot-win both dice set")
+check(st_bb["phase"] == "playing", "backgammon bot-win -> playing phase")
+check(st_bb["turn"] == -1, "backgammon bot-win -> bot turn (BLACK)")
+check(st_bb["my_turn"] is False, "backgammon bot-win -> bot opens first")
+
 print("\nALL SMOKE TESTS PASSED")

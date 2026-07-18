@@ -261,18 +261,30 @@ class BackgammonGame(BaseGame):
         return None
 
     def apply_first_roll(self, pnum: int) -> Optional[Dict]:
-        """Opening-roll wrapper: the winner plays White and moves first.
+        """Opening-roll wrapper: the roll winner moves first.
 
-        Mirrors CheckersGame.apply_first_roll -- colour was previously fixed
-        by join order, so the roll (when it existed at all) only decided
-        move order. A winning player 2 is swapped into the player1 slot,
-        which player_color() already maps to White.
+        Mirrors CheckersGame.apply_first_roll -- the roll is respected in all
+        modes (as in Sea Battle and Poker Dice): the winner moves first as
+        White (player1), the loser is Black (player2).
+
+        In multiplayer a winning player 2 is swapped into the player1 slot
+        (which player_color() already maps to White), so after the swap the
+        winner is always White. In SOLO mode the human is player1 and the bot
+        is player2, so no swap is needed: the winner simply gets the
+        corresponding turn (WHITE if the human won, BLACK if the bot won).
+        Because the existing bot-turn handler only acts when the bot is BLACK,
+        setting turn=BLACK when the bot wins means the bot opens first, as
+        intended -- no handler changes required.
         """
         res = self.roll_for_first(pnum)
         if res and res.get("winner"):
-            if res["winner"] == 2:
+            winner = res["winner"]
+            if winner == 2 and not self.solo:
                 self.player1_id, self.player2_id = self.player2_id, self.player1_id
-            self.turn = WHITE
+            if (winner == 1) or (winner == 2 and not self.solo):
+                self.turn = WHITE
+            else:
+                self.turn = BLACK
             self.phase = 'playing'
         return res
 
