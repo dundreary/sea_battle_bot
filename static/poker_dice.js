@@ -199,10 +199,20 @@ function pdShowGame(st){
         const botDie = document.querySelectorAll('.roll-die-col .roll-die3d')[1];
         if(botDie){
           const svg = botDie.querySelector('svg');
-          if(svg) svg.innerHTML = '';               // blank it
+          // Do NOT blank the die. Instead tumble it with changing faces:
+          // rewrite the svg circles to a random 1-6 face every ~120ms.
           botDie.classList.add('roll-die-spinning');
+          const tumble = setInterval(() => {
+            if(!svg) return;
+            const n = 1 + Math.floor(Math.random() * 6);
+            const pips = (DIE_PIPS[n] || []);
+            svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
+          }, 120);
           setTimeout(() => {
+            clearInterval(tumble);
             botDie.classList.remove('roll-die-spinning');
+            // Land exactly on the true value so the die matches the banner
+            // (which also uses st.opp_roll).
             const pips = (DIE_PIPS[st.opp_roll] || []);
             if(svg) svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join('');
             pdAnimating = false;
@@ -211,7 +221,6 @@ function pdShowGame(st){
         }
       }
     }
-    $('pdActions').innerHTML = `<button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>`;
     setStatus('🎲 '+t('rollTitle'),'');
     return;
   }
@@ -470,8 +479,21 @@ function pdRenderDice(st){
       sfxRoll();
       const spinEls = isFirst ? diceEls : rerolled.map(i => diceEls[i]);
       for(const el of spinEls) el.classList.add('rolling');
-      // Spin purely via CSS transform — do NOT rewrite die contents per frame.
+      // Tumbling-with-changing-faces: while the spin is active, randomize the
+      // spinning dice pips in place (rebuild only the inner dots of the
+      // existing die element — do NOT replace the element). Purely cosmetic;
+      // the final faces are set authoritatively from entry.dice below.
+      const tumble = setInterval(() => {
+        for(const el of spinEls){
+          const rv = 1 + Math.floor(Math.random() * 6);
+          const dots = PD_DOTS[rv - 1] || [];
+          el.innerHTML = dots.map(([r, c]) =>
+            `<div class="dot" style="grid-row:${r + 1};grid-column:${c + 1}"></div>`
+          ).join('');
+        }
+      }, 120);
       await _aiDelay(1100);
+      clearInterval(tumble);
       for(const el of spinEls) el.classList.remove('rolling');
       // Set the final faces once, after the rotation ends.
       for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
@@ -593,16 +615,34 @@ async function pdDoRoll(){
     if(!keep.includes(parseInt(el.dataset.idx))) el.classList.add('rolling');
   }
 
+  // Tumbling-with-changing-faces: while the spin is active, randomize each
+  // non-kept die's pips in place (rebuild only the inner dots of the existing
+  // die element — do NOT replace the element). Purely cosmetic; the final
+  // faces are set authoritatively from res.state.dice below.
+  const spinKeep = keep.map(k => parseInt(k));
+  const tumble = setInterval(() => {
+    for(const el of diceEls){
+      if(spinKeep.includes(parseInt(el.dataset.idx))) continue;
+      const rv = 1 + Math.floor(Math.random() * 6);
+      const dots = PD_DOTS[rv - 1] || [];
+      el.innerHTML = dots.map(([r, c]) =>
+        `<div class="dot" style="grid-row:${r + 1};grid-column:${c + 1}"></div>`
+      ).join('');
+    }
+  }, 120);
+
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   const elapsed=Date.now()-start;
   const remain=Math.max(0,MIN_ANIM-elapsed);
   if(!res||!res.ok){
+    clearInterval(tumble);
     for(const el of diceEls) el.classList.remove('rolling');
     setStatus(t('error'));
     return;
   }
 
   await new Promise(r=>setTimeout(r,remain));
+  clearInterval(tumble);
   for(const el of diceEls) el.classList.remove('rolling');
 
   // Set the final dice faces once (no per-frame innerHTML churn).

@@ -1101,6 +1101,10 @@ function updateUI(){
     $('actions').className='btn-col';
     $('actions').innerHTML = firstRollHTML(s, 'rollFirst', 'rerollFirst') +
       `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
+    // Mirror Checkers: the opening toss shows the winner banner, then the game
+    // proceeds automatically (the auto-ackRoll timer below). Do NOT show a
+    // visible "Продолжить" (Continue) button on the roll screen for Sea Battle.
+    const rb = $('rollDoneBtn'); if(rb) rb.style.display = 'none';
     setThemeSelectorVisibility(false);
     return;
   }
