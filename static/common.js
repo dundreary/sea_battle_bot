@@ -155,6 +155,8 @@ const LANG = {
     statsResDraw: 'Ничья',
     bgVariantShort: 'Короткие',
     bgVariantLong: 'Длинные',
+    playerName: 'Ваше имя',
+    playerNamePlaceholder: 'Введите имя',
   },
   uk: {
     title: 'Морський бій',
@@ -312,6 +314,8 @@ const LANG = {
     statsResDraw: 'Нічия',
     bgVariantShort: 'Короткі',
     bgVariantLong: 'Довгі',
+    playerName: 'Ваше ім\'я',
+    playerNamePlaceholder: 'Введіть ім\'я',
   },
   en: {
     title: 'Sea Battle',
@@ -469,6 +473,8 @@ const LANG = {
     statsResDraw: 'Draw',
     bgVariantShort: 'Short',
     bgVariantLong: 'Long',
+    playerName: 'Your name',
+    playerNamePlaceholder: 'Enter your name',
   }
 };
 
@@ -578,6 +584,10 @@ function showSettings(){
       <div class="sett-row lang-btn" onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
       <div class="sett-row lang-btn" onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
       <div class="sett-row lang-btn" onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
+      <div class="sett-row" style="flex-direction:column;align-items:stretch;gap:6px">
+        <span>👤 ${t('playerName')||'Ваше имя'}</span>
+        <input id="nameInput" class="sett-input" maxlength="24" value="${getPlayerName().replace(/"/g,'&quot;')}" oninput="savePlayerName(this.value)" placeholder="${t('playerNamePlaceholder')||'Введите имя'}" />
+      </div>
       <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
@@ -1318,6 +1328,7 @@ function showMainMenu(){
   $('shipHint').innerHTML = '';
   document.title = t('seaBattle');
   $('gameInfo').textContent='';
+  renderPlayerName();
   $('header').classList.remove('in-game');
   document.querySelectorAll('.board').forEach(b => b.classList.remove('my-turn'));
   $('app').insertBefore($('status'), $('app').firstChild);
@@ -1427,6 +1438,22 @@ function resetStats(){
 let gameDifficulty = 4;
 let stripUnlocked=false; let _stripTaps=0, _stripLastTap=0;
 
+let playerName = localStorage.getItem('sb_name') || '';
+function getPlayerName(){
+  if(playerName) return playerName;
+  try{ const fn = window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name; if(fn) return fn; }catch(e){}
+  return '';
+}
+function renderPlayerName(){
+  const el=document.getElementById('playerName');
+  if(el) el.textContent = getPlayerName() ? getPlayerName() : '';
+}
+function savePlayerName(v){
+  playerName = (v||'').trim().slice(0,24);
+  try{ localStorage.setItem('sb_name', playerName); }catch(e){}
+  renderPlayerName();
+}
+
 function showBotDifficulty(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   document.title = t('seaBattle');
@@ -1454,6 +1481,8 @@ function startSoloWithDifficulty(diff){
 function showSeaBattleMenu(){
   var lb=$('langBar');if(lb)lb.style.display='none';
   stripUnlocked=false; _stripTaps=0;
+  const lb2=document.getElementById('stripLockBtn'); if(lb2)lb2.textContent='🔒';
+  const sc=document.getElementById('stripCard'); if(sc)sc.style.display='none';
   hideAllGameAreas();
   document.title = t('seaBattle');
   setStatus('');
@@ -1482,12 +1511,18 @@ function showSeaBattleMenu(){
   fetchActiveGames();
 }
 
-function tapStripUnlock(){
-  if(!document.getElementById('stripCard')) return;
+function tapStripLock(){
   const now=Date.now();
   if(now-_stripLastTap>1800)_stripTaps=0;   // reset if gap between taps > 1.8s (not "normal pace")
   _stripLastTap=now; _stripTaps++;
-  if(_stripTaps>=10){ stripUnlocked=true; _stripTaps=0; const c=document.getElementById('stripCard'); if(c)c.style.display=''; }
+  const btn=document.getElementById('stripLockBtn');
+  if(_stripTaps>=5){
+    stripUnlocked=true; _stripTaps=0;
+    if(btn)btn.textContent='🔓';
+    const c=document.getElementById('stripCard'); if(c)c.style.display='';
+  } else if(btn){
+    btn.textContent='🔒';
+  }
 }
 
 function chooseMultiMode(){
@@ -1731,5 +1766,6 @@ async function checkStartParam(){
 lang = detectLang();
 setLang(lang);
 initTheme();
+renderPlayerName();
 initTG();
 tryReconnect();

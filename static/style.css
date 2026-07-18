@@ -81,9 +81,9 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
 .header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
 .header .sub{position:relative;z-index:1;font-size:11px;color:var(--accent-primary-light)}
+.player-name{position:relative;z-index:1;font-size:13px;font-weight:600;color:var(--text-primary,#fff);margin-top:2px;min-height:16px}
 .header.in-game{display:none}
 #header{position:relative}
-#stripUnlockArea{position:absolute;inset:0;z-index:0;cursor:pointer;touch-action:manipulation}
 #continueBtn{position:relative;z-index:1}
 .board-label{display:none}
 .lang-bar{display:flex;gap:4px;justify-content:center;padding:4px 0}
@@ -105,6 +105,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 @keyframes pulse-glow{0%{border-color:var(--accent-primary);box-shadow:0 0 8px rgba(79,195,247,0.4)}50%{border-color:var(--accent-primary-alt);box-shadow:0 0 20px rgba(79,195,247,0.8)}100%{border-color:var(--accent-primary);box-shadow:0 0 8px rgba(79,195,247,0.4)}}
 .sett-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;cursor:pointer;border-bottom:1px solid var(--border-color);font-size:15px}
 .sett-row:last-child{border-bottom:none}
+.sett-input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input,#1b2030);color:var(--text-primary,#fff);font-size:14px}
 .sett-val{font-size:20px}
 .btn-link{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;transition:.15s}
 .btn-link:hover{color:var(--accent-primary)}

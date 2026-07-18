@@ -21,12 +21,13 @@
 <body>
 
 <div class="header" id="header">
-  <div id="stripUnlockArea" onclick="tapStripUnlock()"></div>
   <div class="header-controls">
+    <button class="top-btn" id="stripLockBtn" title="Unlock" onclick="tapStripLock()">🔒</button>
     <button class="top-btn" onclick="showStats()" title="Stats">📊</button>
     <button class="top-btn" onclick="showSettings()" title="Settings">⚙️</button>
   </div>
   <div class="sub" id="gameInfo">—</div>
+  <div class="player-name" id="playerName"></div>
   <button class="btn primary" id="continueBtn" style="display:none;margin-top:8px;padding:8px 16px;font-size:13px" onclick="continueGame()"></button>
 </div>
 
