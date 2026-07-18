@@ -1,6 +1,9 @@
 const LANG = {
   ru: {
     title: '⚓ МОРСКОЙ БОЙ',
+    rules: 'Правила',
+    ok: 'OK',
+    cancel: 'Отмена',
     startBtn: '🎮 Начать игру',
     ownBoard: '🚢 ТВОИ КОРАБЛИ',
     oppBoard: '🎯 ДОСКА СОПЕРНИКА',
@@ -101,9 +104,7 @@ const LANG = {
     bgPlayAgain: '🔄 Играть ещё',
     bgYourTurn: '♟ ТВОЙ ХОД!',
     bgOppTurn: '♟ ХОД СОПЕРНИКА...',
-    stEasy: 'Легко',
     stMedium: 'Средне',
-    stHard: 'Сложно',
     stExpert: 'Эксперт',
     selectDifficulty: 'Выбери сложность',
     pdTitle: 'Покер в кости',
@@ -160,6 +161,9 @@ const LANG = {
   },
   uk: {
     title: 'Морський бій',
+    rules: 'Правила',
+    ok: 'OK',
+    cancel: 'Скасувати',
     startBtn: '🎮 Почати гру',
     ownBoard: '🚢 ТВОЇ КОРАБЛІ',
     oppBoard: '🎯 ДОШКА СУПЕРНИКА',
@@ -260,9 +264,7 @@ const LANG = {
     bgPlayAgain: '🔄 Грати ще',
     bgYourTurn: '♟ ТВІЙ ХІД!',
     bgOppTurn: '♟ ХІД СУПЕРНИКА...',
-    stEasy: 'Легко',
     stMedium: 'Середньо',
-    stHard: 'Складно',
     stExpert: 'Експерт',
     selectDifficulty: 'Обери складність',
     pdTitle: 'Покер у кості',
@@ -319,6 +321,9 @@ const LANG = {
   },
   en: {
     title: 'Sea Battle',
+    rules: 'Rules',
+    ok: 'OK',
+    cancel: 'Cancel',
     startBtn: '🎮 Start Game',
     ownBoard: '🚢 YOUR SHIPS',
     oppBoard: '🎯 OPPONENT\'S BOARD',
@@ -419,9 +424,7 @@ const LANG = {
     bgPlayAgain: '🔄 Play again',
     bgYourTurn: '♟ YOUR TURN!',
     bgOppTurn: '♟ OPPONENT\'S TURN...',
-    stEasy: 'Easy',
     stMedium: 'Medium',
-    stHard: 'Hard',
     stExpert: 'Expert',
     selectDifficulty: 'Choose difficulty',
     pdTitle: 'Poker Dice',
@@ -490,7 +493,7 @@ function hideAllGameAreas(){
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('bgArea').style.display='none';
-  $('shipHint').innerHTML = '';
+  const _sh=$('shipHint'); if(_sh) _sh.innerHTML='';
 }
 
 let _snd=localStorage.getItem('sb_snd')!=='0',_vibe=localStorage.getItem('sb_vibe')!=='0';
@@ -574,18 +577,19 @@ function showSettings(){
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
   const curTheme = document.documentElement.className.indexOf('forest')>=0 ? 'forest' : 'ocean';
   const chk = on => on ? '✅' : '⬜';
+  const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`;
   o.innerHTML=`
     <div class="modal">
       <h2>⚙️ ${t('settings')}</h2>
-      <div class="sett-row" onclick="setTheme('ocean');showSettings()"><span>🌊 Ocean</span><span class="sett-val">${curTheme==='ocean'?'✅':''}</span></div>
-      <div class="sett-row" onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
-      <div class="sett-row" onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
-      <div class="sett-row" onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
-      <div class="sett-row" onclick="setDifficulty(2);showSettings()"><span>🎯 ${t('stMedium')}</span><span class="sett-val">${gameDifficulty===2?'✅':''}</span></div>
-      <div class="sett-row" onclick="setDifficulty(4);showSettings()"><span>💀 ${t('stExpert')}</span><span class="sett-val">${gameDifficulty===4?'✅':''}</span></div>
-      <div class="sett-row lang-btn" onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
-      <div class="sett-row lang-btn" onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
-      <div class="sett-row lang-btn" onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
+      <div class="sett-row" ${AR} onclick="setTheme('ocean');showSettings()"><span>🌊 Ocean</span><span class="sett-val">${curTheme==='ocean'?'✅':''}</span></div>
+      <div class="sett-row" ${AR} onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
+      <div class="sett-row" ${AR} onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
+      <div class="sett-row" ${AR} onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
+      <div class="sett-row" ${AR} onclick="setDifficulty(2);showSettings()"><span>🎯 ${t('stMedium')}</span><span class="sett-val">${gameDifficulty===2?'✅':''}</span></div>
+      <div class="sett-row" ${AR} onclick="setDifficulty(4);showSettings()"><span>💀 ${t('stExpert')}</span><span class="sett-val">${gameDifficulty===4?'✅':''}</span></div>
+      <div class="sett-row lang-btn" data-lang="ru" ${AR} onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
+      <div class="sett-row lang-btn" data-lang="uk" ${AR} onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
+      <div class="sett-row lang-btn" data-lang="en" ${AR} onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
       <div class="sett-row" style="flex-direction:column;align-items:stretch;gap:6px">
         <span>👤 ${t('playerName')||'Ваше имя'}</span>
         <input id="nameInput" class="sett-input" maxlength="24" value="${getPlayerName().replace(/"/g,'&quot;')}" oninput="savePlayerName(this.value)" placeholder="${t('playerNamePlaceholder')||'Введите имя'}" />
@@ -619,8 +623,7 @@ function t(key, ...args){
 function setLang(l){
   lang = l;
   try{localStorage.setItem('sb_lang', l)}catch(e){}
-  const langMap = {ru:'ru', ua:'uk', en:'en'};
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', (langMap[b.textContent.toLowerCase()]||b.textContent.toLowerCase()) === l));
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
   applyLang();
   if(state) updateUI();
 }
@@ -633,6 +636,10 @@ function applyLang(){
 }
 
 function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
+// Browsers (and especially Telegram's WebView) suspend the AudioContext until
+// a user gesture occurs. Resume it once, on the first pointer interaction, so
+// SFX are not silently dropped after a navigation/refresh.
+document.addEventListener('pointerdown', function(){ try{ const a=actx(); if(a&&a.resume) a.resume(); }catch(e){} }, {once:true});
 function getUid(){
   if(uid)return uid;
   try{uid=window.Telegram.WebApp.initDataUnsafe?.user?.id||localStorage.getItem('sb_uid')||Date.now()}catch(e){uid=localStorage.getItem('sb_uid')||Date.now()}
@@ -660,12 +667,26 @@ function showIncomingMessages(messages){
 
 // ---- In-app confirm/prompt (replace native browser dialogs) ----------------
 function confirmDialog(title, message, onYes, yesLabel, noLabel){
+  yesLabel = yesLabel || t('ok');
+  noLabel = noLabel || t('cancel');
   const o=document.createElement('div'); o.className='overlay';
   o.innerHTML=`<div class="modal"><h2>${title}</h2><p>${message}</p>
-    <button class="btn success" style="width:100%;margin:6px 0" id="cdYes">${yesLabel||t('surrender')}</button>
-    <button class="btn outline" style="width:100%;margin:6px 0" onclick="this.closest('.overlay').remove()">${noLabel||t('close')}</button></div>`;
+    <button class="btn success" style="width:100%;margin:6px 0" id="cdYes">${yesLabel}</button>
+    <button class="btn outline" style="width:100%;margin:6px 0" id="cdNo">${noLabel}</button></div>`;
   document.body.appendChild(o);
-  o.querySelector('#cdYes').onclick=()=>{ o.remove(); onYes(); };
+  const yesBtn=o.querySelector('#cdYes');
+  const noBtn=o.querySelector('#cdNo');
+  yesBtn.onclick=()=>{ o.remove(); onYes(); };
+  noBtn.onclick=()=>{ o.remove(); };
+  yesBtn.focus();
+  o.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape'){ e.preventDefault(); o.remove(); return; }
+    if(e.key==='Tab'){
+      const f=[yesBtn,noBtn], first=f[0], last=f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    }
+  });
 }
 
 function promptDialog(title, placeholder, onDone){
@@ -673,12 +694,24 @@ function promptDialog(title, placeholder, onDone){
   o.innerHTML=`<div class="modal"><h2>${title}</h2>
     <input id="pdInput" class="sett-input" maxlength="64" placeholder="${placeholder}">
     <button class="btn success" style="width:100%;margin:6px 0" id="pdOk">OK</button>
-    <button class="btn outline" style="width:100%;margin:6px 0" onclick="this.closest('.overlay').remove()">${t('close')}</button></div>`;
+    <button class="btn outline" style="width:100%;margin:6px 0" id="pdNo">${t('cancel')}</button></div>`;
   document.body.appendChild(o);
-  const inp=o.querySelector('#pdInput'); inp.focus();
+  const inp=o.querySelector('#pdInput');
+  const okBtn=o.querySelector('#pdOk');
+  const noBtn=o.querySelector('#pdNo');
+  inp.focus();
   const done=()=>{ const v=inp.value.trim(); o.remove(); if(v) onDone(v); };
-  o.querySelector('#pdOk').onclick=done;
+  okBtn.onclick=done;
+  noBtn.onclick=()=>{ o.remove(); };
   inp.addEventListener('keydown',e=>{ if(e.key==='Enter') done(); });
+  o.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape'){ e.preventDefault(); o.remove(); return; }
+    if(e.key==='Tab'){
+      const f=[inp,okBtn,noBtn], first=f[0], last=f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    }
+  });
 }
 
 // Retry helper for network failures after api()'s internal retry has been
@@ -700,18 +733,15 @@ async function api(method,data,_isRetry){
     data = data || {};
     data.lang = lang;
     try{ data.init_data = window.Telegram.WebApp.initData || ''; }catch(e){ data.init_data = ''; }
-    const r=await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    return await r.json()
+    const ctrl = new AbortController();
+    const to = setTimeout(()=>ctrl.abort(), 8000);
+    let r;
+    try{
+      r = await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:ctrl.signal});
+    } finally { clearTimeout(to); }
+    return await r.json();
   }catch(e){
-    // A single quick retry absorbs the brief network blips that are common
-    // on mobile (wifi/cell handoff, a momentary drop) instead of surfacing a
-    // scary "connection error" for something that would have recovered a
-    // second later on its own.
-    if(!_isRetry){
-      await new Promise(res=>setTimeout(res,800));
-      return api(method,data,true);
-    }
-    setStatus(t('error'));
+    if(!_isRetry){ await new Promise(res=>setTimeout(res,800)); return api(method,data,true); }
     return null;
   }
 }
@@ -729,7 +759,6 @@ async function fetchBotInfo(retries=10){
 }
 
 function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
-  boardEl.innerHTML='';
   boardEl.setAttribute('role','grid');
   const EMPTY=0,SHIP=1,HIT=2,MISS=3,SUNK=4,DEAD=5,MINE=6,MINE_HIT=7;
   const COLS='ABCDEFGHIJ';
@@ -741,28 +770,55 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
     uk:{empty:'порожньо',ship:'корабель',hit:'влучання',miss:'повз',sunk:'потоплено',mine:'міна'},
     en:{empty:'empty',ship:'ship',hit:'hit',miss:'miss',sunk:'sunk',mine:'mine'},
   })[lang] || {empty:'empty',ship:'ship',hit:'hit',miss:'miss',sunk:'sunk',mine:'mine'};
-  for(let r=0;r<10;r++)for(let c=0;c<10;c++){
-    const cell=document.createElement('div');
-    const v=grid[r*10+c];
+
+  // Build the 100 cell nodes exactly once so DOM identity (and therefore
+  // keyboard focus) is preserved across re-renders -- this is the A11Y-2 fix
+  // and also avoids a full reflow on every poll refresh.
+  if(boardEl.childElementCount !== 100){
+    boardEl.innerHTML='';
+    for(let r=0;r<10;r++)for(let c=0;c<10;c++){
+      const cell=document.createElement('div');
+      cell.className='cell';
+      cell.dataset.r=r;
+      cell.dataset.c=c;
+      boardEl.appendChild(cell);
+    }
+  }
+
+  const cells = boardEl.children;
+  for(let i=0;i<100;i++){
+    const cell=cells[i];
+    const r=+cell.dataset.r, c=+cell.dataset.c;
+    const v=grid[i];
     cell.className='cell';
-    let stateWord=STATE_LABEL.empty;
-    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');stateWord=STATE_LABEL.ship;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');stateWord=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
-    else if(v===HIT){cell.classList.add('hit');cell.textContent='❌';stateWord=STATE_LABEL.hit}
-    else if(v===MINE_HIT){cell.classList.add('mine');stateWord=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}
-    else if(v===MISS){cell.classList.add('miss');cell.textContent='·';stateWord=STATE_LABEL.miss}
-    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖';stateWord=STATE_LABEL.sunk}
+    cell.textContent='';
+    let sw=STATE_LABEL.empty;
+    if(v===EMPTY||v===SHIP||v===MINE){cell.classList.add('empty');if(v===SHIP){cell.classList.add(isStrip?'strip-ship':'ship');sw=STATE_LABEL.ship;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}else if(v===MINE){cell.classList.add('mine');sw=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}}
+    else if(v===HIT){cell.classList.add('hit');cell.textContent='❌';sw=STATE_LABEL.hit}
+    else if(v===MINE_HIT){cell.classList.add('mine');sw=STATE_LABEL.mine;if(isOpponent&&gameOver)cell.classList.add('enemy-reveal')}
+    else if(v===MISS){cell.classList.add('miss');cell.textContent='·';sw=STATE_LABEL.miss}
+    else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖';sw=STATE_LABEL.sunk}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
     else cell.classList.add('empty');
-    cell.setAttribute('aria-label', COLS[c]+(r+1)+': '+stateWord);
+    cell.setAttribute('aria-label', COLS[c]+(r+1)+': '+sw);
     const shootable = isOpponent&&!gameOver&&(v===EMPTY||v===SHIP);
     if(shootable){
       cell.classList.add('shootable');
       cell.setAttribute('role','button');
       cell.tabIndex=0;
-      cell.onclick=()=>handleShot(r,c);
-      cell.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); handleShot(r,c); } };
+      if(!cell._wired){
+        cell.onclick=()=>handleShot(+cell.dataset.r,+cell.dataset.c);
+        cell.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); handleShot(+cell.dataset.r,+cell.dataset.c); } };
+        cell._wired=true;
+      }
+    }else{
+      cell.classList.remove('shootable');
+      cell.removeAttribute('role');
+      cell.tabIndex=-1;
+      cell.onclick=null;
+      cell.onkeydown=null;
+      cell._wired=false;
     }
-    boardEl.appendChild(cell);
   }
 }
 
@@ -795,10 +851,6 @@ async function refreshState(){
   } finally {
     _sbRefreshing=false;
   }
-}
-
-function renderShipHint(shipsList, shipsPlaced, isStrip, minePlaced){
-  $('shipHint').innerHTML = '';
 }
 
 // ---- Opening dice roll (multiplayer: decides who moves first) --------------
@@ -926,8 +978,9 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   try{ sfxRoll(); }catch(e){}
   const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
+  if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rollFirst()); return; }
   const elapsed = Date.now() - start;
-  const MIN = 1100;
+  const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
@@ -954,8 +1007,9 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   try{ sfxClick(); }catch(e){}
   const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
+  if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rerollFirst()); return; }
   const elapsed = Date.now() - start;
-  const MIN = 1100;
+  const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
@@ -1046,14 +1100,14 @@ function updateUI(){
       if(!_stripPhotoWaitTimer){
         _stripPhotoWaitTimer = setTimeout(() => {
           _stripPhotoWaitTimer = null;
-          if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+          stopGamePoll('sea_battle');
           localStorage.removeItem('sb_game');
           showResult('🏆',t('win'),{ru:'Соперник не отправил фото',uk:'Суперник не надіслав фото',en:'Opponent did not send a photo'}[lang], true);
         }, 60000);
       }
       return;
     }
-    if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+    stopGamePoll('sea_battle');
     const won = s.all_sunk;
     const resultTitle = won ? t('win') : t('lose');
     const resultDesc = won ? t('winDesc') : t('loseDesc');
@@ -1077,7 +1131,6 @@ function updateUI(){
     ownEl.classList.remove('my-turn');
     oppEl.classList.remove('my-turn');
     $('app').insertBefore($('status'), $('app').firstChild);
-    renderShipHint(s.ships_list, s.ships_placed, s.strip, s.mine_placed);
     const alreadyConfirmed = s.ready && s.pnum && s.ready[s.pnum];
     const c = s.code;
     $('oppBoardWrap').style.display='none';
@@ -1125,7 +1178,6 @@ function updateUI(){
     delete _sbAutoAck[gameCode];
     return;
   }
-  $('shipHint').innerHTML = '';
 
   // Route to the roll screen purely by phase. Note: my_roll/opp_roll stay
   // populated on the backend even after phase flips to 'playing' (kept
@@ -1147,7 +1199,7 @@ function updateUI(){
       const rb = $('rollDoneBtn'); if(rb) rb.style.display = 'none';
       if(!_sbAutoAck[gameCode]){
         _sbAutoAck[gameCode] = true;
-        setTimeout(() => { ackRoll(); }, 3300);
+        setTimeout(() => { ackRoll(); }, 700);
       }
     }
     $('actions').className='btn-col';
@@ -1188,6 +1240,7 @@ function updateUI(){
 
 async function startSolo(){
   const res=await api('/api/new_solo',{uid:getUid(), difficulty: gameDifficulty});
+  if(res===null){ showRetry(t('error'), ()=>startSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
@@ -1322,12 +1375,13 @@ async function captureAndUploadStake(){
 
 async function newMulti(strip=false){
   const res=await api('/api/new_multi',{uid:getUid(),strip:strip});
+  if(res===null){ showRetry(t('error'), ()=>newMulti()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
   setStatus('', '');
   await refreshState();
-  pollGame();
+  startGamePoll('sea_battle', gameCode, refreshState);
 }
 
 function shareGame(){
@@ -1348,6 +1402,10 @@ function copyToClipboard(text, msg){
 
 async function joinByCode(code){
   const resolveRes = await api('/api/resolve_code', {code});
+  if(resolveRes===null){
+    showRetry(t('error'), ()=>joinByCode(code));
+    return;
+  }
   if(!resolveRes || !resolveRes.ok){
     setStatus(t('joinError'), '');
     return;
@@ -1355,36 +1413,40 @@ async function joinByCode(code){
   const gameType = resolveRes.game;
   if(gameType === 'sea_battle'){
     const res = await api('/api/join', {uid: getUid(), code});
+    if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
     if(!res || !res.ok){ setStatus(t('joinError')); return; }
     gameCode = code;
     localStorage.setItem('sb_game', code);
     $('actions').innerHTML = '';
     await refreshState();
-    pollGame();
+    startGamePoll('sea_battle', code, refreshState);
   } else if(gameType === 'poker_dice'){
     const res = await api('/api/pd_join', {uid: getUid(), code});
+    if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
     if(!res || !res.ok){ setStatus(t('joinError')); return; }
     pdCode = code;
     localStorage.setItem('pd_game', code);
     $('actions').innerHTML = '';
     pdShowGame(res.state);
-    pdPoll();
+    startGamePoll('poker_dice', code, pdRefreshState);
   } else if(gameType === 'checkers'){
     const res = await api('/api/checkers_join', {uid: getUid(), code});
+    if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
     if(!res || !res.ok){ setStatus(t('joinError')); return; }
     ckCode = code;
     localStorage.setItem('ck_game', code);
     $('actions').innerHTML = '';
     ckShowGame(res.state);
-    ckPoll();
+    startGamePoll('checkers', code, ckRefreshState);
   } else if(gameType === 'backgammon'){
     const res = await api('/api/bg_join', {uid: getUid(), code});
+    if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
     if(!res || !res.ok){ setStatus(t('joinError')); return; }
     bgCode = code;
     localStorage.setItem('bg_game', code);
     $('actions').innerHTML = '';
     bgShowGame(res.state);
-    bgPoll();
+    startGamePoll('backgammon', code, bgRefreshState);
   }
 }
 
@@ -1394,7 +1456,17 @@ async function universalJoinGame(){
   });
 }
 
-let pollTimer=null;
+const _polls = {};
+function startGamePoll(type, code, refreshFn){
+  stopGamePoll(type);
+  _polls[type] = setInterval(async () => {
+    if(!code){ stopGamePoll(type); return; }
+    await refreshFn();
+  }, 2000);
+}
+function stopGamePoll(type){ if(_polls[type]){ clearInterval(_polls[type]); delete _polls[type]; } }
+function stopAllPolls(){ for(const k in _polls) stopGamePoll(k); }
+
 let _lastSBSig=null;      // last serialized state signature for poll dedup
 let _sbRefreshing=false;  // in-flight guard so a slow poll can't overlap
 let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
@@ -1402,14 +1474,6 @@ let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 // cleanup (stop polling / drop saved code) is skipped until the new round
 // actually starts.
 let rematchPending=false;
-
-function pollGame(){
-  if(pollTimer)clearInterval(pollTimer);
-  pollTimer=setInterval(async()=>{
-    if(!gameCode){clearInterval(pollTimer);pollTimer=null;return}
-    await refreshState();
-  },2000);
-}
 
 function showMainMenu(){
   stripUnlocked=false; _stripTaps=0;
@@ -1421,17 +1485,13 @@ function showMainMenu(){
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
   bgCode=null;bgState=null;
-  if(pollTimer){clearInterval(pollTimer);pollTimer=null}
-  if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
-  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
-  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+  stopAllPolls();
   // Note: saved game codes (sb_game/pd_game/ck_game) are intentionally
   // NOT cleared here anymore — quitting a game only minimizes it, so it must
   // stay resumable from the active-games bar below.
   setThemeSelectorVisibility(false);
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
-  $('shipHint').innerHTML = '';
   document.title = t('seaBattle');
   $('gameInfo').textContent='';
   renderPlayerName();
@@ -1471,11 +1531,45 @@ function showMainMenu(){
       </div>
     </div>
   `;
-  updateContinueButton();
   fetchActiveGames();
 }
 
 function showMenu(){ showMainMenu(); }
+
+function showHelp(){
+  let game=null;
+  if(typeof pdState!=='undefined' && pdState) game='poker_dice';
+  else if(typeof ckState!=='undefined' && ckState) game='checkers';
+  else if(typeof bgState!=='undefined' && bgState) game='backgammon';
+  else if(state) game='sea_battle';
+  let body;
+  if(!game){
+    body={ru:'Откройте игру, чтобы увидеть правила',uk:'Відкрийте гру, щоб побачити правила',en:'Open a game to see the rules'}[lang];
+  } else if(game==='sea_battle'){
+    body='Расставь флот, стреляй по полю противника (A1–J10). Потопи все корабли первым. В соло бот ходит после тебя.';
+  } else if(game==='poker_dice'){
+    body='3 броска. Отмечай кости ✅, чтобы оставить. Заполни табло категориями (Пары, Стриты, Покер и т.д.), набери больше очков.';
+  } else if(game==='checkers'){
+    body='Ходи по диагонали, бей прыжком. Дойди до края — станешь дамкой (♛). Сними все шашки противника.';
+  } else {
+    body='Бросай кости и веди шашки от своего края к своему дому, затем снимай (bear-off). Первым сними все — победа.';
+  }
+  const o=document.createElement('div'); o.className='overlay';
+  o.innerHTML=`<div class="modal"><h2>❓ ${t('rules')}</h2><p style="white-space:pre-line">${body}</p>
+    <button class="btn primary" style="width:100%;margin:6px 0" id="helpClose">${t('close')||'Закрыть'}</button></div>`;
+  document.body.appendChild(o);
+  const cb=o.querySelector('#helpClose');
+  cb.focus();
+  cb.onclick=()=>o.remove();
+  o.addEventListener('keydown',(e)=>{
+    if(e.key==='Escape'){ e.preventDefault(); o.remove(); return; }
+    if(e.key==='Tab'){
+      const f=[cb], first=f[0], last=f[f.length-1];
+      if(e.shiftKey && document.activeElement===first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement===last){ e.preventDefault(); first.focus(); }
+    }
+  });
+}
 
 // ---- Player stats (winrate + recent match history) -------------------------
 const STATS_GAME_LABEL = {sea_battle:'seaBattle', poker_dice:'pdTitle', checkers:'checkers', backgammon:'backgammon'};
@@ -1494,6 +1588,10 @@ async function showStats(){
   $('actions').className='btn-col';
   $('actions').innerHTML = `<div class="stats-loading">⏳</div>`;
   const res = await api('/api/stats', {uid:getUid()});
+  if(res===null){
+    showRetry(t('error'), ()=>showStats());
+    return;
+  }
   if(!res || !res.ok){
     setStatus(t('error'));
     $('actions').innerHTML = `<button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>`;
@@ -1535,12 +1633,12 @@ function renderStats(st){
 }
 
 function resetStats(){
-  confirmDialog(t('resetStats')||'Reset statistics', t('resetStatsConfirm')||'Reset all statistics? This cannot be undone.', ()=>{
+  confirmDialog(t('resetStats'), t('resetStatsConfirm'), ()=>{
     api('/api/reset_stats', {uid:getUid()}).then(res=>{
       if(res && res.ok){ renderStats(res.stats); }
       else { alert('Failed to reset statistics.'); }
     }).catch(()=>alert('Failed to reset statistics.'));
-  });
+  }, t('resetStats'), t('cancel'));
   return;
 }
 
@@ -1625,6 +1723,7 @@ function chooseMultiMode(){
 
 async function autoPlace(){
   const res=await api('/api/place_auto',{uid:getUid(),code:gameCode});
+  if(res===null){ showRetry(t('error'), ()=>autoPlace()); return; }
   if(!res||!res.ok)return;
   sfxPlace();
   await refreshState();
@@ -1633,6 +1732,7 @@ async function autoPlace(){
 
 async function confirmPlace(){
   const res=await api('/api/confirm',{uid:getUid(),code:gameCode});
+  if(res===null){ showRetry(t('error'), ()=>confirmPlace()); return; }
   if(!res||!res.ok){
     setStatus('⚠️ ' + {ru:'Сначала расставь корабли!',uk:'Спочатку розстав кораблі!',en:'Place all ships first!'}[lang],'');
     return;
@@ -1760,8 +1860,9 @@ async function requestRematch(){
   if(ov) ov.remove();
   rematchPending = true;
   setStatus(t('rematchWait'), 'battle');
-  if(!pollTimer){ pollTimer = setInterval(refreshState, 2000); }
-  try { await api('/api/rematch', {uid:getUid(), code:gameCode}); } catch(e){}
+  startGamePoll('sea_battle', gameCode, refreshState);
+  const r=await api('/api/rematch', {uid:getUid(), code:gameCode});
+  if(r===null){ showRetry(t('error'), ()=>requestRematch()); return; }
 }
 
 async function leaveGame(surrender){
@@ -1770,7 +1871,7 @@ async function leaveGame(surrender){
   if(surrender){
     const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
     confirmDialog(t('surrender')||'Surrender?', msg, ()=>{
-      if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+      stopGamePoll('sea_battle');
       const _code = gameCode;
       localStorage.removeItem('sb_game');
       gameCode=null;state=null;
@@ -1782,7 +1883,7 @@ async function leaveGame(surrender){
     return;
   }
   // Clear poll timer BEFORE any async operation to prevent refreshState/updateUI from re-showing boards
-  if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  stopGamePoll('sea_battle');
   const _code = gameCode;
   if(surrender) localStorage.removeItem('sb_game');
   gameCode=null;state=null;
@@ -1850,7 +1951,7 @@ function resumeSB(code){
   localStorage.setItem('sb_game',code);
   $('actions').innerHTML='';
   refreshState();
-  setTimeout(pollGame,500);
+  setTimeout(()=>startGamePoll('sea_battle', gameCode, refreshState),500);
 }
 
 function resumeCk(code){
@@ -1858,27 +1959,12 @@ function resumeCk(code){
   localStorage.setItem('ck_game',code);
   $('actions').innerHTML='';
   ckRefreshState();
-  ckPoll();
+  startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 function tryReconnect(){
   showMenu();
   fetchBotInfo().then(() => checkStartParam());
-}
-
-function continueGame(){
-  const saved=localStorage.getItem('sb_game');
-  if(saved){
-    gameCode=saved;
-      $('actions').innerHTML='';
-    refreshState();
-    setTimeout(pollGame,500);
-  }
-}
-
-function updateContinueButton(){
-  const btn=$('continueBtn');
-  if(btn) btn.style.display='none';
 }
 
 async function checkStartParam(){

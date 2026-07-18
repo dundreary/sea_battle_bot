@@ -1,5 +1,6 @@
 // ---- Poker Dice ----
-let pdCode = null, pdState = null, pdKept = new Set(), pdPollTimer = null, pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
+let pdCode = null, pdState = null, pdKept = new Set(), pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
+let pdOpeningTimer = null;
 let _lastPDSig = null, _pdRefreshing = false;
 
 const PD_DOTS = [
@@ -99,34 +100,28 @@ async function pdStartSolo(){
 
 async function pdNewMulti(){
   const res=await api('/api/pd_new_multi',{uid:getUid()});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => pdNewMulti()); return; }
+  if(!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
   _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
   pdOppRollSpun = '';
   pdShowGame(res.state);
-  pdPoll();
+  startGamePoll('poker_dice', pdCode, pdRefreshState);
 }
 
 async function pdJoin(code){
   const res=await api('/api/pd_join',{uid:getUid(),code:code.toUpperCase()});
-  if(!res||!res.ok){setStatus(t('joinError'));return}
+  if(res===null){ showRetry(t('error'), () => pdJoin(code)); return; }
+  if(!res.ok){setStatus(t('joinError'));return}
   pdCode=code.toUpperCase();
   _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
   pdKept = new Set();
   pdOppRollSpun = '';
   pdShowGame(res.state);
-  pdPoll();
-}
-
-function pdPoll(){
-  if(pdPollTimer)clearInterval(pdPollTimer);
-  pdPollTimer=setInterval(async()=>{
-    if(!pdCode){clearInterval(pdPollTimer);pdPollTimer=null;return}
-    await pdRefreshState();
-  },2000);
+  startGamePoll('poker_dice', pdCode, pdRefreshState);
 }
 
 async function pdRefreshState(){
@@ -138,6 +133,7 @@ async function pdRefreshState(){
     if(!res||!res.ok){
       localStorage.removeItem('pd_game');
       pdCode=null;
+      stopGamePoll('poker_dice');
       showPokerDice();
       return;
     }
@@ -177,7 +173,7 @@ function pdShowGame(st){
   $('pdOppHistory').innerHTML='';
 
   if(st.phase==='finished'){
-    if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
+    stopGamePoll('poker_dice');
     localStorage.removeItem('pd_game');
     pdRenderResult(st);
     return;
@@ -194,7 +190,7 @@ function pdShowGame(st){
       const key = (pdCode||'') + ':' + st.opp_roll;
       if(pdOppRollSpun !== key){
         pdOppRollSpun = key;
-        if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
+        stopGamePoll('poker_dice');
         pdAnimating = true;
         const botDie = document.querySelectorAll('.roll-die-col .roll-die3d')[1];
         if(botDie){
@@ -206,8 +202,8 @@ function pdShowGame(st){
             botDie.classList.remove('roll-die-spinning');
             if(svg){ const pips = (DIE_PIPS[st.opp_roll] || []); svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
             pdAnimating = false;
-            pdPoll();
-          }, 1000);
+            startGamePoll('poker_dice', pdCode, pdRefreshState);
+          }, 600);
         }
       }
     }
@@ -393,24 +389,16 @@ function pdRenderDice(st){
   async function pdAnimateBotTurn(history, cat, pts, st){
     if(pdAnimating) return;
     pdAnimating = true;
-    if(pdPollTimer){ clearInterval(pdPollTimer); pdPollTimer = null; }
+    const myCode = pdCode;
+    stopGamePoll('poker_dice');
     const savedKept = pdKept;
     pdKept = new Set();
 
-
     const cont = $('pdDice');
-    // Pin the container's current height before we clear/rebuild it. Between
-    // throws the label text length changes and dice go from empty to filled,
-    // which can change the container height and make the dice row jump
-    // up/down. Fixing the height keeps the row vertically stable. (The opening
-    // roll path renders different HTML into #pdDice; reading offsetHeight here
-    // captures whatever is currently laid out.)
-    const fixedH = cont.offsetHeight || 0;
     cont.style.minHeight = '';
-    cont.style.height = fixedH ? fixedH + 'px' : '';
     cont.innerHTML = '';
     const label = document.createElement('div');
-    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px';
+    label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px;min-height:20px';
     cont.appendChild(label);
 
     const diceEls = [];
@@ -423,6 +411,13 @@ function pdRenderDice(st){
       cont.appendChild(die);
       diceEls.push(die);
     }
+
+    // Pin the container height AFTER the label and dice are laid out (and the
+    // label has a stable min-height), via min-height — NOT a fixed height — so
+    // the dice row stays vertically stable even when a longer localized label
+    // (uk/en) replaces the text mid-animation. Measuring after building the
+    // children captures the real, final layout height.
+    cont.style.minHeight = cont.offsetHeight + 'px';
 
     const setDie = (el, val) => {
       const f = el.querySelector('.pd-faces');
@@ -470,14 +465,14 @@ function pdRenderDice(st){
       ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
       : t('pdOppHand');
     } finally {
-    // Release the fixed height now that the final layout is settled so the
+    // Release the pinned height now that the final layout is settled so the
     // container can size naturally for the human's turn.
-    cont.style.height = '';
     cont.style.minHeight = '';
     pdKept = savedKept;
     pdAnimating = false;
+    if(pdCode !== myCode) return;
     pdShowGame(st);
-    pdPoll();
+    startGamePoll('poker_dice', pdCode, pdRefreshState);
     }
   }
 
@@ -582,7 +577,12 @@ async function pdDoRoll(){
   const res=await api('/api/pd_roll',{uid:getUid(),code:pdCode,keep:keep});
   const elapsed=Date.now()-start;
   const remain=Math.max(0,MIN_ANIM-elapsed);
-  if(!res||!res.ok){
+  if(res===null){
+    for(const el of diceEls) el.classList.remove('rolling');
+    showRetry(t('error'), () => pdDoRoll());
+    return;
+  }
+  if(!res.ok){
     for(const el of diceEls) el.classList.remove('rolling');
     setStatus(t('error'));
     return;
@@ -609,7 +609,8 @@ async function pdDoScore(category){
   sfxClick();
   const keep=Array.from(pdKept);
   const res=await api('/api/pd_score',{uid:getUid(),code:pdCode,category:category,keep:keep});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => pdDoScore(category)); return; }
+  if(!res.ok){setStatus(t('error'));return}
   pdKept = new Set();
   // Render the player's own result immediately -- this used to be delayed
   // behind the AI's entire turn (roll/keep/score), which could take a
@@ -639,10 +640,12 @@ async function pdRunBotTurn(){
 function pdAfterOpeningRoll(){
   if(pdOpeningPending) return;
   pdOpeningPending = true;
-  setTimeout(async () => {
+  const myCode = pdCode;
+  pdOpeningTimer = setTimeout(async () => {
     pdOpeningPending = false;
+    if(pdCode !== myCode) return;
     await pdRunBotTurn();
-  }, 2700);
+  }, 700);
 }
 
 function pdRenderResult(st){
@@ -707,7 +710,9 @@ function pdRenderResult(st){
 }
 
 function leavePdGame(){
-  if(pdPollTimer){clearInterval(pdPollTimer);pdPollTimer=null}
+  stopGamePoll('poker_dice');
+  if(pdOpeningTimer){clearTimeout(pdOpeningTimer);pdOpeningTimer=null;}
+  pdAnimating=false;
   // pd_game code stays in localStorage so the main menu's active-games bar can resume it
   pdCode=null; pdState=null;
   $('pdArea').style.display='none';
@@ -737,6 +742,6 @@ function resumePd(code){
   pdKept = new Set();
   $('actions').innerHTML='';
   pdRefreshState();
-  pdPoll();
+  startGamePoll('poker_dice', pdCode, pdRefreshState);
 }
 

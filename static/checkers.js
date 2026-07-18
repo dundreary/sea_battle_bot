@@ -50,32 +50,24 @@ async function ckStartSolo(){
 
 async function ckNewMulti(){
   const res=await api('/api/checkers_new_multi',{uid:getUid()});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => ckNewMulti()); return; }
+  if(!res.ok){setStatus(t('error'));return}
   ckCode=res.code;
   _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
   ckShowGame(res.state);
-  ckPoll();
+  startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 async function ckJoin(code){
   const res=await api('/api/checkers_join',{uid:getUid(),code:code.toUpperCase()});
-  if(!res||!res.ok){setStatus(t('joinError'));return}
+  if(res===null){ showRetry(t('error'), () => ckJoin(code)); return; }
+  if(!res.ok){setStatus(t('joinError'));return}
   ckCode=code.toUpperCase();
   _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
   ckShowGame(res.state);
-  ckPoll();
-}
-
-let ckPollTimer=null;
-function ckPoll(){
-  if(ckPollTimer)clearInterval(ckPollTimer);
-  _lastCKSig=null;
-  ckPollTimer=setInterval(async()=>{
-    if(!ckCode){clearInterval(ckPollTimer);ckPollTimer=null;return}
-    await ckRefreshState();
-  },2000);
+  startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 async function ckRefreshState(){
@@ -87,6 +79,7 @@ async function ckRefreshState(){
     if(!res||!res.ok){
       localStorage.removeItem('ck_game');
       ckCode=null;
+      stopGamePoll('checkers');
       showCheckers();
       return;
     }
@@ -126,7 +119,7 @@ async function ckShowGame(st){
   $('actions').className='btn-row';
   ckRenderBoard(st);
   if(st.phase==='finished'){
-    if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+    stopGamePoll('checkers');
     localStorage.removeItem('ck_game');
     const icon=st.winner===1?'🏆':'💔';
     const title=st.winner===1?t('win'):t('lose');
@@ -276,7 +269,8 @@ async function ckCellClick(r,c){
     let csr=sr, csc=sc, cr=r, cc=c;
     if(flip){ csr=7-sr; csc=7-sc; cr=7-r; cc=7-c; }
     const res=await api('/api/checkers_move',{uid:getUid(),code:ckCode,start_r:csr,start_c:csc,end_r:cr,end_c:cc});
-    if(!res||!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'') ;ckSelected=null;ckRenderBoard(ckState);return}
+    if(res===null){ showRetry(t('error'), () => ckCellClick(r,c)); return; }
+    if(!res.ok){setStatus(res?.error==='illegal_move'?{ru:'Нелегальный ход',uk:'Нелегальний хід',en:'Illegal move'}[lang]:t('error'),'') ;ckSelected=null;ckRenderBoard(ckState);return}
      sfxHit();
     // Render your move immediately so the checker slides into place first --
     // this used to be delayed behind the AI's own move computation. The AI's
@@ -300,18 +294,21 @@ async function ckCellClick(r,c){
 
 async function ckRunBotTurn(){
   if(!ckCode) return;
+  const myCode = ckCode;
   // A brief beat before fetching so the player's own move has a moment to
   // register visually, then the AI's move is fetched and rendered.
   await _aiDelay(250);
   const res = await api('/api/checkers_bot_turn', {uid:getUid(), code:ckCode});
   if(!res || !res.ok) return;
   if(!ckCode) return;
+  if(ckCode !== myCode) return;
   ckShowGame(res.state);
 }
 
 async function ckGetHint(){
   const res=await api('/api/checkers_hint',{uid:getUid(),code:ckCode});
-  if(!res||!res.ok){setStatus(t('ckNoMoves'),'');return}
+  if(res===null){ showRetry(t('error'), () => ckGetHint()); return; }
+  if(!res.ok){setStatus(t('ckNoMoves'),'');return}
   const h=res.hint;
   const flip = ckState && ckState.my_color === 2;
   let sr=h.start[0], sc=h.start[1], er=h.end[0], ec=h.end[1];
@@ -326,7 +323,8 @@ async function ckGetHint(){
 }
 
 function leaveCkGame(){
-  if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+  stopGamePoll('checkers');
+  _ckBotOpening=false;
   // ck_game code stays in localStorage so the main menu's active-games bar can resume it
   ckCode=null;ckState=null;
   $('ckArea').style.display='none';
@@ -342,7 +340,7 @@ function shareCkGame(){
 function ckSurrender(){
   const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
   confirmDialog(t('surrender')||'Surrender?', msg, () => {
-    if(ckPollTimer){clearInterval(ckPollTimer);ckPollTimer=null}
+    stopGamePoll('checkers');
     const code = ckCode;
     ckCode = null; ckState = null;
     $('ckArea').style.display='none';

@@ -1,5 +1,5 @@
 // ---- Backgammon ----
-let bgCode=null, bgState=null, bgPollTimer=null, bgSeenRoll='';
+let bgCode=null, bgState=null, bgSeenRoll='';
 let bgSelected=null, bgMoveTargets=[], bgVariant='short';
 let _lastBGSig=null;
 let _bgRefreshing=false;
@@ -51,7 +51,7 @@ function bgSetVariant(v){
 }
 
 async function bgStartSolo(){
-  const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: 2, variant: bgVariant});
+  const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: getDifficulty(), variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   _lastBGSig=null;
@@ -62,30 +62,24 @@ async function bgStartSolo(){
 
 async function bgNewMulti(){
   const res=await api('/api/bg_new_multi',{uid:getUid(), variant: bgVariant});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => bgNewMulti()); return; }
+  if(!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
-  bgPoll();
+  startGamePoll('backgammon', bgCode, bgRefreshState);
 }
 
 async function bgJoin(code){
   const res=await api('/api/bg_join',{uid:getUid(),code:code.toUpperCase()});
-  if(!res||!res.ok){setStatus(t('joinError'));return}
+  if(res===null){ showRetry(t('error'), () => bgJoin(code)); return; }
+  if(!res.ok){setStatus(t('joinError'));return}
   bgCode=code.toUpperCase();
   _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
-  bgPoll();
-}
-
-function bgPoll(){
-  if(bgPollTimer)clearInterval(bgPollTimer);
-  bgPollTimer=setInterval(async()=>{
-    if(!bgCode){clearInterval(bgPollTimer);bgPollTimer=null;return}
-    await bgRefreshState();
-  },2000);
+  startGamePoll('backgammon', bgCode, bgRefreshState);
 }
 
 async function bgRefreshState(){
@@ -97,6 +91,7 @@ async function bgRefreshState(){
   if(!res||!res.ok){
     localStorage.removeItem('bg_game');
     bgCode=null;
+    stopGamePoll('backgammon');
     showBackgammon();
     return;
   }
@@ -163,7 +158,7 @@ async function bgShowGame(st, keepSelection=false){
   bgRenderBoard(st);
   showRollWinnerBanner(st, bgCode);
   if(st.phase==='finished'){
-    if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+    stopGamePoll('backgammon');
     localStorage.removeItem('bg_game');
     const won = st.winner === st.you;
     const icon=won?'🏆':'💔';
@@ -452,7 +447,8 @@ function bgRenderActions(st){
 async function bgDoRoll(){
   sfxRoll();
   const res=await api('/api/bg_roll',{uid:getUid(),code:bgCode});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => bgDoRoll()); return; }
+  if(!res.ok){setStatus(t('error'));return}
   bgShowGame(res.state);
 }
 
@@ -481,7 +477,8 @@ async function bgSelectSource(idx){
 async function bgDoMove(from,to){
   bgSelected=null;
   const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from,to:to>=0?to:null});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => bgDoMove(from,to)); return; }
+  if(!res.ok){setStatus(t('error'));return}
   sfxHit();
   // Render your own move immediately -- the AI's turn (roll + all die moves)
   // is now a separate follow-up step (see bgRunBotTurn), triggered right
@@ -492,23 +489,27 @@ async function bgDoMove(from,to){
 
 async function bgRunBotTurn(){
   if(!bgCode) return;
+  const myCode = bgCode;
   await _aiDelay(250);
   const res = await api('/api/bg_bot_turn', {uid:getUid(), code:bgCode});
   if(!res || !res.ok) return;
   if(!bgCode) return;
+  if(bgCode !== myCode) return;
   bgShowGame(res.state);
 }
 
 async function bgPassTurn(){
   const res=await api('/api/bg_move',{uid:getUid(),code:bgCode,from:-1,to:-1});
-  if(!res||!res.ok){setStatus(t('error'));return}
+  if(res===null){ showRetry(t('error'), () => bgPassTurn()); return; }
+  if(!res.ok){setStatus(t('error'));return}
   bgSelected=null;
   bgShowGame(res.state);
   if(res.needs_bot_turn) await bgRunBotTurn();
 }
 
 function leaveBgGame(){
-  if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+  stopGamePoll('backgammon');
+  _bgBotOpening=false;
   bgCode=null; bgState=null;
   $('bgArea').style.display='none';
   showMainMenu();
@@ -523,7 +524,7 @@ function shareBgGame(){
 async function bgSurrender(){
   const msg = {ru:'Сдаться? Игра будет завершена.',uk:'Здатися? Гра буде завершена.',en:'Surrender? The game will end.'}[lang];
   confirmDialog(t('surrender')||'Surrender?', msg, () => {
-    if(bgPollTimer){clearInterval(bgPollTimer);bgPollTimer=null}
+    stopGamePoll('backgammon');
     const code = bgCode;
     bgCode=null;bgState=null;
     $('bgArea').style.display='none';
@@ -538,5 +539,5 @@ function resumeBg(code){
   localStorage.setItem('bg_game',code);
   $('actions').innerHTML='';
   bgRefreshState();
-  bgPoll();
+  startGamePoll('backgammon', bgCode, bgRefreshState);
 }
