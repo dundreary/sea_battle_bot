@@ -197,7 +197,7 @@ async function pdShowGame(st){
       $('pdScorecardContainer').style.minHeight='';
       setStatus('🎲 '+t('rollTitle'),'');
       // Opening toss renders in the shared popup; the winner is shown there.
-      showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode, proceedFn: () => pdRefreshState() });
+      showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode,       proceedFn: () => { _lastPDSig = null; pdRefreshState(); } });
       return;
     }
   }

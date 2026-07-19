@@ -162,7 +162,7 @@ async function ckShowGame(st){
       setStatus('🎲 '+t('rollTitle'),'');
       // Opening toss now renders in the modal popup; surrender stays reachable
       // outside it. The popup re-renders idempotently on each poll.
-      showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => ckRefreshState() });
+      showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode,       proceedFn: () => { _lastCKSig = null; ckRefreshState(); } });
       el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
       return;
     }
