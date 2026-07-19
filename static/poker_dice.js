@@ -1,6 +1,7 @@
 // ---- Poker Dice ----
 let pdCode = null, pdState = null, pdKept = new Set(), pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
 let pdOpeningTimer = null;
+let _pdBotOpening = false;
 let _lastPDSig = null, _pdRefreshing = false;
 
 const PD_DOTS = [
@@ -153,13 +154,13 @@ async function pdRefreshState(){
     // Replay the opponent's throws live in the shared dice tray the moment their
     // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
     await pdMaybeAnimateOpponent(st);
-    if(!pdAnimating) pdShowGame(st);
+    if(!pdAnimating) await pdShowGame(st);
   } finally {
     _pdRefreshing=false;
   }
 }
 
-function pdShowGame(st){
+async function pdShowGame(st){
   pdState = st;
   showIncomingMessages(st.messages);
   hideAllGameAreas();
@@ -191,11 +192,16 @@ function pdShowGame(st){
     $('pdScorecardContainer').innerHTML='';
     $('pdScorecardContainer').style.minHeight='';
     setStatus('🎲 '+t('rollTitle'),'');
-    // The opening toss now renders in the modal popup (showFirstRollPopup),
-    // which keeps the poll running and reuses the existing dice markup/spin.
-    // pdRollFirst/pdRerollFirst still pass pdAfterOpeningRoll as afterRoll, so
-    // the bot's opening move is scheduled exactly as before.
+    // Opening toss renders in the shared popup; the winner is shown there.
     showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode, proceedFn: () => pdRefreshState() });
+    return;
+  }
+
+  // While the opening-roll popup is still visible, don't swap in the board yet
+  // — otherwise the "who goes first" result flashes by and the bot move starts
+  // under the popup. The popup's own proceed timer calls closeFirstRollPopup()
+  // + pdRefreshState, which re-enters here once the popup is gone.
+  if(document.getElementById('firstRollPopupOverlay')){
     return;
   }
 
@@ -209,6 +215,15 @@ function pdShowGame(st){
   pdRenderActions(st);
   pdRenderInfo(st);
   closeFirstRollPopup();
+
+  // Solo: if it's the bot's turn (e.g. it won the opening toss), run its move.
+  // Guarded so a concurrent poll can't double-run it; the finally resets the
+  // guard so a failed attempt self-heals on the next poll.
+  if(st.phase==='playing' && st.solo && !st.my_turn && !_pdBotOpening){
+    _pdBotOpening = true;
+    try { await pdRunBotTurn(); } finally { _pdBotOpening = false; }
+    return;
+  }
 }
 
 function pdRenderScorecard(st){
@@ -618,22 +633,6 @@ async function pdRunBotTurn(){
   // Replay the AI's throws in the shared dice tray, then show our own turn.
   await pdMaybeAnimateOpponent(res.state);
   pdShowGame(res.state);
-}
-
-// Called by doFirstRoll/doRerollFirst when the opening-roll response says the
-// bot won the toss and owes its first move. The opening-roll winner is shown
-// inside the shared first-roll popup. Wait for it to auto-dismiss (~2.5s),
-// THEN play the bot's first move so the two stages (popup, then bot opening)
-// are sequential rather than mashed together.
-function pdAfterOpeningRoll(){
-  if(pdOpeningPending) return;
-  pdOpeningPending = true;
-  const myCode = pdCode;
-  pdOpeningTimer = setTimeout(async () => {
-    pdOpeningPending = false;
-    if(pdCode !== myCode) return;
-    await pdRunBotTurn();
-  }, 700);
 }
 
 function pdRenderResult(st){
