@@ -1448,8 +1448,8 @@ function updateUI(){
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            <button class="${startBtnClass}" onclick="${startOnclick}">${startLabel}</button>
-           ${!s.solo ? `<button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>` : ''}
-           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
+            ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
+            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>` : ''}
         `;
       }
     setThemeSelectorVisibility(false);
@@ -1500,18 +1500,18 @@ function updateUI(){
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button></div>`
-        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
-      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`}
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button></div>
+      <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>`}
     `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button></div>`
-        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
-      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`}
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button></div>
+      <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>`}
     `;
   }
 }
