@@ -126,6 +126,10 @@ async function ckShowGame(st){
   $('actions').innerHTML='';
   $('actions').className='btn-row';
   ckRenderBoard(st);
+  // Hide the board behind the overlay during the roll phase (like Sea Battle)
+  // so the centered popup doesn't appear to shift against the board.
+  const _ckb=document.getElementById('ckBoard');
+  if(_ckb) _ckb.style.visibility = (st.phase==='roll') ? 'hidden' : '';
   if(st.phase==='finished'){
     stopGamePoll('checkers');
     localStorage.removeItem('ck_game');

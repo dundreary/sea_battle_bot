@@ -989,56 +989,40 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
   const oppSide = (n, waiting)=>`<div class="roll-die-col">${_dieSvg(n||1, waiting?'roll-die-pending':'')}${label('🎯')}</div>`;
   const dieRow = `<div class="roll-die-row">${mySide(st.my_roll, st.my_roll==null)}<div class="roll-vs">VS</div>${oppSide(st.opp_roll, st.opp_roll==null)}</div>`;
 
-  // Nobody has rolled yet -> show the roll button.
+  // Each branch fills titleSlot (top, fixed height) and footSlot (bottom, fixed height).
+  // The dice row is always rendered in the middle fixed slot -> constant vertical position.
+  let titleSlot = '';
+  let footSlot = '';
+
   if(st.my_roll==null && st.opp_roll==null){
-    return `<div class="roll-stage">
-      <div class="roll-title">${t('rollTitle')}</div>
-      ${dieRow}
-      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>
-    </div>`;
+    titleSlot = `<div class="roll-title">${t('rollTitle')}</div>`;
+    footSlot = `<button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>`;
   }
-
-  // PvP (not solo): I have rolled but the opponent has not -> just wait.
-  if(!solo && st.my_roll!=null && st.opp_roll==null){
-    return `<div class="roll-stage">
-      ${dieRow}
-      <div class="roll-wait">${t('rollWaitOpp')}</div>
-      <button class="btn outline roll-cta" id="closeRollBtn" onclick="__rollPopupCloseWait()">${t('close')}</button>
-    </div>`;
+  else if(!solo && st.my_roll!=null && st.opp_roll==null){
+    footSlot = `<div class="roll-wait">${t('rollWaitOpp')}</div><button class="btn outline roll-cta" id="closeRollBtn" onclick="__rollPopupCloseWait()">${t('close')}</button>`;
   }
-
-  // Both rolled and it's a tie -> auto-reroll (manual fallback above the cap).
-  if(st.my_roll!=null && st.opp_roll!=null && st.my_roll===st.opp_roll){
+  else if(st.my_roll!=null && st.opp_roll!=null && st.my_roll===st.opp_roll){
     const count = o.code ? (_rollAutoRerollCount[o.code]||0) : 0;
     if(count >= 6){
-      return `<div class="roll-stage">
-        ${dieRow}
-        <div class="roll-result roll-tie">${t('rollTie')}</div>
-        <button class="btn primary roll-cta" id="rerollBtn" onclick="window['${rerollFn}']()">🔄 ${t('reroll')}</button>
-      </div>`;
+      footSlot = `<div class="roll-result roll-tie">${t('rollTie')}</div><button class="btn primary roll-cta" id="rerollBtn" onclick="window['${rerollFn}']()">🔄 ${t('reroll')}</button>`;
+    } else {
+      footSlot = `<div class="roll-result roll-tie">${t('rollRerolling')}</div>`;
     }
-    return `<div class="roll-stage">
-      ${dieRow}
-      <div class="roll-result roll-tie">${t('rollRerolling')}</div>
-    </div>`;
+  }
+  else if(st.my_roll==null && st.opp_roll!=null){
+    titleSlot = `<div class="roll-title">${t('rollTitle')}</div>`;
+    footSlot = `<button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>`;
+  }
+  else {
+    // Decisive: both rolled, different -> winner line in the foot slot, no title.
+    const won = st.my_roll > st.opp_roll;
+    footSlot = `<div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>`;
   }
 
-  // Only the opponent has rolled (e.g. PvP where the human still must) -> roll.
-  if(st.my_roll==null && st.opp_roll!=null){
-    return `<div class="roll-stage">
-      <div class="roll-title">${t('rollTitle')}</div>
-      ${dieRow}
-      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>
-    </div>`;
-  }
-
-  // Decisive: both rolled, different -> just show the winner line. The game
-  // auto-starts via the auto-advance timer in showFirstRollPopup (no manual
-  // button, so all games behave identically).
-  const won = st.my_roll > st.opp_roll;
   return `<div class="roll-stage">
+    <div class="roll-title-slot">${titleSlot}</div>
     ${dieRow}
-    <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>
+    <div class="roll-foot-slot">${footSlot}</div>
   </div>`;
 }
 
