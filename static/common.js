@@ -1203,10 +1203,11 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
-  await refreshFn();
-  // Acknowledge the opening roll once it has resolved, so the shared
-  // _rollAckShown gate lets the game render (mirrors Sea Battle's ackRoll).
+  // Acknowledge the opening roll BEFORE refreshing, so the game's showGame
+  // (called inside refreshFn) sees the flag and renders the board immediately
+  // instead of re-showing the popup and waiting on the auto-proceed timer.
   if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
+  await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
@@ -1235,10 +1236,9 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
-  await refreshFn();
-  // Acknowledge the opening roll once it has resolved, so the shared
-  // _rollAckShown gate lets the game render (mirrors Sea Battle's ackRoll).
+  // Acknowledge the opening roll BEFORE refreshing (see doFirstRoll above).
   if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
+  await refreshFn();
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
