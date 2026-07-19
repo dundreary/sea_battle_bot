@@ -906,50 +906,6 @@ function _dieSvg(n, extraClass){
   return `<div class="roll-die3d${extraClass ? ' '+extraClass : ''}"><svg viewBox="0 0 100 100">${dots}</svg></div>`;
 }
 
-function firstRollHTML(s, rollFn, rerollFn){
-  const label = (txt, sub)=>`<div class="roll-die-label">${txt}${sub?`<span>${sub}</span>`:''}</div>`;
-  const mySide = (n, waiting)=>`<div class="roll-die-col">${_dieSvg(n||1, waiting?'roll-die-pending':'')}${label(t('rollYou'))}</div>`;
-  const oppSide = (n, waiting)=>`<div class="roll-die-col">${_dieSvg(n||1, waiting?'roll-die-pending':'')}${label('🎯')}</div>`;
-
-  if(s.my_roll==null && s.opp_roll==null){
-    return `<div class="roll-stage">
-      <div class="roll-title">${t('rollTitle')}</div>
-      <div class="roll-die-row">${mySide(1,true)}<div class="roll-vs">VS</div>${oppSide(1,true)}</div>
-      <button class="btn primary roll-cta" id="rollBtn" onclick="${rollFn}()">🎲 ${t('rollBtn')}</button>
-    </div>`;
-  }
-  if(s.my_roll!=null && s.opp_roll==null){
-    return `<div class="roll-stage">
-      <div class="roll-die-row">${mySide(s.my_roll,false)}<div class="roll-vs">VS</div>${oppSide(1,true)}</div>
-      <div class="roll-wait">${t('rollWait')}</div>
-    </div>`;
-  }
-  if(s.my_roll==null && s.opp_roll!=null){
-    return `<div class="roll-stage">
-      <div class="roll-title">${t('rollTitle')}</div>
-      <div class="roll-die-row">${mySide(1,true)}<div class="roll-vs">VS</div>${oppSide(s.opp_roll,false)}</div>
-      <button class="btn primary roll-cta" id="rollBtn" onclick="${rollFn}()">🎲 ${t('rollBtn')}</button>
-    </div>`;
-  }
-  // Both rolled.
-  if(s.my_roll === s.opp_roll){
-    return `<div class="roll-stage">
-      <div class="roll-die-row">${mySide(s.my_roll,false)}<div class="roll-vs">VS</div>${oppSide(s.opp_roll,false)}</div>
-      <div class="roll-result roll-tie">${t('rollTie')}</div>
-      <button class="btn primary roll-cta" id="rerollBtn" onclick="${rerollFn}()">🔄 ${t('reroll')}</button>
-    </div>`;
-  }
-  const won = s.my_roll > s.opp_roll;
-  // Once the dice are decided the roll screen becomes a result screen: both
-  // dice plus who moves first, with a Continue button. In solo, if the bot won
-  // the opening roll its first shot is taken when the human continues.
-  return `<div class="roll-stage">
-    <div class="roll-die-row">${mySide(s.my_roll,false)}<div class="roll-vs">VS</div>${oppSide(s.opp_roll,false)}</div>
-    <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollWin') : t('rollLose')}</div>
-    <button class="btn primary roll-cta" id="rollDoneBtn" onclick="ackRoll()">▶ ${t('rollContinue')}</button>
-  </div>`;
-}
-
 // ---- Opening roll MODAL POPUP --------------------------------------------
 // Replaces the inline firstRollHTML rendering. Shows BOTH dice (yours +
 // opponent's) in a centered modal and owns the whole opening-roll flow: the
@@ -1019,12 +975,13 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
     </div>`;
   }
 
-  // Decisive: both rolled, different -> winner line + Continue button.
+  // Decisive: both rolled, different -> just show the winner line. The game
+  // auto-starts via the auto-advance timer in showFirstRollPopup (no manual
+  // button, so all games behave identically).
   const won = st.my_roll > st.opp_roll;
   return `<div class="roll-stage">
     ${dieRow}
     <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>
-    <button class="btn primary roll-cta" id="rollDoneBtn" onclick="__rollPopupContinue()">▶ ${t('rollContinue')}</button>
   </div>`;
 }
 
@@ -1071,18 +1028,20 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
     document.body.appendChild(_rollPopupEl);
   }
   _rollPopupEl._st = st;
-  // Always (re)arm the proceed timer fresh on each render. The decisive branch
-  // below decides whether to schedule it; leaving a stale _rollProceedScheduled
-  // from a previous cycle (e.g. after a same-code reroll) would suppress the
-  // auto-start. Clear any pending timer too.
-  if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
-  _rollProceedScheduled = false;
+  // Only clear a pending proceed timer when switching to a DIFFERENT game's
+  // popup. For the same code re-rendering the same decisive state (normal
+  // polling), we must NOT clear it, or the auto-start would never fire.
+  if(code !== _rollPopupCode && _rollProceedTimer){
+    clearTimeout(_rollProceedTimer);
+    _rollProceedTimer = null;
+    _rollProceedScheduled = false;
+  }
   _rollPopupCode = code;
   _rollPopupProceed = proceedFn;
   _rollPopupEl.innerHTML = `<div class="modal roll-popup">${_rollPopupInner(st, rollFn, rerollFn, {solo, code})}</div>`;
 
   // Focus the primary action for keyboard users.
-  const focusBtn = _rollPopupEl.querySelector('#rollBtn, #rollDoneBtn, #closeRollBtn');
+  const focusBtn = _rollPopupEl.querySelector('#rollBtn, #closeRollBtn');
   if(focusBtn) focusBtn.focus();
 
   // PvP waiting -> auto-close after a short beat (a Close button is offered).
@@ -1098,10 +1057,6 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
   } else {
     if(_rollWaitTimer){ clearTimeout(_rollWaitTimer); _rollWaitTimer = null; }
     _rollWaitScheduled = false;
-    if(!decisive){
-      if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
-      _rollProceedScheduled = false;
-    }
   }
 
   // Auto-reroll on a tie when both sides have already rolled. Capped per code.
@@ -1120,16 +1075,15 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
   } else {
     if(_rollRerollTimer){ clearTimeout(_rollRerollTimer); _rollRerollTimer = null; }
     _rollRerollScheduled = false;
-    if(!decisive){
-      if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
-      _rollProceedScheduled = false;
-    }
   }
 
   // Decisive (both rolled, not a tie) and a proceed callback is provided:
   // auto-advance after a short beat so the game starts on its own (matching the
-  // Poker/Checkers/Backgammon behaviour). The manual "▶ Продолжить" button
-  // remains available as an immediate alternative.
+  // Poker/Checkers/Backgammon behaviour). No manual "Continue" button is shown
+  // for any game -- the roll popup is purely informational and the game starts
+  // itself. The timer is armed once per (code, decisive-resolution) and is NOT
+  // cleared by re-entrant polling renders (only on a code change), so it always
+  // fires even if refreshState re-enters this popup several times beforehand.
   if(decisive && proceedFn && !_rollProceedScheduled){
     _rollProceedScheduled = true;
     _rollProceedTimer = setTimeout(()=>{
