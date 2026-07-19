@@ -581,6 +581,7 @@ function initTheme(){
 }
 
 function showSettings(){
+  document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   setStripLockVisible(false);
   currentGameType=null; setHelpVisible(false);
   const existing=$('settingsOverlay');
@@ -1705,6 +1706,7 @@ function stopAllPolls(){ for(const k in _polls) stopGamePoll(k); }
 
 let _lastSBSig=null;      // last serialized state signature for poll dedup
 let _sbRefreshing=false;  // in-flight guard so a slow poll can't overlap
+let _sbShooting=false;    // in-flight guard so a second /api/shoot can't fire while one is pending
 let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 // True while a rematch on the same code is pending, so the finished-game
 // cleanup (stop polling / drop saved code) is skipped until the new round
@@ -1712,6 +1714,7 @@ let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 let rematchPending=false;
 
 function showMainMenu(){
+  document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   closeFirstRollPopup();
   currentGameType=null; setHelpVisible(false);
   stripUnlocked=false; _stripTaps=0;
@@ -1811,6 +1814,7 @@ const STATS_GAME_ICON = {sea_battle:'🚢', poker_dice:'🃏', checkers:'♟️'
 const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsResDraw'};
 
 async function showStats(){
+  document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   currentGameType=null; setHelpVisible(false);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
@@ -1990,47 +1994,58 @@ async function confirmPlace(){
 
 async function handleShot(r,c){
   if(!state||!state.my_turn)return;
-  const res=await api('/api/shoot',{uid:getUid(),code:gameCode,r,c});
-  if(res===null){ showRetry(t('error'), ()=>handleShot(r,c)); return; }  // network failure after api's internal retry
-  if(!res.ok){ setStatus(t('errorShot')); return; }
+  if(_sbShooting) return;  // block a second shot while one is in flight
+  let cell=null;
+  try{
+    _sbShooting=true;
+    cell=document.querySelector('.cell.shootable[data-r="'+r+'"][data-c="'+c+'"]');
+    if(cell) cell.classList.add('shooting');
+    setStatus({ru:'⏳ Ожидание…',uk:'⏳ Очікування…',en:'⏳ Waiting…'}[lang],'battle');
+    const res=await api('/api/shoot',{uid:getUid(),code:gameCode,r,c});
+    if(res===null){ showRetry(t('error'), ()=>handleShot(r,c)); return; }  // network failure after api's internal retry
+    if(!res.ok){ setStatus(t('errorShot')); return; }
 
-  let msg='';
-  if(res.result.result==='hit'){msg=t('hit');sfxHit()}
-  else if(res.result.result==='sunk'){msg=t('sunk');sfxSunk()}
-  else if(res.result.result==='mine'){
-    msg= {ru:'💣 МИНА! Твой корабль поврежден!',uk:'💣 МІНА! Твій корабель пошкоджено!',en:'💣 MINE! Your ship is damaged!'}[lang];
-    sfxSunk();
-  }
-  else {msg=t('miss');sfxMiss()}
-
-  const bs=res.result.bot_shots;
-  let botMsg='';
-  if(bs&&bs.length){
-    const bn='ABCDEFGHIJ';
-    botMsg='🤖 ';
-    for(const s of bs){
-      if(s.result==='hit')botMsg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
-      else if(s.result==='sunk')botMsg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
-      else if(s.result==='mine')botMsg+=` 💣${t('mine')}`;
-      else botMsg+=` ${t('botMiss')}`;
+    let msg='';
+    if(res.result.result==='hit'){msg=t('hit');sfxHit()}
+    else if(res.result.result==='sunk'){msg=t('sunk');sfxSunk()}
+    else if(res.result.result==='mine'){
+      msg= {ru:'💣 МИНА! Твой корабль поврежден!',uk:'💣 МІНА! Твій корабель пошкоджено!',en:'💣 MINE! Your ship is damaged!'}[lang];
+      sfxSunk();
     }
-    msg+=' '+botMsg;
-  }
-  // Render the final board from the shot response immediately. This avoids a
-  // race with polling and makes the win/loss result appear without delay.
-  if(res.state){
-    state=res.state;
-    updateUI();
-    if(state.all_sunk||state.my_all_sunk){
-      if(!document.querySelector('.overlay')){
-        showResult(state.all_sunk ? '🏆' : '💔', state.all_sunk ? t('win') : t('lose'), state.all_sunk ? t('winDesc') : t('loseDesc'), state.strip);
+    else {msg=t('miss');sfxMiss()}
+
+    const bs=res.result.bot_shots;
+    let botMsg='';
+    if(bs&&bs.length){
+      const bn='ABCDEFGHIJ';
+      botMsg='🤖 ';
+      for(const s of bs){
+        if(s.result==='hit')botMsg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
+        else if(s.result==='sunk')botMsg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
+        else if(s.result==='mine')botMsg+=` 💣${t('mine')}`;
+        else botMsg+=` ${t('botMiss')}`;
       }
-      return;
+      msg+=' '+botMsg;
     }
-  }else{
-    await refreshState();
+    // Render the final board from the shot response immediately. This avoids a
+    // race with polling and makes the win/loss result appear without delay.
+    if(res.state){
+      state=res.state;
+      updateUI();
+      if(state.all_sunk||state.my_all_sunk){
+        if(!document.querySelector('.overlay')){
+          showResult(state.all_sunk ? '🏆' : '💔', state.all_sunk ? t('win') : t('lose'), state.all_sunk ? t('winDesc') : t('loseDesc'), state.strip);
+        }
+        return;
+      }
+    }else{
+      await refreshState();
+    }
+    if(msg)setStatus(msg,'battle');
+  } finally {
+    _sbShooting=false;
+    if(cell) cell.classList.remove('shooting');
   }
-  if(msg)setStatus(msg,'battle');
 }
 
 async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=state){

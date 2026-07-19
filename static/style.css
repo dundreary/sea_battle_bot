@@ -92,6 +92,10 @@
   .active-game-exit:hover{background:var(--color-btn-danger-1,#c0392b);color:#fff}
   .bg-checker:hover{transform:scale(1.12)}
 }
+/* Press/active feedback (placed outside the (hover:hover) query so it also
+   works on touch devices, which is the whole point of :active here). */
+.game-card:active{transform:scale(.97);}
+.pd-scorecard tr.available:active{background:var(--bg-board-alt);}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
 .header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
 .header .sub{position:relative;z-index:1;font-size:11px;color:var(--accent-primary-light)}
@@ -145,6 +149,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   .cell.shootable:hover{background:var(--bg-board-alt);border-color:var(--accent-primary)}
 }
  @keyframes glow{0%{box-shadow:0 0 8px rgba(255,152,0,0.6)}50%{box-shadow:0 0 20px rgba(255,152,0,0.9)}100%{box-shadow:0 0 8px rgba(255,152,0,0.6)}}
+.cell.shooting{outline:2px solid var(--accent-primary);outline-offset:-2px;animation:shootPulse .6s ease-in-out infinite}
+@keyframes shootPulse{0%,100%{opacity:1}50%{opacity:.4}}
  .btn-row{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:340px;margin-top:8px}
 .btn-row.stack{flex-direction:column;gap:8px}
 .btn-row.stack .btn{padding:16px 12px;font-size:16px}
@@ -443,5 +449,5 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .stats-hist-result.loss{color:#EF5350}
 .stats-hist-result.draw{color:var(--color-warning)}
 
-@media (prefers-reduced-motion: reduce){ .board.my-turn,.strip-unlocked,.ai-thinking-spinner,.roll-wait,.pd-dot-die.rolling,.pd-dot-die.rolling .pd-faces,.roll-die3d.roll-die-spinning,.bg-checker.ai-move,.loading-overlay .spinner,.overlay{animation:none!important} *{transition-duration:.001ms!important} }
+@media (prefers-reduced-motion: reduce){ .board.my-turn,.strip-unlocked,.ai-thinking-spinner,.roll-wait,.pd-dot-die.rolling,.pd-dot-die.rolling .pd-faces,.roll-die3d.roll-die-spinning,.bg-checker.ai-move,.loading-overlay .spinner,.overlay,.cell.shooting{animation:none!important} *{transition-duration:.001ms!important} }
 
