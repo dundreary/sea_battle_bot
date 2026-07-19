@@ -631,6 +631,22 @@ async function pdRunBotTurn(){
   pdShowGame(res.state);
 }
 
+// Called by doFirstRoll/doRerollFirst when the opening-roll response says the
+// bot won the toss and owes its first move. A short delay lets the popup show
+// the winner before the bot's opening animation starts. Also sets _pdBotOpening
+// so the auto-proceed path (pdShowGame → line 218) skips the redundant trigger.
+function pdAfterOpeningRoll(){
+  if(pdOpeningPending) return;
+  pdOpeningPending = true;
+  const myCode = pdCode;
+  pdOpeningTimer = setTimeout(async () => {
+    pdOpeningPending = false;
+    if(pdCode !== myCode) return;
+    _pdBotOpening = true;
+    try { await pdRunBotTurn(); } finally { _pdBotOpening = false; }
+  }, 700);
+}
+
 function pdRenderResult(st){
   const div=$('pdResult');
   // Clear other pd areas so only result is visible, collapse min-heights

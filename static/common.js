@@ -1274,8 +1274,8 @@ async function ackRoll(){
 }
 function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
 function ckRerollFirst(){ return doRerollFirst('/api/checkers_reroll_first', ckCode, ckRefreshState); }
-function pdRollFirst(){ pdOppRollSpun=''; return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState); }
-function pdRerollFirst(){ pdOppRollSpun=''; return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState); }
+function pdRollFirst(){ pdOppRollSpun=''; return doFirstRoll('/api/pd_roll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
+function pdRerollFirst(){ pdOppRollSpun=''; return doRerollFirst('/api/pd_reroll_first', pdCode, pdRefreshState, pdAfterOpeningRoll); }
 function bgRollFirst(){ return doFirstRoll('/api/bg_roll_first', bgCode, bgRefreshState); }
 function bgRerollFirst(){ return doRerollFirst('/api/bg_reroll_first', bgCode, bgRefreshState); }
 
