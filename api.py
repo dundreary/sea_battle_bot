@@ -7,6 +7,7 @@ from game import (
     Game, SIZE, SHIPS, STRIP_SHIPS, SUNK, EMPTY,
     auto_place_ships, auto_place_strip_ships,
     auto_place_ships_adversarial, auto_place_strip_ships_adversarial,
+    DEFAULT_DIFFICULTY,
 )
 from poker_dice import PokerDiceGame as PDGame
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
@@ -266,7 +267,7 @@ def as_dict(game, uid):
         "messages": _pop_in_game_messages(game, uid),
     }
 
-def new_solo(uid, strip=False, difficulty=2):
+def new_solo(uid, strip=False, difficulty=DEFAULT_DIFFICULTY):
     code = generate_unique_code(Game.generate_code, games)
     game = Game(code, uid, solo=True, strip=strip, difficulty=difficulty)
     game.player2_id = 0
@@ -398,7 +399,7 @@ def _handle_new_solo(data, uid, code):
 
 def _do_new_solo(data, uid):
     strip = data.get("strip", False)
-    difficulty = data.get("difficulty", 4)
+    difficulty = data.get("difficulty", DEFAULT_DIFFICULTY)
     game = new_solo(uid, strip=strip, difficulty=difficulty)
     return _register_new_game(games, player_games, game, as_dict(game, uid))
 
@@ -664,7 +665,7 @@ def _handle_pd_new_solo(data, uid, code):
 
 def _do_pd_new_solo(data, uid):
     c = generate_unique_code(PDGame.generate_code, pd_games)
-    difficulty = int(data.get('difficulty', 4))
+    difficulty = int(data.get('difficulty', DEFAULT_DIFFICULTY))
     game = PDGame(c, uid, solo=True, difficulty=difficulty)
     game.player2_id = 0
     game.phase = "roll"
@@ -1030,7 +1031,7 @@ def _handle_checkers_new_solo(data, uid, code):
 
 
 def _do_checkers_new_solo(data, uid):
-    difficulty = data.get("difficulty", 4)
+    difficulty = data.get("difficulty", DEFAULT_DIFFICULTY)
     c = generate_unique_code(CheckersGame.generate_code, checkers_games)
     game = CheckersGame(c, uid, solo=True, difficulty=difficulty)
     game.phase = "roll"
@@ -1350,7 +1351,7 @@ def _handle_bg_new_solo(data, uid, code):
     return _with_uid(uid, lambda: _do_bg_new_solo(data, uid))
 
 def _do_bg_new_solo(data, uid):
-    difficulty = data.get("difficulty", 2)
+    difficulty = data.get("difficulty", DEFAULT_DIFFICULTY)
     variant = data.get("variant", "short")
     c = generate_unique_code(BGGame.generate_code, bg_games)
     game = BGGame(c, uid, solo=True, difficulty=difficulty, variant=variant)

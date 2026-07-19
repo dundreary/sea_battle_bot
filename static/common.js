@@ -554,8 +554,8 @@ let botUsername = '';
 function $(id){return document.getElementById(id)}
 
 function hideAllGameAreas(){
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
+  $('ownBoardWrap').classList.add('hidden');
+  $('oppBoardWrap').classList.add('hidden');
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
   $('bgArea').style.display='none';
@@ -897,6 +897,13 @@ function renderBoard(boardEl,grid,isOpponent,gameOver, shipsData, isStrip){
     else if(v===SUNK){cell.classList.add('sunk');cell.textContent='✖';sw=STATE_LABEL.sunk}
     else if(v===DEAD){cell.classList.add('dead');cell.textContent='·'}
     else cell.classList.add('empty');
+    // Highlight the opponent's most recent shot on the HUMAN's OWN board
+    // (bot_shots land on ownBoard), analogous to the Checkers/Backgammon
+    // "last move" flashes. Cleared automatically on the next render because
+    // we reset className at the top of the loop.
+    if(!isOpponent && state && state._lastOppShot && state._lastOppShot.r===r && state._lastOppShot.c===c){
+      cell.classList.add('enemy-last');
+    }
     cell.setAttribute('aria-label', COLS[c]+(r+1)+': '+sw);
     const shootable = isOpponent&&!gameOver&&(v===EMPTY||v===SHIP);
     if(shootable){
@@ -1309,6 +1316,8 @@ async function ackRoll(){
       const bs = res.bot_shots;
       if(bs && bs.length){
         sbRenderOppHistory(bs);
+        const last = bs[bs.length-1];
+        if(state) state._lastOppShot = {r:last.r, c:last.c};
       }
       if(state.all_sunk||state.my_all_sunk){
         if(!document.querySelector('.overlay')){
@@ -1339,8 +1348,8 @@ function updateUI(){
   const isPlacing = s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2';
   $('pdArea').style.display='none';
   $('ckArea').style.display='none';
-  $('ownBoardWrap').style.display='block';
-  $('oppBoardWrap').style.display='block';
+  $('ownBoardWrap').classList.remove('hidden');
+  $('oppBoardWrap').classList.remove('hidden');
   renderBoard($('ownBoard'),s.own,false,gameOver,s.own_ships,s.strip);
   renderBoard($('oppBoard'),s.opp,true,gameOver,null,s.strip);
   
@@ -1402,7 +1411,7 @@ function updateUI(){
     $('app').insertBefore($('status'), $('app').firstChild);
     const alreadyConfirmed = s.ready && s.pnum && s.ready[s.pnum];
     const c = s.code;
-    $('oppBoardWrap').style.display='none';
+    $('oppBoardWrap').classList.add('hidden');
     $('actions').className = 'btn-col';
     if(alreadyConfirmed && !s.solo){
       setStatus(`📋 <b>${c}</b> — ${t('waitOpp')} ✅`, '');
@@ -1464,7 +1473,7 @@ function updateUI(){
     } else {
       ownEl.classList.remove('my-turn');
       oppEl.classList.remove('my-turn');
-      $('oppBoardWrap').style.display='none';
+      $('oppBoardWrap').classList.add('hidden');
       $('app').insertBefore($('status'), $('app').firstChild);
       setStatus('🎲 '+t('rollTitle'),'');
       armRollBanner(gameCode);
@@ -1480,7 +1489,7 @@ function updateUI(){
     }
   }
 
-  $('oppBoardWrap').style.display='block';
+  $('oppBoardWrap').classList.remove('hidden');
   closeFirstRollPopup();
   updateSettingsUI();
   $('ownBoardWrap').after($('status'));
@@ -1513,6 +1522,7 @@ async function startSolo(){
   if(res===null){ showRetry(t('error'), ()=>startSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
+  if(state) state._lastOppShot=null;
   localStorage.setItem('sb_game',gameCode);
   const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   $('actions').innerHTML='';
@@ -1689,6 +1699,7 @@ async function joinByCode(code){
     if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
     if(!res || !res.ok){ setStatus(t('joinError')); return; }
     gameCode = code;
+    if(state) state._lastOppShot=null;
     localStorage.setItem('sb_game', code);
     $('actions').innerHTML = '';
     await refreshState();
@@ -1761,6 +1772,25 @@ function stopGamePoll(type){
 }
 function stopAllPolls(){ for(const k in _polls) stopGamePoll(k); }
 
+// Pause/resume all active game polls when the tab/WebApp becomes hidden or
+// visible again. Clearing the interval while hidden avoids wasted requests (and
+// the exponential backoff that kicks in after 3+ failures). On resume we
+// restart each poll safely (startGamePoll stop+restarts) and force a single
+// refresh so the UI is immediately up to date.
+function pauseAllPolls(){
+  for(const type in _pollMeta){
+    if(_polls[type]){ clearInterval(_polls[type]); delete _polls[type]; }
+  }
+}
+function resumeAllPolls(){
+  for(const type in _pollMeta){
+    const meta = _pollMeta[type];
+    if(!meta) continue;
+    startGamePoll(type, meta.code, meta.refreshFn);
+    try{ meta.refreshFn(); }catch(e){}
+  }
+}
+
 function currentCodeFor(t){ return _pollMeta[t] ? _pollMeta[t].code : null; }
 function currentRefreshFor(t){ return _pollMeta[t] ? _pollMeta[t].refreshFn : null; }
 
@@ -1812,8 +1842,8 @@ function showMainMenu(){
   stripUnlocked=false; _stripTaps=0;
   setStripLockVisible(false);
   delete _rollAckShown[gameCode];
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
+  $('ownBoardWrap').classList.add('hidden');
+  $('oppBoardWrap').classList.add('hidden');
   gameCode=null;state=null;
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
@@ -2121,9 +2151,10 @@ function sbRenderOppHistory(bs){
 async function handleShot(r,c){
   if(!state||!state.my_turn)return;
   if(_sbShooting) return;  // block a second shot while one is in flight
-  let cell=null;
+  let cell=null, _ab=$('actions');
   try{
     _sbShooting=true;
+    if(_ab) _ab.classList.add('actions-disabled');
     cell=document.querySelector('.cell.shootable[data-r="'+r+'"][data-c="'+c+'"]');
     if(cell) cell.classList.add('shooting');
     setStatus({ru:'⏳ Ожидание…',uk:'⏳ Очікування…',en:'⏳ Waiting…'}[lang],'battle');
@@ -2143,6 +2174,8 @@ async function handleShot(r,c){
     const bs=res.result.bot_shots;
     if(bs&&bs.length){
       sbRenderOppHistory(bs);
+      const last=bs[bs.length-1];
+      if(state) state._lastOppShot={r:last.r,c:last.c};
     }
     // Render the final board from the shot response immediately. This avoids a
     // race with polling and makes the win/loss result appear without delay.
@@ -2162,6 +2195,7 @@ async function handleShot(r,c){
   } finally {
     _sbShooting=false;
     if(cell) cell.classList.remove('shooting');
+    if(_ab) _ab.classList.remove('actions-disabled');
   }
 }
 
@@ -2240,6 +2274,7 @@ async function requestRematch(){
   const ov = document.querySelector('.overlay');
   if(ov) ov.remove();
   rematchPending = true;
+  if(state) state._lastOppShot=null;
   setStatus(t('rematchWait'), 'battle');
   startGamePoll('sea_battle', gameCode, refreshState);
   const r=await api('/api/rematch', {uid:getUid(), code:gameCode});
@@ -2256,9 +2291,9 @@ async function leaveGame(surrender){
       stopGamePoll('sea_battle');
       const _code = gameCode;
       localStorage.removeItem('sb_game');
-      gameCode=null;state=null;
-      $('ownBoardWrap').style.display='none';
-      $('oppBoardWrap').style.display='none';
+      gameCode=null;if(state) state._lastOppShot=null;state=null;
+      $('ownBoardWrap').classList.add('hidden');
+      $('oppBoardWrap').classList.add('hidden');
       api('/api/surrender',{uid:getUid(),code:_code});
       showMainMenu();
     });
@@ -2268,10 +2303,10 @@ async function leaveGame(surrender){
   stopGamePoll('sea_battle');
   const _code = gameCode;
   if(surrender) localStorage.removeItem('sb_game');
-  gameCode=null;state=null;
+  gameCode=null;if(state) state._lastOppShot=null;state=null;
   // Hide boards BEFORE clearing other game data to ensure UI consistency
-  $('ownBoardWrap').style.display='none';
-  $('oppBoardWrap').style.display='none';
+  $('ownBoardWrap').classList.add('hidden');
+  $('oppBoardWrap').classList.add('hidden');
   if(surrender){
     await api('/api/surrender',{uid:getUid(),code:_code});
   }
@@ -2364,3 +2399,13 @@ initTheme();
 renderPlayerName();
 initTG();
 tryReconnect();
+
+// Pause polling while the tab/WebApp is hidden; resume (and force a refresh)
+// when it becomes visible again. Guarded so we never double-start a poll.
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){
+    pauseAllPolls();
+  } else {
+    resumeAllPolls();
+  }
+});

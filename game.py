@@ -2,6 +2,11 @@ import random
 
 from base_game import BaseGame
 
+# Canonical default difficulty. The UI only ever sends 2 (Normal) or 4
+# (Expert); 4 is the documented default. Centralised here so every fallback
+# default agrees and game.py stays importable by api.py (no circular import).
+DEFAULT_DIFFICULTY = 4
+
 SIZE = 10
 SHIPS = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
 STRIP_SHIPS = [4, 4, 3, 3, 2, 2, 1]
@@ -179,7 +184,7 @@ class Board:
         return board
 
 class Game(BaseGame):
-    def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False, difficulty=2):
+    def __init__(self, code, player1_id, player2_id=None, solo=False, strip=False, difficulty=DEFAULT_DIFFICULTY):
         super().__init__(code, player1_id, player2_id, solo, difficulty)
         self.strip = strip
         self.board1 = Board()
@@ -499,7 +504,7 @@ class BotAI:
     # Calibrated in the accompanying benchmark for an even, monotonic ladder.
     _P_OPT = {1: 0.05, 2: 0.20, 3: 0.45, 4: 1.00}
 
-    def __init__(self, difficulty=2):
+    def __init__(self, difficulty=DEFAULT_DIFFICULTY):
         self.difficulty = difficulty
         self.shots = set()
         self.hunt_queue = []
@@ -821,7 +826,7 @@ class BotAI:
 
     @staticmethod
     def from_dict(data):
-        ai = BotAI(difficulty=data.get('difficulty', 2))
+        ai = BotAI(difficulty=data.get('difficulty', DEFAULT_DIFFICULTY))
         ai.shots = set(tuple(s) for s in data['shots'])
         ai.hunt_queue = [tuple(q) for q in data['hunt_queue']]
         ai.ship_mode = data['ship_mode']
