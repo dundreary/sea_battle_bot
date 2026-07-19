@@ -1328,7 +1328,8 @@ async function ackRoll(){
       return;
     }
   }
-  await refreshState();
+  if(state && state.phase==='playing'){ updateUI(); }
+  else { await refreshState(); }
 }
 function ckRollFirst(){ return doFirstRoll('/api/checkers_roll_first', ckCode, ckRefreshState); }
 function ckRerollFirst(){ return doRerollFirst('/api/checkers_reroll_first', ckCode, ckRefreshState); }
@@ -1768,7 +1769,6 @@ function stopGamePoll(type){
   delete _pollMeta[type];
   delete _pollInterval[type];
   delete _pollFailStreak[type];
-  setConnDot(true);
 }
 function stopAllPolls(){ for(const k in _polls) stopGamePoll(k); }
 
@@ -1808,15 +1808,13 @@ function setConnDot(ok){
 function notePollResult(type, ok){
   if(ok){
     _pollFailStreak[type] = 0;
-    setConnDot(true);
     const iv = _pollInterval[type] || 2000;
     if(iv !== 2000 && _pollMeta[type]){
       _restartPoll(type, currentCodeFor(type), currentRefreshFor(type), 2000);
     }
   } else {
     _pollFailStreak[type] = (_pollFailStreak[type] || 0) + 1;
-    if(_pollFailStreak[type] >= 3){
-      setConnDot(false);
+      if(_pollFailStreak[type] >= 3){
       const streak = _pollFailStreak[type] - 3;
       const iv = Math.min(2000 * Math.pow(2, streak), 30000);
       if(_pollMeta[type]) _restartPoll(type, currentCodeFor(type), currentRefreshFor(type), iv);

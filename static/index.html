@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Games</title>
 <!-- Preload the 6 menu icons so they start fetching in parallel with the
      HTML/CSS instead of only after showMainMenu() runs and inserts <img>
@@ -19,8 +19,6 @@
 <link rel="stylesheet" href="/static/style.css?v=__ASSET_VERSION__">
 </head>
 <body>
-<span id="connDot" class="conn-dot" title="Соединение">🟢</span>
-
 <div class="header" id="header" role="banner">
   <div class="header-controls">
     <button class="top-btn" id="stripLockBtn" title="Unlock" onclick="tapStripLock()" style="display:none">🔒</button>

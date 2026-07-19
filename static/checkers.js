@@ -326,7 +326,6 @@ async function ckRunBotTurn(){
   if(!ckCode) return;
   const myCode = ckCode;
   try {
-    showAiThinking();
     // A brief beat before fetching so the player's own move has a moment to
     // register visually, then the AI's move is fetched and rendered.
     await _aiDelay(250);

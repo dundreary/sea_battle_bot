@@ -504,7 +504,6 @@ async function bgRunBotTurn(){
   if(!bgCode) return;
   const myCode = bgCode;
   try {
-    showAiThinking();
     await _aiDelay(250);
     const res = await api('/api/bg_bot_turn', {uid:getUid(), code:bgCode});
     if(!res || !res.ok) return;
