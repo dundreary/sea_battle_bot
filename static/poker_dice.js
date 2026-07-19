@@ -188,23 +188,19 @@ async function pdShowGame(st){
     return;
   }
 
-  if(st.phase==='roll'){
-    $('pdScorecardContainer').innerHTML='';
-    $('pdScorecardContainer').style.minHeight='';
-    setStatus('🎲 '+t('rollTitle'),'');
-    // Opening toss renders in the shared popup; the winner is shown there.
-    showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode, proceedFn: () => pdRefreshState() });
-    return;
+  const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
+  if(st.phase==='roll' || (rollDecided && !_rollAckShown[pdCode])){
+    if(rollDecided && _rollAckShown[pdCode]){
+      closeFirstRollPopup();
+    } else {
+      $('pdScorecardContainer').innerHTML='';
+      $('pdScorecardContainer').style.minHeight='';
+      setStatus('🎲 '+t('rollTitle'),'');
+      // Opening toss renders in the shared popup; the winner is shown there.
+      showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode, proceedFn: () => pdRefreshState() });
+      return;
+    }
   }
-
-  // While the opening-roll popup is still visible, don't swap in the board yet
-  // — otherwise the "who goes first" result flashes by and the bot move starts
-  // under the popup. The popup's own proceed timer calls closeFirstRollPopup()
-  // + pdRefreshState, which re-enters here once the popup is gone.
-  if(document.getElementById('firstRollPopupOverlay')){
-    return;
-  }
-
   // Clear kept dice when it's a fresh turn, scored, or no rolls left
   if(!st.dice || st.dice.length === 0 || st.scored || (st.rolls_left === 0 && st.my_turn)){
     pdKept = new Set();

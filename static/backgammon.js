@@ -141,26 +141,22 @@ async function bgShowGame(st, keepSelection=false){
   $('actions').className='btn-row';
   $('bgActions').innerHTML='';
 
-  if(st.phase==='roll'){
-    $('bgBoard').innerHTML='';
-    setStatus('🎲 '+t('rollTitle'),'');
-    const el=$('bgActions');
-    el.className='btn-col';
-    // Opening toss now renders in the modal popup; surrender stays reachable
-    // outside it. The popup re-renders idempotently on each poll.
-    showFirstRollPopup(st, 'bgRollFirst', 'bgRerollFirst', { solo: st.solo, code: bgCode, proceedFn: () => bgRefreshState() });
-    el.innerHTML = `<button class="btn outline" onclick="bgSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
-    return;
+  const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
+  if(st.phase==='roll' || (rollDecided && !_rollAckShown[bgCode])){
+    if(rollDecided && _rollAckShown[bgCode]){
+      closeFirstRollPopup();
+    } else {
+      $('bgBoard').innerHTML='';
+      setStatus('🎲 '+t('rollTitle'),'');
+      const el=$('bgActions');
+      el.className='btn-col';
+      // Opening toss now renders in the modal popup; surrender stays reachable
+      // outside it. The popup re-renders idempotently on each poll.
+      showFirstRollPopup(st, 'bgRollFirst', 'bgRerollFirst', { solo: st.solo, code: bgCode, proceedFn: () => bgRefreshState() });
+      el.innerHTML = `<button class="btn outline" onclick="bgSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
+      return;
+    }
   }
-
-  // Wait for the opening-roll popup to finish showing who won before we swap
-  // in the board — otherwise the winner result flashes by. The popup's own
-  // proceed timer calls closeFirstRollPopup()+bgRefreshState, re-entering here
-  // once the popup is gone. (Mirrors poker_dice.js / Sea Battle behaviour.)
-  if(document.getElementById('firstRollPopupOverlay')){
-    return;
-  }
-
   if(st.phase==='playing' && st.solo && !st.my_turn && !_bgBotOpening){
     _bgBotOpening = true;
     try{

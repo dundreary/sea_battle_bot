@@ -154,22 +154,19 @@ async function ckShowGame(st){
   const el=$('ckActions');
   el.className='btn-col';
   let html='';
-  if(st.phase==='roll'){
-    setStatus('🎲 '+t('rollTitle'),'');
-    // Opening toss now renders in the modal popup; surrender stays reachable
-    // outside it. The popup re-renders idempotently on each poll.
-    showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => ckRefreshState() });
-    el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
-    return;
+  const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
+  if(st.phase==='roll' || (rollDecided && !_rollAckShown[ckCode])){
+    if(rollDecided && _rollAckShown[ckCode]){
+      closeFirstRollPopup();
+    } else {
+      setStatus('🎲 '+t('rollTitle'),'');
+      // Opening toss now renders in the modal popup; surrender stays reachable
+      // outside it. The popup re-renders idempotently on each poll.
+      showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => ckRefreshState() });
+      el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
+      return;
+    }
   }
-  // Wait for the opening-roll popup to finish showing who won before we swap
-  // in the board — otherwise the winner result flashes by. The popup's own
-  // proceed timer calls closeFirstRollPopup()+ckRefreshState, re-entering here
-  // once the popup is gone. (Mirrors poker_dice.js / Sea Battle behaviour.)
-  if(document.getElementById('firstRollPopupOverlay')){
-    return;
-  }
-
   closeFirstRollPopup();
   if(st.phase==='playing' && st.solo && !st.my_turn && !_ckBotOpening){
     _ckBotOpening = true;
