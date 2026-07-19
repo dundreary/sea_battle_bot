@@ -5,6 +5,8 @@ const LANG = {
     ok: 'OK',
     cancel: 'Отмена',
     startBtn: 'Начать игру',
+    vsBot: 'С ботом',
+    vsFriend: 'С другом',
     ownBoard: '🚢 ТВОИ КОРАБЛИ',
     oppBoard: '🎯 ДОСКА СОПЕРНИКА',
     legEmpty: 'пусто', legShip: 'корабль', legHit: 'попал', legMiss: 'мимо', legSunk: 'потоплен',
@@ -181,6 +183,8 @@ const LANG = {
     ok: 'OK',
     cancel: 'Скасувати',
     startBtn: 'Почати гру',
+    vsBot: 'З ботом',
+    vsFriend: 'З другом',
     ownBoard: '🚢 ТВОЇ КОРАБЛІ',
     oppBoard: '🎯 ДОШКА СУПЕРНИКА',
     legEmpty: 'порожньо', legShip: 'корабель', legHit: 'влучив', legMiss: 'повз', legSunk: 'потоплено',
@@ -357,6 +361,8 @@ const LANG = {
     ok: 'OK',
     cancel: 'Cancel',
     startBtn: 'Start Game',
+    vsBot: 'Vs Bot',
+    vsFriend: 'Vs Friend',
     ownBoard: '🚢 YOUR SHIPS',
     oppBoard: '🎯 OPPONENT\'S BOARD',
     legEmpty: 'empty', legShip: 'ship', legHit: 'hit', legMiss: 'miss', legSunk: 'sunk',
@@ -2013,13 +2019,13 @@ function showSeaBattleMenu(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-      <div class="game-card" ${AR} aria-label="${t('startBtn')}" onclick="startSolo()" style="margin-bottom:8px">
+      <div class="game-card" ${AR} aria-label="${t('vsBot')}" onclick="startSolo()" style="margin-bottom:8px">
         <img src="/static/mode-bot.svg" class="card-icon" alt="">
-        <div class="card-desc">${t('startBtn')}</div>
+        <div class="card-name">${t('vsBot')}</div>
     </div>
-    <div class="game-card" ${AR} aria-label="${t('startBtn')}" onclick="chooseMultiMode()" style="margin-bottom:8px">
+    <div class="game-card" ${AR} aria-label="${t('vsFriend')}" onclick="chooseMultiMode()" style="margin-bottom:8px">
         <img src="/static/mode-friend.svg" class="card-icon" alt="">
-        <div class="card-desc">${t('startBtn')}</div>
+        <div class="card-name">${t('vsFriend')}</div>
     </div>
     <div class="game-card" ${AR} aria-label="${t('stripMode')}" onclick="newMulti(true)" id="stripCard" style="display:none;margin-bottom:8px">
       <img src="/static/mode-shirt.svg" class="card-icon" alt="">
