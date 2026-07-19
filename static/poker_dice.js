@@ -188,7 +188,6 @@ function pdShowGame(st){
   }
 
   if(st.phase==='roll'){
-    armRollBanner(pdCode);
     $('pdScorecardContainer').innerHTML='';
     $('pdScorecardContainer').style.minHeight='';
     setStatus('🎲 '+t('rollTitle'),'');
@@ -210,7 +209,6 @@ function pdShowGame(st){
   pdRenderActions(st);
   pdRenderInfo(st);
   closeFirstRollPopup();
-  showRollWinnerBanner(st, pdCode);
 }
 
 function pdRenderScorecard(st){
@@ -623,10 +621,10 @@ async function pdRunBotTurn(){
 }
 
 // Called by doFirstRoll/doRerollFirst when the opening-roll response says the
-// bot won the toss and owes its first move. The opening-roll winner banner
-// (showRollWinnerBanner) is shown by pdShowGame during the refresh above. Wait
-// for it to auto-dismiss (~2.5s), THEN play the bot's first move so the two
-// stages (banner, then bot opening) are sequential rather than mashed together.
+// bot won the toss and owes its first move. The opening-roll winner is shown
+// inside the shared first-roll popup. Wait for it to auto-dismiss (~2.5s),
+// THEN play the bot's first move so the two stages (popup, then bot opening)
+// are sequential rather than mashed together.
 function pdAfterOpeningRoll(){
   if(pdOpeningPending) return;
   pdOpeningPending = true;

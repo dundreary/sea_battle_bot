@@ -142,7 +142,6 @@ async function bgShowGame(st, keepSelection=false){
   $('bgActions').innerHTML='';
 
   if(st.phase==='roll'){
-    armRollBanner(bgCode);
     $('bgBoard').innerHTML='';
     setStatus('🎲 '+t('rollTitle'),'');
     const el=$('bgActions');
@@ -167,7 +166,6 @@ async function bgShowGame(st, keepSelection=false){
 
   closeFirstRollPopup();
   bgRenderBoard(st);
-  showRollWinnerBanner(st, bgCode);
   if(st.phase==='finished'){
     stopGamePoll('backgammon');
     localStorage.removeItem('bg_game');

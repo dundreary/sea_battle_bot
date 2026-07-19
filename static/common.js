@@ -1175,46 +1175,10 @@ function __rollPopupCloseWait(){
   closeFirstRollPopup();
 }
 
-// One-shot guard keyed by game code: the winner banner must appear only once
-// when the opening roll resolves, not on every polling refresh afterwards.
-const _rollBannerShown = {};
+// One-shot guard keyed by game code: mark the first-roll popup acknowledged
+// so polling does not reopen it.
 const _rollAckShown = {};
 const _sbAutoAck = {};
-
-function armRollBanner(code){
-  if(code) delete _rollBannerShown[code];
-}
-
-// Show a brief, non-blocking banner over the board announcing who won the
-// opening dice roll (and therefore moves first). Called from each game's
-// render once the board is on screen and both players have rolled a decisive
-// value. Relies on my_roll/opp_roll, which the backend keeps sending even in
-// the 'playing' phase.
-function showRollWinnerBanner(st, code){
-  if(!st || st.my_roll == null || st.opp_roll == null || st.my_roll === st.opp_roll) return;
-  if(!code || _rollBannerShown[code]) return;
-  _rollBannerShown[code] = true;
-
-  const won = st.my_roll > st.opp_roll;
-  const myDie  = _dieSvg(st.my_roll,  won ? 'roll-die-win' : '');
-  const oppDie = _dieSvg(st.opp_roll, !won ? 'roll-die-win' : '');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'roll-winner-overlay';
-  overlay.innerHTML = `
-    <div class="roll-winner-card ${won ? 'win' : 'lose'}">
-      <div class="roll-winner-title">${won ? t('rollWon') : t('rollLost')}</div>
-      <div class="roll-die-row">
-        <div class="roll-die-col">${myDie}<div class="roll-die-label">${t('rollYou')}</div></div>
-        <div class="roll-vs">${st.my_roll} : ${st.opp_roll}</div>
-        <div class="roll-die-col">${oppDie}<div class="roll-die-label">🎯</div></div>
-      </div>
-      <div class="roll-winner-sub">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>
-    </div>`;
-  document.body.appendChild(overlay);
-  setTimeout(() => overlay.classList.add('roll-winner-out'), 2500);
-  setTimeout(() => overlay.remove(), 3200);
-}
 
 async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rollBtn');
@@ -1432,7 +1396,8 @@ function updateUI(){
 
   // Route to the roll screen purely by phase. Note: my_roll/opp_roll stay
   // populated on the backend even after phase flips to 'playing' (kept
-  // around for a one-shot "you won the roll" banner elsewhere), so they must
+  // around because the opening-roll winner is shown inside the shared
+  // #firstRollPopupOverlay, with no separate post-popup banner), so they must
   // NOT be part of this check -- doing so used to make this screen (and its
   // "Continue" button) re-render forever after a decisive roll, since
   // refreshing state would always find the same still-set, still-decisive
@@ -1441,7 +1406,7 @@ function updateUI(){
   if(s.phase==='roll' || (rollDecided && !_rollAckShown[gameCode])){
     if(rollDecided && _rollAckShown[gameCode]){
       // Already acknowledged (user clicked Continue): drop the popup and let
-      // the playing render below take over (board + winner banner).
+      // the playing render below take over (board).
       closeFirstRollPopup();
     } else {
       ownEl.classList.remove('my-turn');
@@ -1449,10 +1414,7 @@ function updateUI(){
       $('oppBoardWrap').classList.add('hidden');
       $('app').insertBefore($('status'), $('app').firstChild);
       setStatus('🎲 '+t('rollTitle'),'');
-      armRollBanner(gameCode);
-      // The popup now owns the opening-roll result; do NOT call
-      // showRollWinnerBanner here (it is shown from the playing branch once
-      // the board is on screen). Continue runs ackRoll (which handles the solo
+      // The popup now owns the opening-roll result. Continue runs ackRoll (which handles the solo
       // bot opening shot and the _rollAckShown guard).
       showFirstRollPopup(s, 'rollFirst', 'rerollFirst', { solo: s.solo, code: gameCode, proceedFn: () => ackRoll() });
       $('actions').className='btn-col';

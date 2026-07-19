@@ -155,7 +155,6 @@ async function ckShowGame(st){
   el.className='btn-col';
   let html='';
   if(st.phase==='roll'){
-    armRollBanner(ckCode);
     setStatus('🎲 '+t('rollTitle'),'');
     // Opening toss now renders in the modal popup; surrender stays reachable
     // outside it. The popup re-renders idempotently on each poll.
@@ -164,9 +163,8 @@ async function ckShowGame(st){
     return;
   }
   // Once the phase advances past the roll, drop any lingering popup and let
-  // the playing render show the winner banner over the board.
+  // the playing render takes over (board only; the winner was shown in the popup).
   closeFirstRollPopup();
-  showRollWinnerBanner(st, ckCode);
   if(st.phase==='playing' && st.solo && !st.my_turn && !_ckBotOpening){
     _ckBotOpening = true;
     try{
