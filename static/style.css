@@ -392,7 +392,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-result{font-size:16px;font-weight:700;text-align:center;padding:6px 14px;border-radius:10px}
 .roll-result.roll-win{color:#66BB6A;background:rgba(102,187,106,.14)}
 .roll-result.roll-lose{color:var(--text-secondary);background:rgba(255,255,255,.05)}
- .roll-result.roll-tie{color:var(--color-warning);background:rgba(255,213,79,.12)}
+  .roll-result.roll-tie{color:var(--color-warning);background:rgba(255,213,79,.12)}
+
+/* Opening-roll modal popup (replaces the old inline roll screen). Reuses the
+   existing .overlay backdrop + .modal card so focus/escape behavior matches
+   the other modals. */
+.roll-popup{max-width:340px;width:100%;text-align:center}
+.roll-popup .roll-stage{padding:24px 8px 18px}
 
 /* Winner banner shown for a few seconds over the board once the opening
    dice roll resolves. Non-blocking: it never intercepts taps on the board. */

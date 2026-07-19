@@ -51,6 +51,7 @@ function pdHandName(name){
 }
 
 function showPokerDice(){
+  currentGameType='poker_dice'; setHelpVisible(true);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
   hideAllGameAreas();
@@ -88,6 +89,7 @@ function showPokerDice(){
 }
 
 async function pdStartSolo(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/pd_new_solo',{uid:getUid(), difficulty: getDifficulty()});
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
@@ -99,6 +101,7 @@ async function pdStartSolo(){
 }
 
 async function pdNewMulti(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/pd_new_multi',{uid:getUid()});
   if(res===null){ showRetry(t('error'), () => pdNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -183,31 +186,12 @@ function pdShowGame(st){
     armRollBanner(pdCode);
     $('pdScorecardContainer').innerHTML='';
     $('pdScorecardContainer').style.minHeight='';
-    $('pdDice').innerHTML = firstRollHTML(st, 'pdRollFirst', 'pdRerollFirst');
-    // Spin the bot's die when the opening toss has resolved (solo auto-roll)
-    // so it isn't just shown statically. Guard by code+value so it runs once.
-    if(st.opp_roll != null){
-      const key = (pdCode||'') + ':' + st.opp_roll;
-      if(pdOppRollSpun !== key){
-        pdOppRollSpun = key;
-        stopGamePoll('poker_dice');
-        pdAnimating = true;
-        const botDie = document.querySelectorAll('.roll-die-col .roll-die3d')[1];
-        if(botDie){
-          const svg = botDie.querySelector('svg');
-          if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = (DIE_PIPS[n]||[]); svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
-          // Spin is pure CSS (roll-die-spinning rotation); face set once randomly, then authoritative on land.
-          botDie.classList.add('roll-die-spinning');
-          setTimeout(() => {
-            botDie.classList.remove('roll-die-spinning');
-            if(svg){ const pips = (DIE_PIPS[st.opp_roll] || []); svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
-            pdAnimating = false;
-            startGamePoll('poker_dice', pdCode, pdRefreshState);
-          }, 600);
-        }
-      }
-    }
     setStatus('🎲 '+t('rollTitle'),'');
+    // The opening toss now renders in the modal popup (showFirstRollPopup),
+    // which keeps the poll running and reuses the existing dice markup/spin.
+    // pdRollFirst/pdRerollFirst still pass pdAfterOpeningRoll as afterRoll, so
+    // the bot's opening move is scheduled exactly as before.
+    showFirstRollPopup(st, 'pdRollFirst', 'pdRerollFirst', { solo: st.solo, code: pdCode, proceedFn: () => pdRefreshState() });
     return;
   }
 
@@ -220,6 +204,7 @@ function pdShowGame(st){
   pdRenderDice(st);
   pdRenderActions(st);
   pdRenderInfo(st);
+  closeFirstRollPopup();
   showRollWinnerBanner(st, pdCode);
 }
 
@@ -736,6 +721,7 @@ function sharePdGame(){
 }
 
 function resumePd(code){
+  currentGameType=null; setHelpVisible(false); setStripLockVisible(false);
   pdCode=code;
   _lastPDSig=null;
   localStorage.setItem('pd_game',code);

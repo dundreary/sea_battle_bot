@@ -7,6 +7,7 @@ let _bgRefreshing=false;
 const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
 
 function showBackgammon(){
+  currentGameType='backgammon'; setHelpVisible(true);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
   hideAllGameAreas();
@@ -51,6 +52,7 @@ function bgSetVariant(v){
 }
 
 async function bgStartSolo(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: getDifficulty(), variant: bgVariant});
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
@@ -61,6 +63,7 @@ async function bgStartSolo(){
 }
 
 async function bgNewMulti(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/bg_new_multi',{uid:getUid(), variant: bgVariant});
   if(res===null){ showRetry(t('error'), () => bgNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -139,8 +142,10 @@ async function bgShowGame(st, keepSelection=false){
     setStatus('🎲 '+t('rollTitle'),'');
     const el=$('bgActions');
     el.className='btn-col';
-    el.innerHTML = firstRollHTML(st, 'bgRollFirst', 'bgRerollFirst') +
-      `<button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
+    // Opening toss now renders in the modal popup; surrender stays reachable
+    // outside it. The popup re-renders idempotently on each poll.
+    showFirstRollPopup(st, 'bgRollFirst', 'bgRerollFirst', { solo: st.solo, code: bgCode, proceedFn: () => bgRefreshState() });
+    el.innerHTML = `<button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
     return;
   }
 
@@ -155,6 +160,7 @@ async function bgShowGame(st, keepSelection=false){
     return;
   }
 
+  closeFirstRollPopup();
   bgRenderBoard(st);
   showRollWinnerBanner(st, bgCode);
   if(st.phase==='finished'){
@@ -534,6 +540,7 @@ async function bgSurrender(){
 }
 
 function resumeBg(code){
+  currentGameType=null; setHelpVisible(false); setStripLockVisible(false);
   bgCode=code;
   _lastBGSig=null;
   localStorage.setItem('bg_game',code);

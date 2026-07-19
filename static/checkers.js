@@ -5,6 +5,7 @@ const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
 let _lastCKSig=null, _ckRefreshing=false;
 
 function showCheckers(){
+  currentGameType='checkers'; setHelpVisible(true);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
   hideAllGameAreas();
@@ -40,6 +41,7 @@ function showCheckers(){
 }
 
 async function ckStartSolo(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/checkers_new_solo',{uid:getUid(), difficulty: getDifficulty()});
   if(!res||!res.ok){setStatus(t('error'));return}
   ckCode=res.code;
@@ -49,6 +51,7 @@ async function ckStartSolo(){
 }
 
 async function ckNewMulti(){
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/checkers_new_multi',{uid:getUid()});
   if(res===null){ showRetry(t('error'), () => ckNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -121,9 +124,15 @@ async function ckShowGame(st){
   if(st.phase==='finished'){
     stopGamePoll('checkers');
     localStorage.removeItem('ck_game');
-    const icon=st.winner===1?'🏆':'💔';
-    const title=st.winner===1?t('win'):t('lose');
-    const desc=t('checkers');
+    let icon, title, desc;
+    if(st.draw){
+      icon='🤝'; title=t('draw')||'🤝 НИЧЬЯ';
+    }else{
+      const won = st.winner === st.my_color;
+      icon = won ? '🏆' : '💔';
+      title = won ? t('win') : t('lose');
+    }
+    desc = t('checkers');
     showResult(icon,title,desc,false,'ckStartSolo()',t('playAgain'));
     const el=$('ckActions');
     el.className='btn-col';
@@ -133,17 +142,22 @@ async function ckShowGame(st){
     `;
     return;
   }
-  showRollWinnerBanner(st, ckCode);
   const el=$('ckActions');
-   el.className='btn-col';
+  el.className='btn-col';
   let html='';
   if(st.phase==='roll'){
     armRollBanner(ckCode);
     setStatus('🎲 '+t('rollTitle'),'');
-    el.innerHTML = firstRollHTML(st, 'ckRollFirst', 'ckRerollFirst') +
-      `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+    // Opening toss now renders in the modal popup; surrender stays reachable
+    // outside it. The popup re-renders idempotently on each poll.
+    showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => ckRefreshState() });
+    el.innerHTML = `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
     return;
   }
+  // Once the phase advances past the roll, drop any lingering popup and let
+  // the playing render show the winner banner over the board.
+  closeFirstRollPopup();
+  showRollWinnerBanner(st, ckCode);
   if(st.phase==='playing' && st.solo && !st.my_turn && !_ckBotOpening){
     _ckBotOpening = true;
     try{

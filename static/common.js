@@ -24,6 +24,8 @@ const LANG = {
     rollLost: 'Соперник выиграл бросок',
     rollYouFirst: 'Вы ходите первым',
     rollOppFirst: 'Соперник ходит первым',
+    rollWaitOpp: '⏳ Ждём соперника…',
+    rollRerolling: '🔄 Переброс…',
     again: '🔄 Ещё раз? Нажми «ОК» когда устроит',
     yourTurn: '⚓ ТВОЙ ХОД!',
     oppTurn: '⏳ ХОД СОПЕРНИКА...',
@@ -44,6 +46,7 @@ const LANG = {
     winDesc: 'Ты потопил все корабли соперника!',
     lose: '💔 ПОРАЖЕНИЕ',
     loseDesc: 'Все твои корабли потоплены...',
+    draw: '🤝 НИЧЬЯ',
     playAgain: '🔄 Играть ещё',
     close: '🚪 Закрыть',
     withBot: '· с ботом',
@@ -184,6 +187,8 @@ const LANG = {
     rollLost: 'Суперник виграв кидок',
     rollYouFirst: 'Ви ходите першим',
     rollOppFirst: 'Суперник ходить першим',
+    rollWaitOpp: '⏳ Чекаємо на суперника…',
+    rollRerolling: '🔄 Перекинь…',
     again: '🔄 Ще раз? Натисни «ОК» коли влаштує',
     yourTurn: '⚓ ТВІЙ ХІД!',
     oppTurn: '⏳ ХІД СУПЕРНИКА...',
@@ -204,6 +209,7 @@ const LANG = {
     winDesc: 'Ти потопив усі кораблі суперника!',
     lose: '💔 ПОРАЗКА',
     loseDesc: 'Усі твої кораблі потоплені...',
+    draw: '🤝 НІЧИЯ',
     playAgain: '🔄 Грати ще',
     close: '🚪 Закрити',
     withBot: '· з ботом',
@@ -344,6 +350,8 @@ const LANG = {
     rollLost: 'Opponent won the roll',
     rollYouFirst: 'You go first',
     rollOppFirst: 'Opponent goes first',
+    rollWaitOpp: '⏳ Waiting for opponent…',
+    rollRerolling: '🔄 Rerolling…',
     again: '🔄 Again? Press «OK» when ready',
     yourTurn: '⚓ YOUR TURN!',
     oppTurn: '⏳ OPPONENT\'S TURN...',
@@ -364,6 +372,7 @@ const LANG = {
     winDesc: 'You sank all enemy ships!',
     lose: '💔 DEFEAT',
     loseDesc: 'All your ships are sunk...',
+    draw: '🤝 DRAW',
     playAgain: '🔄 Play again',
     close: '🚪 Close',
     withBot: '· vs bot',
@@ -572,6 +581,8 @@ function initTheme(){
 }
 
 function showSettings(){
+  setStripLockVisible(false);
+  currentGameType=null; setHelpVisible(false);
   const existing=$('settingsOverlay');
   if(existing){existing.remove()}
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
@@ -919,6 +930,198 @@ function firstRollHTML(s, rollFn, rerollFn){
   </div>`;
 }
 
+// ---- Opening roll MODAL POPUP --------------------------------------------
+// Replaces the inline firstRollHTML rendering. Shows BOTH dice (yours +
+// opponent's) in a centered modal and owns the whole opening-roll flow: the
+// PvP "waiting for opponent" transition, the tie auto-reroll, and the
+// decisive "Continue" step. It is idempotent: if the overlay already exists
+// its inner content is re-rendered from the new state so polling refreshes
+// update it instead of stacking duplicate popups.
+let _rollPopupEl = null;
+let _rollPopupCode = null;
+let _rollPopupProceed = null;
+const _rollPopupClosed = {};      // code -> true once the PvP "waiting" popup closed
+const _rollAutoRerollCount = {};  // code -> auto-reroll attempts so far (cap)
+let _rollWaitScheduled = false;
+let _rollWaitTimer = null;
+let _rollRerollScheduled = false;
+let _rollRerollTimer = null;
+
+function _rollPopupInner(st, rollFn, rerollFn, o){
+  const solo = o.solo;
+  const label = (txt, sub)=>`<div class="roll-die-label">${txt}${sub?`<span>${sub}</span>`:''}</div>`;
+  const mySide = (n, waiting)=>`<div class="roll-die-col">${_dieSvg(n||1, waiting?'roll-die-pending':'')}${label(t('rollYou'))}</div>`;
+  const oppSide = (n, waiting)=>`<div class="roll-die-col">${_dieSvg(n||1, waiting?'roll-die-pending':'')}${label('🎯')}</div>`;
+  const dieRow = `<div class="roll-die-row">${mySide(st.my_roll, st.my_roll==null)}<div class="roll-vs">VS</div>${oppSide(st.opp_roll, st.opp_roll==null)}</div>`;
+
+  // Nobody has rolled yet -> show the roll button.
+  if(st.my_roll==null && st.opp_roll==null){
+    return `<div class="roll-stage">
+      <div class="roll-title">${t('rollTitle')}</div>
+      ${dieRow}
+      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">🎲 ${t('rollBtn')}</button>
+    </div>`;
+  }
+
+  // PvP (not solo): I have rolled but the opponent has not -> just wait.
+  if(!solo && st.my_roll!=null && st.opp_roll==null){
+    return `<div class="roll-stage">
+      ${dieRow}
+      <div class="roll-wait">${t('rollWaitOpp')}</div>
+      <button class="btn outline roll-cta" id="closeRollBtn" onclick="__rollPopupCloseWait()">${t('close')}</button>
+    </div>`;
+  }
+
+  // Both rolled and it's a tie -> auto-reroll (manual fallback above the cap).
+  if(st.my_roll!=null && st.opp_roll!=null && st.my_roll===st.opp_roll){
+    const count = o.code ? (_rollAutoRerollCount[o.code]||0) : 0;
+    if(count >= 6){
+      return `<div class="roll-stage">
+        ${dieRow}
+        <div class="roll-result roll-tie">${t('rollTie')}</div>
+        <button class="btn primary roll-cta" id="rerollBtn" onclick="window['${rerollFn}']()">🔄 ${t('reroll')}</button>
+      </div>`;
+    }
+    return `<div class="roll-stage">
+      ${dieRow}
+      <div class="roll-result roll-tie">${t('rollRerolling')}</div>
+    </div>`;
+  }
+
+  // Only the opponent has rolled (e.g. PvP where the human still must) -> roll.
+  if(st.my_roll==null && st.opp_roll!=null){
+    return `<div class="roll-stage">
+      <div class="roll-title">${t('rollTitle')}</div>
+      ${dieRow}
+      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">🎲 ${t('rollBtn')}</button>
+    </div>`;
+  }
+
+  // Decisive: both rolled, different -> winner line + Continue button.
+  const won = st.my_roll > st.opp_roll;
+  return `<div class="roll-stage">
+    ${dieRow}
+    <div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>
+    <button class="btn primary roll-cta" id="rollDoneBtn" onclick="__rollPopupContinue()">▶ ${t('rollContinue')}</button>
+  </div>`;
+}
+
+// Called from each game's roll-phase block. Idempotent: reuses the existing
+// overlay element (re-rendering its content from the new state) instead of
+// stacking popups on every polling refresh.
+function showFirstRollPopup(st, rollFn, rerollFn, opts){
+  opts = opts || {};
+  const code = opts.code || st.code || '';
+  const solo = !!opts.solo;
+  const proceedFn = (typeof opts.proceedFn === 'function') ? opts.proceedFn : null;
+
+  const myRolled = st.my_roll != null;
+  const oppRolled = st.opp_roll != null;
+  const tie = myRolled && oppRolled && st.my_roll === st.opp_roll;
+  const waiting = !solo && myRolled && !oppRolled;
+
+  // Fresh roll (nothing thrown yet) -> (re)arm per-code guards for this game.
+  if(st.my_roll==null && st.opp_roll==null){
+    _rollPopupClosed[code] = false;
+    _rollAutoRerollCount[code] = 0;
+  }
+
+  // PvP waiting guard: once closed (auto or manually) polling must not reopen.
+  if(waiting && _rollPopupClosed[code]){
+    return;
+  }
+
+  if(!_rollPopupEl || !_rollPopupEl.isConnected){
+    _rollPopupEl = document.createElement('div');
+    _rollPopupEl.className = 'overlay';
+    _rollPopupEl.id = 'firstRollPopupOverlay';
+    _rollPopupEl.setAttribute('role','dialog');
+    _rollPopupEl.setAttribute('aria-modal','true');
+    _rollPopupEl._onKey = (e)=>{
+      if(e.key === 'Escape'){
+        const s = _rollPopupEl && _rollPopupEl._st;
+        const wait = !!(s && !s.solo && s.my_roll != null && s.opp_roll == null);
+        if(wait) __rollPopupCloseWait();
+      }
+    };
+    document.addEventListener('keydown', _rollPopupEl._onKey);
+    document.body.appendChild(_rollPopupEl);
+  }
+  _rollPopupEl._st = st;
+  _rollPopupCode = code;
+  _rollPopupProceed = proceedFn;
+  _rollPopupEl.innerHTML = `<div class="modal roll-popup">${_rollPopupInner(st, rollFn, rerollFn, {solo, code})}</div>`;
+
+  // Focus the primary action for keyboard users.
+  const focusBtn = _rollPopupEl.querySelector('#rollBtn, #rollDoneBtn, #closeRollBtn');
+  if(focusBtn) focusBtn.focus();
+
+  // PvP waiting -> auto-close after a short beat (a Close button is offered).
+  if(waiting){
+    if(!_rollWaitScheduled){
+      _rollWaitScheduled = true;
+      _rollWaitTimer = setTimeout(()=>{
+        _rollWaitScheduled = false;
+        if(code) _rollPopupClosed[code] = true;
+        closeFirstRollPopup();
+      }, 1500);
+    }
+  } else {
+    if(_rollWaitTimer){ clearTimeout(_rollWaitTimer); _rollWaitTimer = null; }
+    _rollWaitScheduled = false;
+  }
+
+  // Auto-reroll on a tie when both sides have already rolled. Capped per code.
+  if(tie){
+    const count = _rollAutoRerollCount[code] || 0;
+    if(count < 6 && !_rollRerollScheduled){
+      _rollRerollScheduled = true;
+      const codeAtSchedule = code;
+      const fn = rerollFn;
+      _rollRerollTimer = setTimeout(()=>{
+        _rollRerollScheduled = false;
+        _rollAutoRerollCount[codeAtSchedule] = (_rollAutoRerollCount[codeAtSchedule]||0) + 1;
+        if(typeof window[fn] === 'function') window[fn]();
+      }, 900);
+    }
+  } else {
+    if(_rollRerollTimer){ clearTimeout(_rollRerollTimer); _rollRerollTimer = null; }
+    _rollRerollScheduled = false;
+  }
+}
+
+function closeFirstRollPopup(){
+  if(_rollWaitTimer){ clearTimeout(_rollWaitTimer); _rollWaitTimer = null; }
+  if(_rollRerollTimer){ clearTimeout(_rollRerollTimer); _rollRerollTimer = null; }
+  _rollWaitScheduled = false;
+  _rollRerollScheduled = false;
+  if(_rollPopupEl){
+    if(_rollPopupEl._onKey) document.removeEventListener('keydown', _rollPopupEl._onKey);
+    _rollPopupEl.remove();
+    _rollPopupEl = null;
+  }
+  _rollPopupCode = null;
+  _rollPopupProceed = null;
+}
+
+// Continue button: mark the roll acknowledged (so it never reappears), close
+// the popup, then run the game's proceed callback (e.g. ackRoll / refresh).
+function __rollPopupContinue(){
+  const code = _rollPopupCode;
+  if(code) _rollAckShown[code] = true;
+  const fn = _rollPopupProceed;
+  closeFirstRollPopup();
+  if(typeof fn === 'function') fn();
+}
+
+// PvP waiting "Close": remember that we already showed the waiting popup for
+// this code so polling does not reopen it.
+function __rollPopupCloseWait(){
+  const code = _rollPopupCode;
+  if(code) _rollPopupClosed[code] = true;
+  closeFirstRollPopup();
+}
+
 // One-shot guard keyed by game code: the winner banner must appear only once
 // when the opening roll resolves, not on every polling refresh afterwards.
 const _rollBannerShown = {};
@@ -1188,32 +1391,32 @@ function updateUI(){
   // my_roll/opp_roll and show the roll screen again instead of the board.
   const rollDecided = s.my_roll != null && s.opp_roll != null && s.my_roll !== s.opp_roll;
   if(s.phase==='roll' || (rollDecided && !_rollAckShown[gameCode])){
-    ownEl.classList.remove('my-turn');
-    oppEl.classList.remove('my-turn');
-    $('oppBoardWrap').style.display='none';
-    $('app').insertBefore($('status'), $('app').firstChild);
-    setStatus('🎲 '+t('rollTitle'),'');
-    armRollBanner(gameCode);
-    showRollWinnerBanner(s, gameCode);
-    if(rollDecided){
-      const rb = $('rollDoneBtn'); if(rb) rb.style.display = 'none';
-      if(!_sbAutoAck[gameCode]){
-        _sbAutoAck[gameCode] = true;
-        setTimeout(() => { ackRoll(); }, 700);
-      }
+    if(rollDecided && _rollAckShown[gameCode]){
+      // Already acknowledged (user clicked Continue): drop the popup and let
+      // the playing render below take over (board + winner banner).
+      closeFirstRollPopup();
+    } else {
+      ownEl.classList.remove('my-turn');
+      oppEl.classList.remove('my-turn');
+      $('oppBoardWrap').style.display='none';
+      $('app').insertBefore($('status'), $('app').firstChild);
+      setStatus('🎲 '+t('rollTitle'),'');
+      armRollBanner(gameCode);
+      // The popup now owns the opening-roll result; do NOT call
+      // showRollWinnerBanner here (it is shown from the playing branch once
+      // the board is on screen). Continue runs ackRoll (which handles the solo
+      // bot opening shot and the _rollAckShown guard).
+      showFirstRollPopup(s, 'rollFirst', 'rerollFirst', { solo: s.solo, code: gameCode, proceedFn: () => ackRoll() });
+      $('actions').className='btn-col';
+      $('actions').innerHTML = `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
+      setThemeSelectorVisibility(false);
+      return;
     }
-    $('actions').className='btn-col';
-    $('actions').innerHTML = firstRollHTML(s, 'rollFirst', 'rerollFirst') +
-      `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
-    // Mirror Checkers: the opening toss shows the winner banner, then the game
-    // proceeds automatically (the auto-ackRoll timer below). Do NOT show a
-    // visible "Продолжить" (Continue) button on the roll screen for Sea Battle.
-    const rb = $('rollDoneBtn'); if(rb) rb.style.display = 'none';
-    setThemeSelectorVisibility(false);
-    return;
   }
 
   $('oppBoardWrap').style.display='block';
+  closeFirstRollPopup();
+  showRollWinnerBanner(s, gameCode);
   updateSettingsUI();
   $('ownBoardWrap').after($('status'));
 
@@ -1239,6 +1442,8 @@ function updateUI(){
 }
 
 async function startSolo(){
+  setStripLockVisible(false);
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/new_solo',{uid:getUid(), difficulty: gameDifficulty});
   if(res===null){ showRetry(t('error'), ()=>startSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
@@ -1374,6 +1579,8 @@ async function captureAndUploadStake(){
 }
 
 async function newMulti(strip=false){
+  setStripLockVisible(false);
+  currentGameType=null; setHelpVisible(false);
   const res=await api('/api/new_multi',{uid:getUid(),strip:strip});
   if(res===null){ showRetry(t('error'), ()=>newMulti()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
@@ -1476,6 +1683,8 @@ let _stripPhotoWaitTimer=null, _ckBotOpening=false, _bgBotOpening=false;
 let rematchPending=false;
 
 function showMainMenu(){
+  closeFirstRollPopup();
+  currentGameType=null; setHelpVisible(false);
   stripUnlocked=false; _stripTaps=0;
   setStripLockVisible(false);
   delete _rollAckShown[gameCode];
@@ -1537,11 +1746,7 @@ function showMainMenu(){
 function showMenu(){ showMainMenu(); }
 
 function showHelp(){
-  let game=null;
-  if(typeof pdState!=='undefined' && pdState) game='poker_dice';
-  else if(typeof ckState!=='undefined' && ckState) game='checkers';
-  else if(typeof bgState!=='undefined' && bgState) game='backgammon';
-  else if(state) game='sea_battle';
+  let game=currentGameType;
   let body;
   if(!game){
     body={ru:'Откройте игру, чтобы увидеть правила',uk:'Відкрийте гру, щоб побачити правила',en:'Open a game to see the rules'}[lang];
@@ -1577,6 +1782,7 @@ const STATS_GAME_ICON = {sea_battle:'🚢', poker_dice:'🃏', checkers:'♟️'
 const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsResDraw'};
 
 async function showStats(){
+  currentGameType=null; setHelpVisible(false);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
   hideAllGameAreas();
@@ -1665,6 +1871,7 @@ function savePlayerName(v){
 }
 
 function showSeaBattleMenu(){
+  currentGameType='sea_battle'; setHelpVisible(true);
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(true);
   stripUnlocked=false; _stripTaps=0;
@@ -1717,7 +1924,18 @@ function setStripLockVisible(v){
   if(b)b.style.display = v ? '' : 'none';
 }
 
+// Tracks which game-selection screen the user is currently on (null once a
+// game is actually started or on any non-selection screen). Drives the ❓
+// help button so it only shows on the four selection screens.
+let currentGameType = null;
+function setHelpVisible(v){
+  const b=document.getElementById('helpBtn');
+  if(b) b.style.display = v ? '' : 'none';
+}
+
 function chooseMultiMode(){
+  setStripLockVisible(false);
+  currentGameType=null; setHelpVisible(false);
   newMulti(false);
 }
 
@@ -1799,7 +2017,9 @@ async function sendOpponentMessage(game='sea_battle', code=gameCode, gameState=s
 }
 
 function showResult(icon,title,desc,strip,playAgainFn,playAgainLabel){
+  closeFirstRollPopup();
   setStripLockVisible(false);
+  currentGameType=null; setHelpVisible(false);
   stripUnlocked=false;
   const o=document.createElement('div');
   o.className='overlay';
@@ -1866,6 +2086,7 @@ async function requestRematch(){
 }
 
 async function leaveGame(surrender){
+  closeFirstRollPopup();
   stripUnlocked=false;
   delete _rollAckShown[gameCode];
   if(surrender){
@@ -1955,6 +2176,7 @@ function resumeSB(code){
 }
 
 function resumeCk(code){
+  currentGameType=null; setHelpVisible(false); setStripLockVisible(false);
   ckCode=code;
   localStorage.setItem('ck_game',code);
   $('actions').innerHTML='';
