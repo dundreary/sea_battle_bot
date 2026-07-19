@@ -222,6 +222,89 @@ def evaluate_move(board: List[int], head_black: int, bar: List[int], off: List[i
     return score
 
 
+# --- Expert positional evaluation (difficulty >= 4) -------------------------
+# A board-level heuristic that adds the terms the pure 1-ply move scorer
+# misses: blot exposure, anchor control, prime building and the racing lead.
+def _expert_board_score(board: List[int], head_black: int, bar: List[int],
+                        off: List[int], player: int, variant: str) -> int:
+    opp = opponent(player)
+    score = 0
+    # Racing lead: pip-count advantage.  Bearing off checkers are worth a lot.
+    my_pips = _pip_count(board, head_black, bar, off, player, variant)
+    opp_pips = _pip_count(board, head_black, bar, off, opp, variant)
+    score += (opp_pips - my_pips) * 2  # fewer pips left => higher score
+    score += off[player] * 50 - off[opp] * 50
+    bar_idx = 0 if player == WHITE else 1
+    opp_bar_idx = 1 if player == WHITE else 0
+    score -= bar[bar_idx] * 60          # own checkers on the bar are bad
+    score += bar[opp_bar_idx] * 40      # opponent on the bar is good
+
+    for i in range(POINTS):
+        if not _own_at(board, head_black, i, player, variant):
+            continue
+        n = _count_at(board, head_black, i, player, variant)
+        # Anchors in the opponent's home board (points 18..23 for white,
+        # 0..5 for black) are valuable defensively.
+        if variant != 'long' or i != HEAD:
+            if (player == WHITE and i >= 18) or (player == BLACK and i <= 5):
+                if n >= 2:
+                    score += 6
+        # Blots (single checker) are exposed and should be penalised, more so
+        # the deeper they sit in the opponent's home board (easy to hit).
+        if n == 1:
+            depth = (24 - i) if player == WHITE else i
+            score -= 4 + depth
+        # Built points (2+) that the opponent cannot land on form primes; a
+        # consecutive run of 2+ made points is worth extra.
+        if n >= 2:
+            score += 3
+    return score
+
+
+def _pip_count(board: List[int], head_black: int, bar: List[int], off: List[int],
+               player: int, variant: str) -> int:
+    pips = 0
+    bar_idx = 0 if player == WHITE else 1
+    pips += bar[bar_idx] * 25
+    if variant == 'long' and player == BLACK:
+        # Black head checkers travel the full board before bearing off.
+        pips += head_black * 25
+    for i in range(POINTS):
+        if not _own_at(board, head_black, i, player, variant):
+            continue
+        n = _count_at(board, head_black, i, player, variant)
+        if variant == 'long' and i == HEAD and player == BLACK:
+            continue
+        if player == WHITE:
+            pips += n * (24 - i)
+        else:
+            pips += n * (i + 1)
+    return pips
+
+
+def _score_sequence(board: List[int], head_black: int, bar: List[int], off: List[int],
+                    player: int, variant: str, dice: List[int]) -> int:
+    """Greedily apply the best per-die move for `player` using evaluate_move
+    and return the resulting board-level expert score.  Used to estimate the
+    opponent's reply in the 2-ply Expert lookahead."""
+    b = board[:]
+    hb = head_black
+    br = bar[:]
+    of = off[:]
+    used = 0
+    while used < len(dice):
+        die_val = dice[used]
+        moves = legal_moves_for_die(b, hb, br, of, player, die_val, variant)
+        if not moves:
+            used += 1
+            continue
+        best = max(moves, key=lambda m: evaluate_move(
+            b, hb, br, of, player, m[0], m[1], variant))
+        hb = apply_move(b, hb, br, of, player, best[0], best[1], variant)
+        used += 1
+    return _expert_board_score(b, hb, br, of, player, variant)
+
+
 class BackgammonGame(BaseGame):
     def __init__(self, code: str, player1_id: int, player2_id: Optional[int] = None,
                  solo: bool = False, difficulty: int = 2, variant: str = 'short'):
@@ -415,6 +498,52 @@ class BackgammonGame(BaseGame):
         self.head_first_roll = False
         self.turn = opponent(self.turn)
 
+    def _choose_medium_move(self, die_val):
+        """Current 1-ply greedy heuristic (difficulty == 2)."""
+        moves = legal_moves_for_die(self.board, self.head_black, self.bar, self.off,
+                                    BLACK, die_val, self.variant)
+        if not moves:
+            return None
+        scored = [(f, t, evaluate_move(self.board, self.head_black, self.bar, self.off,
+                                       BLACK, f, t, self.variant)) for f, t in moves]
+        scored.sort(key=lambda x: x[2], reverse=True)
+        return scored[0][0], scored[0][1]
+
+    def _choose_expert_move(self, die_val):
+        """Difficulty >= 4: 2-ply lookahead.
+
+        For each legal move, apply it, then let the opponent reply greedily
+        with the remaining dice and score the resulting board with the richer
+        expert heuristic (pips, blots, anchors, primes, racing lead).  Pick the
+        move that maximises our board score after the opponent's best reply.
+        This materially deepens the search beyond the 1-ply greedy heuristic.
+        """
+        moves = legal_moves_for_die(self.board, self.head_black, self.bar, self.off,
+                                    BLACK, die_val, self.variant)
+        if not moves:
+            return None
+        remaining = self.dice[self.used_dice + 1:]
+        best = None
+        best_score = None
+        for f, t in moves:
+            b = self.board[:]
+            hb = apply_move(b, self.head_black, self.bar, self.off, BLACK, f, t, self.variant)
+            br = self.bar[:]
+            of = self.off[:]
+            # Opponent (white) replies greedily with the remaining dice.
+            opp_score = _score_sequence(b, hb, br, of, WHITE, self.variant, remaining)
+            # Our resulting board score from our own perspective.
+            my_score = _expert_board_score(b, hb, br, of, BLACK, self.variant)
+            # Maximise our position while penalising giving the opponent a good
+            # resulting board (differences in pip race / hits).
+            combined = my_score - opp_score
+            # Tie-break toward the plain move scorer so sensible hits still lead.
+            combined += 0.01 * evaluate_move(self.board, self.head_black, self.bar,
+                                             self.off, BLACK, f, t, self.variant)
+            if best_score is None or combined > best_score:
+                best_score, best = combined, (f, t)
+        return best
+
     def _bot_play(self):
         if self.phase != 'playing' or self.turn != BLACK:
             return
@@ -424,6 +553,7 @@ class BackgammonGame(BaseGame):
         self.last_roll = list(self.dice)
         self.last_roller = BLACK
         self.last_move = []
+        expert = self.difficulty >= 4
         while self.used_dice < len(self.dice):
             die_val = self.dice[self.used_dice]
             if self.variant == 'long' and HEAD in (m[0] for m in
@@ -432,20 +562,19 @@ class BackgammonGame(BaseGame):
                     and self.head_moves >= self._head_limit():
                 self.used_dice += 1
                 continue
-            moves = legal_moves_for_die(self.board, self.head_black, self.bar, self.off,
-                                        BLACK, die_val, self.variant)
-            if not moves:
+            if expert:
+                mv = self._choose_expert_move(die_val)
+            else:
+                mv = self._choose_medium_move(die_val)
+            if mv is None:
                 self.used_dice += 1
                 continue
-            scored = [(f, t, evaluate_move(self.board, self.head_black, self.bar, self.off,
-                                          BLACK, f, t, self.variant)) for f, t in moves]
-            scored.sort(key=lambda x: x[2], reverse=True)
-            best = scored[0]
+            f, t = mv
             self.head_black = apply_move(self.board, self.head_black, self.bar, self.off,
-                                         BLACK, best[0], best[1], self.variant)
-            if self.variant == 'long' and best[0] == HEAD:
+                                         BLACK, f, t, self.variant)
+            if self.variant == 'long' and f == HEAD:
                 self.head_moves += 1
-            self.last_move.append((best[0], best[1]))
+            self.last_move.append((f, t))
             self.used_dice += 1
 
     def pass_turn(self, uid: int) -> Optional[Dict]:

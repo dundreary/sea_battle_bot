@@ -90,11 +90,15 @@ function showPokerDice(){
 
 async function pdStartSolo(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='poker_dice';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/pd_new_solo',{uid:getUid(), difficulty: getDifficulty()});
+  if(res===null){ showRetry(t('error'), ()=>pdStartSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   pdCode=res.code;
   _lastPDSig=null;
   localStorage.setItem('pd_game',pdCode);
+  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   pdKept = new Set();
   pdOppRollSpun = '';
   pdShowGame(res.state);
@@ -102,6 +106,8 @@ async function pdStartSolo(){
 
 async function pdNewMulti(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='poker_dice';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/pd_new_multi',{uid:getUid()});
   if(res===null){ showRetry(t('error'), () => pdNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -515,11 +521,11 @@ function pdRenderActions(st){
       <button class="btn outline" onclick="sendOpponentMessage('poker_dice',pdCode,pdState)">${t('message')}</button>
       <button class="btn outline" onclick="leavePdGame()">${t('minimize')}</button>
     </div>`;
-    html += `<button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>`;
+    html += `<button class="btn outline" onclick="pdSurrender()">${t('surrender')}</button>`;
   }else{
     html += `<div class="btn-row" style="margin-top:8px">
-      <button class="btn danger" onclick="pdSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leavePdGame()" title="Игра сохранится">${t('minimize')}</button>
+      <button class="btn outline" onclick="pdSurrender()">${t('quit')}</button>
+      <button class="btn outline" onclick="leavePdGame()" title="${t('gameSaved')}">${t('minimize')}</button>
     </div>`;
   }
 

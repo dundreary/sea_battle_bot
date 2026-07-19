@@ -53,17 +53,23 @@ function bgSetVariant(v){
 
 async function bgStartSolo(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='backgammon';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/bg_new_solo',{uid:getUid(), difficulty: getDifficulty(), variant: bgVariant});
+  if(res===null){ showRetry(t('error'), ()=>bgStartSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   _lastBGSig=null;
   localStorage.setItem('bg_game',bgCode);
+  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   $('actions').innerHTML='';
   bgShowGame(res.state);
 }
 
 async function bgNewMulti(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='backgammon';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/bg_new_multi',{uid:getUid(), variant: bgVariant});
   if(res===null){ showRetry(t('error'), () => bgNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -146,7 +152,7 @@ async function bgShowGame(st, keepSelection=false){
     // Opening toss now renders in the modal popup; surrender stays reachable
     // outside it. The popup re-renders idempotently on each poll.
     showFirstRollPopup(st, 'bgRollFirst', 'bgRerollFirst', { solo: st.solo, code: bgCode, proceedFn: () => bgRefreshState() });
-    el.innerHTML = `<button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
+    el.innerHTML = `<button class="btn outline" onclick="bgSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
     return;
   }
 
@@ -226,7 +232,7 @@ function bgRenderBoard(st){
       const ch=document.createElement('div');
       ch.className='bg-checker '+BG_CHECKER_COLORS[color];
       ch.setAttribute('role','img');
-      ch.setAttribute('aria-label', color===1?'шашка белых':'шашка чёрных');
+      ch.setAttribute('aria-label', color===1?t('bgWhiteChecker'):t('bgBlackChecker'));
       if(bgSelected===idx){ ch.classList.add('bg-selected'); }
       if(aiCells.has(idx)){ ch.classList.add('ai-move'); }
       if(myTurn && bgSelected===null && moveMap[idx]){
@@ -287,7 +293,7 @@ function bgRenderBoard(st){
         sel.onclick=(e)=>{e.stopPropagation();bgSelectSource(idx);};
         sel.setAttribute('role','button');
         sel.tabIndex=0;
-        sel.setAttribute('aria-label','Пункт '+(idx+1)+', выбрать');
+        sel.setAttribute('aria-label', t('bgPointSelect', idx+1));
         sel.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgSelectSource(idx);}};
         pt.appendChild(sel);
       }
@@ -300,7 +306,7 @@ function bgRenderBoard(st){
         hitArea.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,idx);};
         hitArea.setAttribute('role','button');
         hitArea.tabIndex=0;
-        hitArea.setAttribute('aria-label','Пункт '+(idx+1)+', ход сюда');
+        hitArea.setAttribute('aria-label', t('bgPointMove', idx+1));
         hitArea.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgDoMove(bgSelected,idx);}};
         pt.appendChild(hitArea);
       }
@@ -329,7 +335,7 @@ function bgRenderBoard(st){
         ch.onclick=()=>bgSelectSource(-1);
         ch.setAttribute('role','button');
         ch.tabIndex=0;
-        ch.setAttribute('aria-label','Бар, выбрать шашку');
+        ch.setAttribute('aria-label', t('bgBarSelect'));
         ch.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgSelectSource(-1);}};
       }
       barCol.appendChild(ch);
@@ -359,7 +365,7 @@ function bgRenderBoard(st){
     offCol.onclick=(e)=>{e.stopPropagation();bgDoMove(bgSelected,-1);};
     offCol.setAttribute('role','button');
     offCol.tabIndex=0;
-    offCol.setAttribute('aria-label','Вывод (off), снять шашку');
+    offCol.setAttribute('aria-label', t('bgBearOff'));
     offCol.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();bgDoMove(bgSelected,-1);}};
   }
 
@@ -441,11 +447,11 @@ function bgRenderActions(st){
       <button class="btn outline" onclick="sendOpponentMessage('backgammon',bgCode,bgState)">${t('message')}</button>
       <button class="btn outline" onclick="leaveBgGame()">${t('minimize')}</button>
     </div>
-    <button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>`;
+    <button class="btn outline" onclick="bgSurrender()">${t('surrender')}</button>`;
   }else if(st.phase==='playing'){
     html+=`<div class="btn-row" style="margin-top:8px">
-      <button class="btn danger" onclick="bgSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveBgGame()" title="Игра сохранится">${t('minimize')}</button>
+      <button class="btn outline" onclick="bgSurrender()">${t('quit')}</button>
+      <button class="btn outline" onclick="leaveBgGame()" title="${t('gameSaved')}">${t('minimize')}</button>
     </div>`;
   }
   el.insertAdjacentHTML('beforeend', html);

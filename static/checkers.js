@@ -42,16 +42,22 @@ function showCheckers(){
 
 async function ckStartSolo(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='checkers';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/checkers_new_solo',{uid:getUid(), difficulty: getDifficulty()});
+  if(res===null){ showRetry(t('error'), ()=>ckStartSolo()); return; }
   if(!res||!res.ok){setStatus(t('error'));return}
   ckCode=res.code;
   _lastCKSig=null;
   localStorage.setItem('ck_game',ckCode);
+  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   ckShowGame(res.state);
 }
 
 async function ckNewMulti(){
   currentGameType=null; setHelpVisible(false);
+  currentScreen='checkers';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const res=await api('/api/checkers_new_multi',{uid:getUid()});
   if(res===null){ showRetry(t('error'), () => ckNewMulti()); return; }
   if(!res.ok){setStatus(t('error'));return}
@@ -152,7 +158,7 @@ async function ckShowGame(st){
     // Opening toss now renders in the modal popup; surrender stays reachable
     // outside it. The popup re-renders idempotently on each poll.
     showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => ckRefreshState() });
-    el.innerHTML = `<button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+    el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
     return;
   }
   // Once the phase advances past the roll, drop any lingering popup and let
@@ -184,11 +190,11 @@ async function ckShowGame(st){
       <button class="btn outline" onclick="sendOpponentMessage('checkers',ckCode,ckState)">${t('message')}</button>
       <button class="btn outline" onclick="leaveCkGame()">${t('minimize')}</button>
     </div>
-    <button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>`;
+    <button class="btn outline" onclick="ckSurrender()">${t('surrender')}</button>`;
   }else{
     html+=`<div class="btn-row" style="margin-top:8px">
-      <button class="btn danger" onclick="ckSurrender()">${t('surrender')}</button>
-      <button class="btn outline" onclick="leaveCkGame()" title="Игра сохранится">${t('minimize')}</button>
+      <button class="btn outline" onclick="ckSurrender()">${t('quit')}</button>
+      <button class="btn outline" onclick="leaveCkGame()" title="${t('gameSaved')}">${t('minimize')}</button>
     </div>`;
   }
   el.innerHTML=html;
@@ -200,7 +206,16 @@ async function ckShowGame(st){
 }
 
 function ariaCellLabel(r,c,piece,isSrc){
-  return 'Клетка '+String.fromCharCode(65+c)+(8-r)+(piece?', шашка':'')+(isSrc?' (выбрать)':' (ход сюда)');
+  let label = t('ariaCell', String.fromCharCode(65+c), (8-r));
+  if(piece){
+    label += ', ' + (piece===1||piece===3 ? t('ckWhitePiece') : t('ckBlackPiece')) + (piece===3||piece===4 ? ' '+t('ckKing') : '');
+  }
+  if(isSrc){
+    label += ', '+t('ckSelect');
+  }else{
+    label += ', '+t('ckMoveHere');
+  }
+  return label;
 }
 
 function ckRenderBoard(st){
@@ -235,7 +250,7 @@ function ckRenderBoard(st){
         el.className='ck-piece '+color+(isKing?' king':'');
         if(lastCells.has(canIdx))el.classList.add('last-move');
         el.setAttribute('role','img');
-        el.setAttribute('aria-label', piece===1||piece===3 ? 'белая шашка'+(isKing?' король':'') : 'чёрная шашка'+(isKing?' король':''));
+        el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?' '+t('ckKing'):'') : t('ckBlackPiece')+(isKing?' '+t('ckKing'):''));
         cell.appendChild(el);
       }
       if(isDark&&st.my_turn&&highlighted.has(visIdx)){

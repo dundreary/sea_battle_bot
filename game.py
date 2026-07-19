@@ -744,19 +744,21 @@ class BotAI:
                     best = density[r][c]
         if best <= 0.0:
             return None
-        # Among equally-likely cells, break ties smartly instead of always
-        # taking the top-left one: prefer central cells (they touch more
-        # placements on later shots) and then a fixed checkerboard parity.
+        # Collect every cell that ties for the top score, then pick one at
+        # random.  The previous fixed tie-break (central cell + parity) made
+        # the bot shoot identically on every identical board ("always shoots
+        # the same way"); randomizing among the equally-best cells injects the
+        # entropy needed so repeated identical boards yield varied shots.
         eps = 1e-9
-        center = (SIZE - 1) / 2.0
-        best_cell, best_key = None, None
-        for r in range(SIZE):
-            for c in range(SIZE):
-                if density[r][c] >= best - eps:
-                    key = (abs(r - center) + abs(c - center), (r + c) % 2)
-                    if best_key is None or key < best_key:
-                        best_key, best_cell = key, (r, c)
-        return best_cell
+        best_cells = [
+            (r, c)
+            for r in range(SIZE)
+            for c in range(SIZE)
+            if density[r][c] >= best - eps
+        ]
+        if not best_cells:
+            return None
+        return random.choice(best_cells)
 
     def _smart_shot(self, enemy_board, strip):
         active_hits = {

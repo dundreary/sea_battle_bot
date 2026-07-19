@@ -161,6 +161,25 @@ const LANG = {
     bgVariantLong: 'Длинные',
     playerName: 'Ваше имя',
     playerNamePlaceholder: 'Введите имя',
+    ariaCell: 'Клетка {{0}}{{1}}',
+    ckWhitePiece: 'белая шашка',
+    ckBlackPiece: 'чёрная шашка',
+    ckWhiteKing: 'белая шашка король',
+    ckBlackKing: 'чёрная шашка король',
+    ckKing: 'король',
+    ckSelect: 'выбрать',
+    ckMoveHere: 'ход сюда',
+    bgWhiteChecker: 'шашка белых',
+    bgBlackChecker: 'шашка чёрных',
+    bgPointSelect: 'Пункт {{0}}, выбрать',
+    bgPointMove: 'Пункт {{0}}, ход сюда',
+    bgBarSelect: 'Бар, выбрать шашку',
+    bgBearOff: 'Вывод (off), снять шашку',
+    gameSaved: 'Игра сохранится',
+    rulesSeaBattle: 'Расставь флот, стреляй по полю противника (A1–J10). Потопи все корабли первым. В соло бот ходит после тебя.',
+    rulesPokerDice: '3 броска. Отмечай кости ✅, чтобы оставить. Заполни табло категориями (Пары, Стриты, Покер и т.д.), набери больше очков.',
+    rulesCheckers: 'Ходи по диагонали, бей прыжком. Дойди до края — станешь дамкой (♛). Сними все шашки противника.',
+    rulesBackgammon: 'Бросай кости и веди шашки от своего края к своему дому, затем снимай (bear-off). Первым сними все — победа.',
   },
   uk: {
     title: 'Морський бій',
@@ -324,6 +343,25 @@ const LANG = {
     bgVariantLong: 'Довгі',
     playerName: 'Ваше ім\'я',
     playerNamePlaceholder: 'Введіть ім\'я',
+    ariaCell: 'Клітинка {{0}}{{1}}',
+    ckWhitePiece: 'біла шашка',
+    ckBlackPiece: 'чорна шашка',
+    ckWhiteKing: 'біла шашка король',
+    ckBlackKing: 'чорна шашка король',
+    ckKing: 'король',
+    ckSelect: 'вибрати',
+    ckMoveHere: 'хід сюда',
+    bgWhiteChecker: 'шашка білих',
+    bgBlackChecker: 'шашка чорних',
+    bgPointSelect: 'Пункт {{0}}, вибрати',
+    bgPointMove: 'Пункт {{0}}, хід сюда',
+    bgBarSelect: 'Бар, вибрати шашку',
+    bgBearOff: 'Вивід (off), зняти шашку',
+    gameSaved: 'Гра збережеться',
+    rulesSeaBattle: 'Розстав флот, стріляй по полю супротивника (A1–J10). Потопи всі кораблі першим. У соло бот ходить після тебе.',
+    rulesPokerDice: '3 кидки. Позначай кістки ✅, щоб залишити. Заповни табло категоріями (Пари, Стріті, Покер тощо), набери більше очок.',
+    rulesCheckers: 'Ходи по діагоналі, бий стрибком. Дійди до края — станеш дамкою (♛). Зніми всі шашки супротивника.',
+    rulesBackgammon: 'Кидай кістки і веди шашки від свого краю до свого дому, потім знімай (bear-off). Першим зніми всі — перемога.',
   },
   en: {
     title: 'Sea Battle',
@@ -487,6 +525,25 @@ const LANG = {
     bgVariantLong: 'Long',
     playerName: 'Your name',
     playerNamePlaceholder: 'Enter your name',
+    ariaCell: 'Cell {{0}}{{1}}',
+    ckWhitePiece: 'white piece',
+    ckBlackPiece: 'black piece',
+    ckWhiteKing: 'white king',
+    ckBlackKing: 'black king',
+    ckKing: 'king',
+    ckSelect: 'select',
+    ckMoveHere: 'move here',
+    bgWhiteChecker: 'white checker',
+    bgBlackChecker: 'black checker',
+    bgPointSelect: 'Point {{0}}, select',
+    bgPointMove: 'Point {{0}}, move here',
+    bgBarSelect: 'Bar, select checker',
+    bgBearOff: 'Bear off, remove checker',
+    gameSaved: 'Game will be saved',
+    rulesSeaBattle: 'Deploy your fleet, shoot at the enemy grid (A1–J10). Sink all ships first. In solo the bot moves after you.',
+    rulesPokerDice: '3 rolls. Mark dice ✅ to keep them. Fill the scorecard with categories (Pairs, Straights, Poker, etc.) and score more points.',
+    rulesCheckers: 'Move diagonally, capture by jumping. Reach the far row to become a King (♛). Capture all opponent pieces.',
+    rulesBackgammon: 'Roll dice and move checkers from your edge to your home, then bear them off. First to bear off all checkers wins.',
   }
 };
 
@@ -601,6 +658,8 @@ function showSettings(){
   document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   setStripLockVisible(false);
   currentGameType=null; setHelpVisible(false);
+  currentScreen='settings';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const existing=$('settingsOverlay');
   if(existing){existing.remove()}
   const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
@@ -664,7 +723,16 @@ function applyLang(){
   else document.title=t('title')
 }
 
-function initTG(){try{window.Telegram.WebApp.ready();window.Telegram.WebApp.expand()}catch(e){}}
+function initTG(){
+  try{
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if(!tg) return;
+    tg.ready(); tg.expand();
+    if(typeof tg.BackButton !== 'undefined' && tg.BackButton){
+      try{ tg.BackButton.onClick(()=>{ if(typeof window.__sbBack === 'function') window.__sbBack(); }); }catch(e){}
+    }
+  }catch(e){}
+}
 // Browsers (and especially Telegram's WebView) suspend the AudioContext until
 // a user gesture occurs. Resume it once, on the first pointer interaction, so
 // SFX are not silently dropped after a navigation/refresh.
@@ -1240,15 +1308,7 @@ async function ackRoll(){
       if(res.state){ state = res.state; updateUI(); }
       const bs = res.bot_shots;
       if(bs && bs.length){
-        const bn='ABCDEFGHIJ';
-        let botMsg='🤖 ';
-        for(const s of bs){
-          if(s.result==='hit')botMsg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
-          else if(s.result==='sunk')botMsg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
-          else if(s.result==='mine')botMsg+=` 💣${t('mine')}`;
-          else botMsg+=` ${t('botMiss')}`;
-        }
-        setStatus(botMsg,'');
+        sbRenderOppHistory(bs);
       }
       if(state.all_sunk||state.my_all_sunk){
         if(!document.querySelector('.overlay')){
@@ -1352,7 +1412,7 @@ function updateUI(){
        $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-         <button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>
+         <button class="btn outline" onclick="leaveGame(true)">${s.solo ? t('quit') : t('surrender')}</button>
          <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>
        `;
       }else{
@@ -1378,8 +1438,8 @@ function updateUI(){
           <button class="btn success" onclick="autoPlace()">${t('reroll')}</button>
           ${!s.solo && s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
            <button class="${startBtnClass}" onclick="${startOnclick}">${startLabel}</button>
-           ${!s.solo ? `<button class="btn outline danger" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
            ${!s.solo ? `<button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>` : ''}
+           ${!s.solo ? `<button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>` : ''}
         `;
       }
     setThemeSelectorVisibility(false);
@@ -1414,7 +1474,7 @@ function updateUI(){
       // bot opening shot and the _rollAckShown guard).
       showFirstRollPopup(s, 'rollFirst', 'rerollFirst', { solo: s.solo, code: gameCode, proceedFn: () => ackRoll() });
       $('actions').className='btn-col';
-      $('actions').innerHTML = `<button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`;
+      $('actions').innerHTML = `<button class="btn outline" onclick="leaveGame(true)">${s.solo ? t('quit') : t('surrender')}</button>`;
       setThemeSelectorVisibility(false);
       return;
     }
@@ -1430,18 +1490,18 @@ function updateUI(){
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button></div>`
         : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
-      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
+      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }else{
     setStatus(t('oppTurn'),'');
     $('actions').className='btn-col';
     $('actions').innerHTML=`
       ${s.solo
-        ? `<div class="btn-row" style="margin-top:8px"><button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>`
+        ? `<div class="btn-row" style="margin-top:8px"><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button><button class="btn outline" onclick="leaveGame(true)">${t('quit')}</button></div>`
         : `<div class="btn-row"><button class="btn outline" onclick="sendOpponentMessage()">${t('message')}</button><button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button></div>
-      <button class="btn danger" onclick="leaveGame(true)">${t('surrender')}</button>`}
+      <button class="btn outline" onclick="leaveGame(true)">${t('surrender')}</button>`}
     `;
   }
 }
@@ -1454,6 +1514,7 @@ async function startSolo(){
   if(!res||!res.ok){setStatus(t('error'));return}
   gameCode=res.code;
   localStorage.setItem('sb_game',gameCode);
+  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   $('actions').innerHTML='';
   await refreshState();
 }
@@ -1746,6 +1807,8 @@ function showMainMenu(){
   document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   closeFirstRollPopup();
   currentGameType=null; setHelpVisible(false);
+  currentScreen='menu';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.hide(); }catch(e){}
   stripUnlocked=false; _stripTaps=0;
   setStripLockVisible(false);
   delete _rollAckShown[gameCode];
@@ -1754,6 +1817,8 @@ function showMainMenu(){
   gameCode=null;state=null;
   pdCode=null;pdState=null;
   ckCode=null;ckState=null;
+  bgCode=null;bgState=null;
+  const sbOpp=$('sbOppHistory'); if(sbOpp) sbOpp.innerHTML='';
   bgCode=null;bgState=null;
   stopAllPolls();
   // Note: saved game codes (sb_game/pd_game/ck_game) are intentionally
@@ -1810,16 +1875,18 @@ function showMenu(){ showMainMenu(); }
 function showHelp(){
   let game=currentGameType;
   let body;
+  currentScreen='help';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   if(!game){
     body={ru:'Откройте игру, чтобы увидеть правила',uk:'Відкрийте гру, щоб побачити правила',en:'Open a game to see the rules'}[lang];
   } else if(game==='sea_battle'){
-    body='Расставь флот, стреляй по полю противника (A1–J10). Потопи все корабли первым. В соло бот ходит после тебя.';
+    body=t('rulesSeaBattle');
   } else if(game==='poker_dice'){
-    body='3 броска. Отмечай кости ✅, чтобы оставить. Заполни табло категориями (Пары, Стриты, Покер и т.д.), набери больше очков.';
+    body=t('rulesPokerDice');
   } else if(game==='checkers'){
-    body='Ходи по диагонали, бей прыжком. Дойди до края — станешь дамкой (♛). Сними все шашки противника.';
+    body=t('rulesCheckers');
   } else {
-    body='Бросай кости и веди шашки от своего края к своему дому, затем снимай (bear-off). Первым сними все — победа.';
+    body=t('rulesBackgammon');
   }
   const o=document.createElement('div'); o.className='overlay';
   o.innerHTML=`<div class="modal"><h2>❓ ${t('rules')}</h2><p style="white-space:pre-line">${body}</p>
@@ -1846,6 +1913,8 @@ const STATS_RESULT_LABEL = {win:'statsResWin', loss:'statsResLoss', draw:'statsR
 async function showStats(){
   document.querySelectorAll('.overlay').forEach(o=>o.remove());  // clear stray modal if a nav happens while one is open
   currentGameType=null; setHelpVisible(false);
+  currentScreen='stats';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(false);
   hideAllGameAreas();
@@ -1935,6 +2004,8 @@ function savePlayerName(v){
 
 function showSeaBattleMenu(){
   currentGameType='sea_battle'; setHelpVisible(true);
+  currentScreen='sea_battle';
+  try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
   const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`;
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(true);
@@ -1992,6 +2063,14 @@ function setStripLockVisible(v){
 // game is actually started or on any non-selection screen). Drives the ❓
 // help button so it only shows on the four selection screens.
 let currentGameType = null;
+let currentScreen = 'menu';
+window.__sbBack = function(){
+  if(currentScreen==='menu'){
+    try{ if(typeof window.Telegram!=='undefined' && window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.hide(); }catch(e){}
+    return;
+  }
+  showMainMenu();
+};
 function setHelpVisible(v){
   const b=document.getElementById('helpBtn');
   if(b) b.style.display = v ? '' : 'none';
@@ -2023,6 +2102,22 @@ async function confirmPlace(){
   await refreshState();
 }
 
+function sbRenderOppHistory(bs){
+  const el=$('sbOppHistory');
+  if(!el)return;
+  const bn='ABCDEFGHIJ';
+  let html='';
+  for(const s of bs){
+    let txt='';
+    if(s.result==='hit')txt=`${t('botHit')} ${bn[s.c]}${s.r+1}`;
+    else if(s.result==='sunk')txt=`${t('botSunk')} ${bn[s.c]}${s.r+1}`;
+    else if(s.result==='mine')txt=`💣${t('mine')}`;
+    else txt=t('botMiss');
+    html+=`<div class="pd-opp-history-row">🤖 ${txt}</div>`;
+  }
+  el.innerHTML=html;
+}
+
 async function handleShot(r,c){
   if(!state||!state.my_turn)return;
   if(_sbShooting) return;  // block a second shot while one is in flight
@@ -2046,17 +2141,8 @@ async function handleShot(r,c){
     else {msg=t('miss');sfxMiss()}
 
     const bs=res.result.bot_shots;
-    let botMsg='';
     if(bs&&bs.length){
-      const bn='ABCDEFGHIJ';
-      botMsg='🤖 ';
-      for(const s of bs){
-        if(s.result==='hit')botMsg+=` ${t('botHit')} ${bn[s.c]}${s.r+1}`;
-        else if(s.result==='sunk')botMsg+=` ${t('botSunk')} ${bn[s.c]}${s.r+1}`;
-        else if(s.result==='mine')botMsg+=` 💣${t('mine')}`;
-        else botMsg+=` ${t('botMiss')}`;
-      }
-      msg+=' '+botMsg;
+      sbRenderOppHistory(bs);
     }
     // Render the final board from the shot response immediately. This avoids a
     // race with polling and makes the win/loss result appear without delay.
