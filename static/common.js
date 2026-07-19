@@ -4,7 +4,7 @@ const LANG = {
     rules: 'Правила',
     ok: 'OK',
     cancel: 'Отмена',
-    startBtn: '🎮 Начать игру',
+    startBtn: 'Начать игру',
     ownBoard: '🚢 ТВОИ КОРАБЛИ',
     oppBoard: '🎯 ДОСКА СОПЕРНИКА',
     legEmpty: 'пусто', legShip: 'корабль', legHit: 'попал', legMiss: 'мимо', legSunk: 'потоплен',
@@ -34,7 +34,7 @@ const LANG = {
     messageSent: 'Сообщение отправлено ✅',
     messageError: 'Не удалось отправить сообщение',
     surrender: 'Сдаться',
-    quit: '🚪 Выйти',
+    quit: 'Выйти',
     quitConfirm: 'Выйти из игры?',
     hit: '🔥 Попадание!',
     sunk: '💀 Корабль потоплен!',
@@ -48,7 +48,7 @@ const LANG = {
     loseDesc: 'Все твои корабли потоплены...',
     draw: '🤝 НИЧЬЯ',
     playAgain: '🔄 Играть ещё',
-    close: '🚪 Закрыть',
+    close: 'Закрыть',
     withBot: '· с ботом',
     withFriend: '· с другом',
     vsBot: 'С ботом',
@@ -140,7 +140,7 @@ const LANG = {
     pdThrow: 'Бросок',
     pdKept: 'оставил',
     pdDiscarded: 'сбросил',
-    continue: '▶ Продолжить',
+    continue: 'Продолжить',
     minimize: 'Свернуть',
     activeGames: '▶ Активные игры',
     statsMenu: '📊 Статистика',
@@ -186,7 +186,7 @@ const LANG = {
     rules: 'Правила',
     ok: 'OK',
     cancel: 'Скасувати',
-    startBtn: '🎮 Почати гру',
+    startBtn: 'Почати гру',
     ownBoard: '🚢 ТВОЇ КОРАБЛІ',
     oppBoard: '🎯 ДОШКА СУПЕРНИКА',
     legEmpty: 'порожньо', legShip: 'корабель', legHit: 'влучив', legMiss: 'повз', legSunk: 'потоплено',
@@ -216,7 +216,7 @@ const LANG = {
     messageSent: 'Повідомлення надіслано ✅',
     messageError: 'Не вдалося надіслати повідомлення',
     surrender: 'Здатися',
-    quit: '🚪 Вийти',
+    quit: 'Вийти',
     quitConfirm: 'Вийти з гри?',
     hit: '🔥 Влучив!',
     sunk: '💀 Корабель потоплено!',
@@ -230,7 +230,7 @@ const LANG = {
     loseDesc: 'Усі твої кораблі потоплені...',
     draw: '🤝 НІЧИЯ',
     playAgain: '🔄 Грати ще',
-    close: '🚪 Закрити',
+    close: 'Закрити',
     withBot: '· з ботом',
     withFriend: '· з другом',
     vsBot: 'З ботом',
@@ -322,7 +322,7 @@ const LANG = {
     pdThrow: 'Кидок',
     pdKept: 'залишив',
     pdDiscarded: 'скинув',
-    continue: '▶ Продовжити',
+    continue: 'Продовжити',
     minimize: 'Згорнути',
     activeGames: '▶ Активні ігри',
     statsMenu: '📊 Статистика',
@@ -368,7 +368,7 @@ const LANG = {
     rules: 'Rules',
     ok: 'OK',
     cancel: 'Cancel',
-    startBtn: '🎮 Start Game',
+    startBtn: 'Start Game',
     ownBoard: '🚢 YOUR SHIPS',
     oppBoard: '🎯 OPPONENT\'S BOARD',
     legEmpty: 'empty', legShip: 'ship', legHit: 'hit', legMiss: 'miss', legSunk: 'sunk',
@@ -398,7 +398,7 @@ const LANG = {
     messageSent: 'Message sent ✅',
     messageError: 'Could not send message',
     surrender: 'Surrender',
-    quit: '🚪 Quit',
+    quit: 'Quit',
     quitConfirm: 'Leave the game?',
     hit: '🔥 Hit!',
     sunk: '💀 Ship sunk!',
@@ -412,7 +412,7 @@ const LANG = {
     loseDesc: 'All your ships are sunk...',
     draw: '🤝 DRAW',
     playAgain: '🔄 Play again',
-    close: '🚪 Close',
+    close: 'Close',
     withBot: '· vs bot',
     withFriend: '· vs friend',
     vsBot: 'vs Bot',
@@ -504,7 +504,7 @@ const LANG = {
     pdThrow: 'Throw',
     pdKept: 'kept',
     pdDiscarded: 'discarded',
-    continue: '▶ Continue',
+    continue: 'Continue',
     minimize: 'Minimize',
     activeGames: '▶ Active games',
     statsMenu: '📊 Stats',
@@ -1012,7 +1012,7 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
     return `<div class="roll-stage">
       <div class="roll-title">${t('rollTitle')}</div>
       ${dieRow}
-      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">🎲 ${t('rollBtn')}</button>
+      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>
     </div>`;
   }
 
@@ -1046,7 +1046,7 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
     return `<div class="roll-stage">
       <div class="roll-title">${t('rollTitle')}</div>
       ${dieRow}
-      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">🎲 ${t('rollBtn')}</button>
+      <button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>
     </div>`;
   }
 
@@ -1276,8 +1276,8 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
 async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rerollBtn');
   if(btn) btn.disabled = true;
-  // On a reroll only the human's die re-rolls; the opponent/bot die must NOT spin.
-  const spinEls = [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
+  // On a reroll BOTH dice (my die and the opponent/bot die) must spin.
+  const spinEls = Array.from(document.querySelectorAll('#firstRollPopupOverlay .roll-die3d'));
   let anim = null;
   if(spinEls.length){
     spinEls.forEach(d => {

@@ -394,7 +394,7 @@ function bgRenderDice(st){
       const rollBtn=document.createElement('button');
       rollBtn.className='btn success';
       rollBtn.style.cssText='width:100%;margin:8px 0';
-      rollBtn.textContent='🎲 '+t('bgRoll');
+      rollBtn.textContent=t('bgRoll');
       rollBtn.onclick=()=>bgDoRoll();
       cont.appendChild(rollBtn);
     }

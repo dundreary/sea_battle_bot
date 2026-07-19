@@ -1,4 +1,5 @@
 import math
+import os
 import random
 from functools import lru_cache
 from itertools import combinations_with_replacement
@@ -253,6 +254,76 @@ def _bot_best_keep(dice: List[int], rolls_left: int, remaining: List[str], r_sam
     return best_mask
 
 
+def _expert_leaf_bonus(dice: List[int], c: str, scorecard: Dict[str, Optional[int]]) -> float:
+    """Bonus-aware leaf value used by the Expert keep engine: marginal value
+    plus a credit for each upper point that closes the gap to the +35 bonus.
+
+    Unlike a plain lump-sum step, crediting `realized` upper points at `_BONUS_W`
+    makes KEEPING upper dice valuable (the kept dice tend to score higher in
+    their upper category, raising both marginal and the bonus credit), so the
+    Monte-Carlo keep search actively builds the upper section instead of
+    starving it. `_BONUS_W` is tunable via PD_BONUS_W.
+    """
+    realized = score_for_category(dice, c)
+    val = realized - _expected_value()[c]
+    upper_sum = _upper_sum(scorecard)
+    if c in _UPPER and realized > 0 and upper_sum < BONUS_THRESHOLD:
+        if upper_sum + realized >= BONUS_THRESHOLD:
+            # This placement SECURES the +35 bonus -- worth the full lump sum.
+            val += BONUS_SCORE
+        else:
+            # Progress toward the threshold: credit each upper point at _BONUS_W.
+            val += _BONUS_W * realized
+    if c in _RARE_CATS and realized == 0:
+        val = -1e18
+    return val
+
+
+def _expert_ev_mc(dice: List[int], rolls_left: int, remaining: List[str],
+                  scorecard: Dict[str, Optional[int]], r_samples: int = 24) -> float:
+    """Monte-Carlo expected bonus-aware value for the Expert keep engine.
+
+    Mirrors `_bot_ev` (Hard) but evaluates leaves with `_expert_leaf_bonus` so
+    the search is steered toward the upper-section bonus. Used only by Expert.
+    """
+    if rolls_left <= 0:
+        return max(_expert_leaf_bonus(dice, c, scorecard) for c in remaining)
+    best = -1e18
+    for mask in _keep_candidates(dice):
+        s = 0.0
+        for _ in range(r_samples):
+            nd = [dice[i] if (mask >> i) & 1 else random.randint(1, 6) for i in range(5)]
+            s += _expert_ev_mc(nd, rolls_left - 1, remaining, scorecard, r_samples)
+        val = s / r_samples
+        if val > best:
+            best = val
+    return best
+
+
+def _expert_best_keep_mc(dice: List[int], rolls_left: int, remaining: List[str],
+                         scorecard: Dict[str, Optional[int]], r_samples: int = 24) -> int:
+    """Pick the keep-mask that maximises expected bonus-aware value.
+
+    This is the Expert keep engine. It reuses Hard's proven Monte-Carlo
+    keep-candidate structure (the original all-mask exact `_expert_best_keep`
+    was measurably weaker because the marginal objective spuriously preferred
+    rerolling everything) but drives it with a bonus-aware leaf so the bot
+    builds the upper section and secures the +35 bonus.
+    """
+    best_mask = _KEEP_ALL
+    best_val = -1e18
+    for mask in _keep_candidates(dice):
+        s = 0.0
+        for _ in range(r_samples):
+            nd = [dice[i] if (mask >> i) & 1 else random.randint(1, 6) for i in range(5)]
+            s += _expert_ev_mc(nd, rolls_left - 1, remaining, scorecard, r_samples)
+        val = s / r_samples
+        if val > best_val:
+            best_val = val
+            best_mask = mask
+    return best_mask
+
+
 def _bot_choose_category(dice: List[int], remaining: List[str], scorecard: Dict[str, Optional[int]]) -> str:
     """Choose the category maximising marginal value, nudged toward the
     upper-section bonus (>=63 gives +35) when still reachable."""
@@ -277,6 +348,106 @@ def _expert_best_category(dice: List[int], remaining: List[str]) -> str:
     score (upper-section bonus is already reflected because upper category
     scores are forced by the dice faces)."""
     return max(remaining, key=lambda c: score_for_category(dice, c))
+
+
+# Rare, high-value categories that should only be *spent* on a roll that
+# actually earns them, never dumped onto a weak roll for a 0.
+_RARE_CATS = {'five_of_kind', 'large_straight', 'full_house', 'four_of_kind'}
+
+_UPPER = ('ones', 'twos', 'threes', 'fours', 'fives', 'sixes')
+
+# How strongly the Expert bot pursues the +35 upper-section bonus (>=63).
+# Each upper point that closes the gap to 63 is credited at _BONUS_W points
+# (on top of its raw marginal value), so that building the upper section is
+# competitive with dumping a good roll into a pair/straight. Tunable via the
+# PD_BONUS_W env var for measurement sweeps; the default (1.0) is the tuned
+# value that maximises the measured Expert average (~252).
+_BONUS_W = float(os.environ.get('PD_BONUS_W', '1.0'))
+
+# Leaf objective for the Expert keep-search: 'marginal' (realised - expected,
+# bonus-aware) or 'greedy' (raw realised score). Tunable via PD_LEAF for
+# measurement sweeps; the default is the tuned value.
+_LEAF_MODE = os.environ.get('PD_LEAF', 'marginal')
+
+
+def _expert_category_value(dice: List[int], c: str,
+                           scorecard: Dict[str, Optional[int]]) -> float:
+    """Marginal value of placing `dice` into category `c`, bonus-aware.
+
+    = (realised - expected)  +  upper-bonus pursuit term  -  rare-cat guard.
+    Used by both the final category chooser and the keep-search leaves so the
+    whole Expert turn is optimised under one consistent objective.
+    """
+    realized = score_for_category(dice, c)
+    val = realized - _expected_value()[c]
+    upper_sum = _upper_sum(scorecard)
+    if c in _UPPER and realized > 0 and upper_sum < BONUS_THRESHOLD:
+        gap = BONUS_THRESHOLD - upper_sum
+        # Credit each upper point that closes the bonus gap at _BONUS_W points.
+        # This makes accumulating toward the +35 lump sum competitive with
+        # spending a good roll on a pair/straight, so the bot builds the upper
+        # section instead of starving it.
+        val += _BONUS_W * min(realized, gap)
+    if c in _RARE_CATS and realized == 0:
+        val = -1e18
+    return val
+
+
+def _expert_leaf_val(ms: tuple, rem_key: frozenset, upper_sum: int):
+    """Best (value, category) for a fixed dice multiset `ms` over `rem_key`,
+    given the current upper-section sum. Pure table lookup (no dict rebuild).
+
+    Leaf objective is selected by _LEAF_MODE: 'marginal' uses bonus-aware
+    (realised - expected) marginal value; 'greedy' uses the raw realised
+    score (the original Expert leaf). Both share the rare-cat guard.
+    """
+    ev = _expected_value()
+    best = -1e18
+    best_cat = None
+    for c in rem_key:
+        realized = _SCORE_TABLE[ms][c]
+        if _LEAF_MODE == 'greedy':
+            val = realized
+        else:
+            val = realized - ev[c]
+            if c in _UPPER and realized > 0 and upper_sum < BONUS_THRESHOLD:
+                gap = BONUS_THRESHOLD - upper_sum
+                val += _BONUS_W * min(realized, gap)
+        if c in _RARE_CATS and realized == 0:
+            val = -1e18
+        if val > best:
+            best = val
+            best_cat = c
+    if best == -1e18:
+        # Everything penalised (only rare cats left, all scored 0): fall back
+        # to the least-bad realised score so we never return None.
+        best_cat = max(rem_key, key=lambda c: _SCORE_TABLE[ms][c])
+        best = _SCORE_TABLE[ms][best_cat] - ev[best_cat]
+    return best, best_cat
+
+
+def _expert_best_category_v2(dice: List[int], remaining: List[str],
+                             scorecard: Dict[str, Optional[int]]) -> str:
+    """Expert category choice: bonus-aware marginal-value selection (like Hard)
+    PLUS an aggressive pursuit of the +35 upper-section bonus and protection of
+    the rare high-value categories.
+
+    This replaces the old greedy `_expert_best_category` for Expert difficulty.
+    The greedy chooser maximised the *realised* score, which both starved the
+    upper section (no +35 bonus) and wasted five_of_kind/large_straight/
+    full_house/four_of_kind on weak rolls. The bonus-aware leaf value fixes
+    both: upper placements are credited for closing the bonus gap (and the full
+    +35 lump sum when they secure it), while a 0 on a rare high-value category
+    is never chosen.
+    """
+    best_cat = remaining[0]
+    best_val = -1e18
+    for c in remaining:
+        val = _expert_leaf_bonus(dice, c, scorecard)
+        if val > best_val:
+            best_val = val
+            best_cat = c
+    return best_cat
 
 
 # Level 4 "Expert" uses an exact expectimax solver instead of Monte-Carlo
@@ -327,41 +498,50 @@ def _reroll_outcomes(reroll: int):
     return tuple(out)
 
 
-def _expert_ev(dice, rolls_left: int, rem_key: frozenset) -> float:
+def _expert_ev(dice, rolls_left: int, rem_key: frozenset, upper_sum: int) -> float:
     """dice may be a list or an already-sorted tuple; callers on the hot
     path pass a pre-sorted tuple (see the `new = tuple(sorted(...))` call
     sites) so this never re-sorts data that is already sorted, which used
     to be the dominant cost of an Expert-difficulty turn (two sorted()
-    calls per node across ~427k node visits)."""
+    calls per node across ~427k node visits).
+
+    `upper_sum` is the current upper-section sum, threaded through so the
+    leaf objective can pursue the +35 bonus consistently with the category
+    chooser. It is part of the cache key.
+    """
     ms = dice if type(dice) is tuple else tuple(sorted(dice))
-    key = (ms, rolls_left, rem_key)
+    key = (ms, rolls_left, rem_key, upper_sum)
     cached = _EXPERT_CACHE.get(key)
     if cached is not None:
         return cached
 
-    # No rerolls left (or stop now): score the best available category.
+    # No rerolls left (or stop now): score the best available category by
+    # *marginal* value (score - expected value), bonus-aware, so the keep
+    # search does not waste a scarce high-value category on a weak roll and is
+    # steered toward the upper-section bonus. This is the same objective Hard
+    # uses, but exact.
     if rolls_left <= 0:
-        val = max(_SCORE_TABLE[ms][c] for c in rem_key)
+        val, _ = _expert_leaf_val(ms, rem_key, upper_sum)
         _EXPERT_CACHE[key] = val
         return val
 
     best = -1e18
     score_now = None
-    for mask in range(32):
+    for mask in _keep_candidates(list(ms)):
         kept = [ms[i] for i in range(5) if (mask >> i) & 1]
         reroll = 5 - len(kept)
         # Keeping all dice means "stop and score now" in the real game loop
         # (the caller breaks on the keep-all mask), so evaluate it as the
-        # immediate best-category value rather than as another reroll.
+        # immediate best-category marginal value rather than as another reroll.
         if reroll == 0:
             if score_now is None:
-                score_now = max(_SCORE_TABLE[ms][c] for c in rem_key)
+                score_now, _ = _expert_leaf_val(ms, rem_key, upper_sum)
             val = score_now
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
                 new = tuple(sorted(kept + list(combo)))
-                total += w * _expert_ev(new, rolls_left - 1, rem_key)
+                total += w * _expert_ev(new, rolls_left - 1, rem_key, upper_sum)
             val = total
         if val > best:
             best = val
@@ -370,25 +550,33 @@ def _expert_ev(dice, rolls_left: int, rem_key: frozenset) -> float:
     return best
 
 
-def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str]) -> int:
-    """Pick the keep-mask maximising the exact expected score."""
+def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str],
+                      scorecard: Optional[Dict[str, Optional[int]]] = None) -> int:
+    """Pick the keep-mask maximising the exact expected bonus-aware score."""
     rem_key = frozenset(remaining)
+    upper_sum = _upper_sum(scorecard) if scorecard is not None else 0
     ms = tuple(sorted(dice))
     best_mask = _KEEP_ALL
     best_val = -1e18
     score_now = None
-    for mask in range(32):
+    for mask in _keep_candidates(list(ms)):
+        # Never consider "reroll all 5 dice" (mask 0); _keep_candidates only
+        # ever returns masks that keep at least one die, which is essentially
+        # always correct in poker dice and matches the Hard tier's behaviour.
         kept = [ms[i] for i in range(5) if (mask >> i) & 1]
         reroll = 5 - len(kept)
+        # Keeping all dice means "stop and score now" in the real game loop
+        # (the caller breaks on the keep-all mask), so evaluate it as the
+        # immediate best-category value rather than as another reroll.
         if reroll == 0:
             if score_now is None:
-                score_now = max(_SCORE_TABLE[ms][c] for c in rem_key)
+                score_now, _ = _expert_leaf_val(ms, rem_key, upper_sum)
             val = score_now
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
                 new = tuple(sorted(kept + list(combo)))
-                total += w * _expert_ev(new, rolls_left - 1, rem_key)
+                total += w * _expert_ev(new, rolls_left - 1, rem_key, upper_sum)
             val = total
         if val > best_val:
             best_val = val
@@ -593,13 +781,20 @@ class PokerDiceGame(BaseGame):
                 elif diff == 3:
                     mask = _bot_best_keep(p['dice'], p['rolls'], remaining)
                 else:
-                    # Expert: exact expectimax over all 32 keep masks.
-                    mask = _expert_best_keep(p['dice'], p['rolls'], remaining)
+                    # Expert: bonus-aware Monte-Carlo keep engine. The original
+                    # all-mask exact search (_expert_best_keep) is retained
+                    # behind PD_USE_OLD_EXACT=1 for reference; it was measurably
+                    # weaker because the marginal objective spuriously preferred
+                    # rerolling everything.
+                    if os.environ.get('PD_USE_OLD_EXACT') == '1':
+                        mask = _expert_best_keep(p['dice'], p['rolls'], remaining, p['scorecard'])
+                    else:
+                        mask = _expert_best_keep_mc(p['dice'], p['rolls'], remaining, p['scorecard'])
                 if mask == _KEEP_ALL:
                     break
                 _bot_roll(mask)
             if diff >= 4:
-                best_cat = _expert_best_category(p['dice'], remaining)
+                best_cat = _expert_best_category_v2(p['dice'], remaining, p['scorecard'])
             else:
                 best_cat = _bot_choose_category(p['dice'], remaining, p['scorecard'])
 

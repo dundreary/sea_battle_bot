@@ -509,7 +509,7 @@ function pdRenderActions(st){
   const waitingForOpponent = !st.solo && !st.opponent_joined;
   const rollDisabled = !canRoll || waitingForOpponent;
   const rollCount = st.my_turn ? ` (${st.rolls_left})` : '';
-  html += `<button class="btn success" onclick="pdDoRoll()" ${rollDisabled?'disabled style="opacity:0.5"':''}>🎲 ${t('pdRoll')}${rollCount}</button>`;
+  html += `<button class="btn success" onclick="pdDoRoll()" ${rollDisabled?'disabled style="opacity:0.5"':''}>${t('pdRoll')}${rollCount}</button>`;
 
   // Show invite button only if opponent hasn't joined yet
   if(st.my_turn && !st.scored && !st.solo && !st.opponent_joined){
