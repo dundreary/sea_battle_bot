@@ -1203,11 +1203,10 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
-  // Acknowledge the opening roll BEFORE refreshing, so the game's showGame
-  // (called inside refreshFn) sees the flag and renders the board immediately
-  // instead of re-showing the popup and waiting on the auto-proceed timer.
-  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
+  // First refresh so the popup shows the winner ("Вы ходите первым" / "Соперник
+  // ходит первым"). Then acknowledge the roll so polling does not re-show popup.
   await refreshFn();
+  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
@@ -1236,9 +1235,9 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const MIN = 600;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
-  // Acknowledge the opening roll BEFORE refreshing (see doFirstRoll above).
-  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
+  // First refresh so the popup shows the winner, then acknowledge.
   await refreshFn();
+  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
