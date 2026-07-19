@@ -91,6 +91,7 @@ async function bgRefreshState(){
   _bgRefreshing=true;
   try{
   const res=await api('/api/bg_state',{uid:getUid(),code:bgCode});
+  notePollResult('backgammon', res!==null);
   if(!res||!res.ok){
     localStorage.removeItem('bg_game');
     bgCode=null;
@@ -496,12 +497,17 @@ async function bgDoMove(from,to){
 async function bgRunBotTurn(){
   if(!bgCode) return;
   const myCode = bgCode;
-  await _aiDelay(250);
-  const res = await api('/api/bg_bot_turn', {uid:getUid(), code:bgCode});
-  if(!res || !res.ok) return;
-  if(!bgCode) return;
-  if(bgCode !== myCode) return;
-  bgShowGame(res.state);
+  try {
+    showAiThinking();
+    await _aiDelay(250);
+    const res = await api('/api/bg_bot_turn', {uid:getUid(), code:bgCode});
+    if(!res || !res.ok) return;
+    if(!bgCode) return;
+    if(bgCode !== myCode) return;
+    bgShowGame(res.state);
+  } finally {
+    hideAiThinking();
+  }
 }
 
 async function bgPassTurn(){

@@ -133,6 +133,7 @@ async function pdRefreshState(){
   _pdRefreshing=true;
   try{
     const res=await api('/api/pd_state',{uid:getUid(),code:pdCode});
+    notePollResult('poker_dice', res!==null);
     if(!res||!res.ok){
       localStorage.removeItem('pd_game');
       pdCode=null;

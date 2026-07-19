@@ -79,6 +79,7 @@ async function ckRefreshState(){
   _ckRefreshing=true;
   try{
     const res=await api('/api/checkers_state',{uid:getUid(),code:ckCode});
+    notePollResult('checkers', res!==null);
     if(!res||!res.ok){
       localStorage.removeItem('ck_game');
       ckCode=null;
@@ -309,14 +310,19 @@ async function ckCellClick(r,c){
 async function ckRunBotTurn(){
   if(!ckCode) return;
   const myCode = ckCode;
-  // A brief beat before fetching so the player's own move has a moment to
-  // register visually, then the AI's move is fetched and rendered.
-  await _aiDelay(250);
-  const res = await api('/api/checkers_bot_turn', {uid:getUid(), code:ckCode});
-  if(!res || !res.ok) return;
-  if(!ckCode) return;
-  if(ckCode !== myCode) return;
-  ckShowGame(res.state);
+  try {
+    showAiThinking();
+    // A brief beat before fetching so the player's own move has a moment to
+    // register visually, then the AI's move is fetched and rendered.
+    await _aiDelay(250);
+    const res = await api('/api/checkers_bot_turn', {uid:getUid(), code:ckCode});
+    if(!res || !res.ok) return;
+    if(!ckCode) return;
+    if(ckCode !== myCode) return;
+    ckShowGame(res.state);
+  } finally {
+    hideAiThinking();
+  }
 }
 
 async function ckGetHint(){

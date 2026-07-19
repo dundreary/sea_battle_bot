@@ -538,6 +538,23 @@ function showRevealBanner(html){
   setTimeout(() => { b.classList.remove('show'); setTimeout(() => b.remove(), 400); }, 2400);
 }
 
+// Small, non-blocking "AI is thinking" overlay for games that compute the bot's
+// move on the server (Checkers / Backgammon). pointer-events:none so it never
+// intercepts taps on the board. Always paired with hideAiThinking() in a
+// finally block so it clears even on error.
+let _aiThinkEl = null;
+function showAiThinking(msg){
+  hideAiThinking();
+  const o = document.createElement('div');
+  o.className = 'ai-think-overlay';
+  o.innerHTML = `<div class="ai-think-box">🤖 ${msg || {ru:'Думает…',uk:'Думає…',en:'Thinking…'}[lang]}</div>`;
+  document.body.appendChild(o);
+  _aiThinkEl = o;
+}
+function hideAiThinking(){
+  if(_aiThinkEl){ _aiThinkEl.remove(); _aiThinkEl = null; }
+}
+
 function toggleSnd(){_snd=!_snd;localStorage.setItem('sb_snd',_snd?'1':'0');updateSettingsUI()}
 function toggleVibe(){_vibe=!_vibe;localStorage.setItem('sb_vibe',_vibe?'1':'0');updateSettingsUI()}
 function updateSettingsUI(){
@@ -843,6 +860,7 @@ async function refreshState(){
     if(res === null){
       // transient network failure (api already retried once) — keep the saved game,
       // just tell the user we're reconnecting; the poll will retry.
+      notePollResult('sea_battle', false);
       setStatus({ru:'🔄 Переподключение…',uk:'🔄 Перепідключення…',en:'🔄 Reconnecting…'}[lang], '');
       return;
     }
@@ -853,6 +871,7 @@ async function refreshState(){
       $('actions').innerHTML=`<button class="btn primary" onclick="startSolo()">${t('startBtn')}</button>`;
       return;
     }
+    notePollResult('sea_battle', true);
     if(!gameCode)return;
     state=res.state;
     // Dedup idle polls: only re-render when something actually changed.
@@ -1052,10 +1071,12 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
     document.body.appendChild(_rollPopupEl);
   }
   _rollPopupEl._st = st;
-  if(code !== _rollPopupCode){
-    if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
-    _rollProceedScheduled = false;
-  }
+  // Always (re)arm the proceed timer fresh on each render. The decisive branch
+  // below decides whether to schedule it; leaving a stale _rollProceedScheduled
+  // from a previous cycle (e.g. after a same-code reroll) would suppress the
+  // auto-start. Clear any pending timer too.
+  if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
+  _rollProceedScheduled = false;
   _rollPopupCode = code;
   _rollPopupProceed = proceedFn;
   _rollPopupEl.innerHTML = `<div class="modal roll-popup">${_rollPopupInner(st, rollFn, rerollFn, {solo, code})}</div>`;
@@ -1694,15 +1715,69 @@ async function universalJoinGame(){
 }
 
 const _polls = {};
-function startGamePoll(type, code, refreshFn){
-  stopGamePoll(type);
+let _pollFailStreak = {};
+let _pollInterval = {};
+let _pollMeta = {};
+let _connDotEl = null;
+
+// (Re)start a type's poll interval at a specific delay. The captured `code`
+// and `refreshFn` come from the arguments so a restarted interval uses the
+// latest known code/meta.
+function _restartPoll(type, code, refreshFn, iv){
+  if(_polls[type]) clearInterval(_polls[type]);
+  _pollInterval[type] = iv;
   _polls[type] = setInterval(async () => {
     if(!code){ stopGamePoll(type); return; }
     await refreshFn();
-  }, 2000);
+  }, iv);
 }
-function stopGamePoll(type){ if(_polls[type]){ clearInterval(_polls[type]); delete _polls[type]; } }
+
+function startGamePoll(type, code, refreshFn){
+  stopGamePoll(type);
+  _pollMeta[type] = { code, refreshFn };
+  _restartPoll(type, code, refreshFn, _pollInterval[type] || 2000);
+}
+function stopGamePoll(type){
+  if(_polls[type]){ clearInterval(_polls[type]); delete _polls[type]; }
+  delete _pollMeta[type];
+  delete _pollInterval[type];
+  delete _pollFailStreak[type];
+  setConnDot(true);
+}
 function stopAllPolls(){ for(const k in _polls) stopGamePoll(k); }
+
+function currentCodeFor(t){ return _pollMeta[t] ? _pollMeta[t].code : null; }
+function currentRefreshFor(t){ return _pollMeta[t] ? _pollMeta[t].refreshFn : null; }
+
+// Reflect connectivity in the header dot. ok=true -> green, ok=false -> red.
+function setConnDot(ok){
+  if(!_connDotEl) _connDotEl = document.getElementById('connDot');
+  if(_connDotEl){
+    _connDotEl.textContent = ok ? '🟢' : '🔴';
+    _connDotEl.classList.toggle('off', !ok);
+  }
+}
+
+// Track per-type poll outcomes and apply exponential backoff after repeated
+// failures (3+ consecutive misses), returning to 2000ms once a poll succeeds.
+function notePollResult(type, ok){
+  if(ok){
+    _pollFailStreak[type] = 0;
+    setConnDot(true);
+    const iv = _pollInterval[type] || 2000;
+    if(iv !== 2000 && _pollMeta[type]){
+      _restartPoll(type, currentCodeFor(type), currentRefreshFor(type), 2000);
+    }
+  } else {
+    _pollFailStreak[type] = (_pollFailStreak[type] || 0) + 1;
+    if(_pollFailStreak[type] >= 3){
+      setConnDot(false);
+      const streak = _pollFailStreak[type] - 3;
+      const iv = Math.min(2000 * Math.pow(2, streak), 30000);
+      if(_pollMeta[type]) _restartPoll(type, currentCodeFor(type), currentRefreshFor(type), iv);
+    }
+  }
+}
 
 let _lastSBSig=null;      // last serialized state signature for poll dedup
 let _sbRefreshing=false;  // in-flight guard so a slow poll can't overlap
@@ -1742,31 +1817,32 @@ function showMainMenu(){
   setStatus('');
   var lb=$('langBar');if(lb)lb.style.display='flex';
   $('actions').className='btn-row stack';
+  const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`;
   $('actions').innerHTML=`
     <div id="activeGamesContainer"></div>
     <div class="game-grid">
-      <div class="game-card" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
-        <img src="/static/sb-navy.svg" class="card-icon">
+      <div class="game-card" ${AR} aria-label="${t('seaBattle')}" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
+        <img src="/static/sb-navy.svg" class="card-icon" alt="">
         <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
-      <div class="game-card" onclick="showPokerDice()" style="margin-bottom:8px">
-        <img src="/static/pd-green.svg" class="card-icon">
+      <div class="game-card" ${AR} aria-label="${t('pdTitle')}" onclick="showPokerDice()" style="margin-bottom:8px">
+        <img src="/static/pd-green.svg" class="card-icon" alt="">
         <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
-      <div class="game-card" onclick="showCheckers()" style="margin-bottom:8px">
-        <img src="/static/checkers-icon.svg" class="card-icon">
+      <div class="game-card" ${AR} aria-label="${t('checkers')}" onclick="showCheckers()" style="margin-bottom:8px">
+        <img src="/static/checkers-icon.svg" class="card-icon" alt="">
         <div class="name" style="color:#D4A96A">${t('checkers')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
-      <div class="game-card" onclick="showBackgammon()" style="margin-bottom:8px">
-        <img src="/static/backgammon-icon.svg" class="card-icon">
+      <div class="game-card" ${AR} aria-label="${t('backgammon')}" onclick="showBackgammon()" style="margin-bottom:8px">
+        <img src="/static/backgammon-icon.svg" class="card-icon" alt="">
         <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
         <div class="card-desc">${t('startBtn')}</div>
       </div>
-      <div class="game-card game-card-wide" onclick="universalJoinGame()" style="margin-bottom:8px">
-        <img src="/static/mode-join.svg" class="card-icon">
+      <div class="game-card game-card-wide" ${AR} aria-label="${t('joinTitle')}" onclick="universalJoinGame()" style="margin-bottom:8px">
+        <img src="/static/mode-join.svg" class="card-icon" alt="">
         <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
         <div class="card-desc">${t('joinBtn')}</div>
       </div>
@@ -1905,6 +1981,7 @@ function savePlayerName(v){
 
 function showSeaBattleMenu(){
   currentGameType='sea_battle'; setHelpVisible(true);
+  const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`;
   var lb=$('langBar');if(lb)lb.style.display='none';
   setStripLockVisible(true);
   stripUnlocked=false; _stripTaps=0;
@@ -1918,18 +1995,18 @@ function showSeaBattleMenu(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-      <div class="game-card" onclick="startSolo()" style="margin-bottom:8px">
-        <img src="/static/mode-bot.svg" class="card-icon">
+      <div class="game-card" ${AR} aria-label="${t('vsBot')}" onclick="startSolo()" style="margin-bottom:8px">
+        <img src="/static/mode-bot.svg" class="card-icon" alt="">
         <div class="name">${t('vsBot')}</div>
       <div class="card-desc">${t('withBot')}</div>
     </div>
-    <div class="game-card" onclick="chooseMultiMode()" style="margin-bottom:8px">
-      <img src="/static/mode-friend.svg" class="card-icon">
+    <div class="game-card" ${AR} aria-label="${t('vsFriend')}" onclick="chooseMultiMode()" style="margin-bottom:8px">
+      <img src="/static/mode-friend.svg" class="card-icon" alt="">
       <div class="name">${t('vsFriend')}</div>
       <div class="card-desc">${t('withFriend')}</div>
     </div>
-    <div class="game-card" onclick="newMulti(true)" id="stripCard" style="display:none;margin-bottom:8px">
-      <img src="/static/mode-shirt.svg" class="card-icon">
+    <div class="game-card" ${AR} aria-label="${t('stripMode')}" onclick="newMulti(true)" id="stripCard" style="display:none;margin-bottom:8px">
+      <img src="/static/mode-shirt.svg" class="card-icon" alt="">
       <div class="name">${t('stripMode')}</div>
       <div class="card-desc">${t('stripDesc')}</div>
     </div>

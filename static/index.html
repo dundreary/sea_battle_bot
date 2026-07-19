@@ -19,8 +19,9 @@
 <link rel="stylesheet" href="/static/style.css?v=__ASSET_VERSION__">
 </head>
 <body>
+<span id="connDot" class="conn-dot" title="Соединение">🟢</span>
 
-<div class="header" id="header">
+<div class="header" id="header" role="banner">
   <div class="header-controls">
     <button class="top-btn" id="stripLockBtn" title="Unlock" onclick="tapStripLock()" style="display:none">🔒</button>
     <span class="player-name" id="playerName"></span>
@@ -31,7 +32,7 @@
   <div class="sub" id="gameInfo">—</div>
 </div>
 
-<div class="main" id="app">
+<div class="main" id="app" role="main">
   <div class="status" id="status">🔱 ...</div>
   <div class="board-wrap" id="ownBoardWrap" style="display:none">
     <div class="board-label" id="lblOwn">🚢</div>
