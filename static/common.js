@@ -1843,27 +1843,22 @@ function showMainMenu(){
       <div class="game-card" ${AR} aria-label="${t('seaBattle')}" onclick="showSeaBattleMenu()" style="margin-bottom:8px">
         <img src="/static/sb-navy.svg" class="card-icon" alt="">
         <div class="name" style="color:var(--accent-primary)">${t('seaBattle')}</div>
-        <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" ${AR} aria-label="${t('pdTitle')}" onclick="showPokerDice()" style="margin-bottom:8px">
         <img src="/static/pd-green.svg" class="card-icon" alt="">
         <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
-        <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" ${AR} aria-label="${t('checkers')}" onclick="showCheckers()" style="margin-bottom:8px">
         <img src="/static/checkers-icon.svg" class="card-icon" alt="">
         <div class="name" style="color:#D4A96A">${t('checkers')}</div>
-        <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card" ${AR} aria-label="${t('backgammon')}" onclick="showBackgammon()" style="margin-bottom:8px">
         <img src="/static/backgammon-icon.svg" class="card-icon" alt="">
         <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
-        <div class="card-desc">${t('startBtn')}</div>
       </div>
       <div class="game-card game-card-wide" ${AR} aria-label="${t('joinTitle')}" onclick="universalJoinGame()" style="margin-bottom:8px">
         <img src="/static/mode-join.svg" class="card-icon" alt="">
         <div class="name" style="color:var(--accent-primary)">${t('joinTitle')}</div>
-        <div class="card-desc">${t('joinBtn')}</div>
       </div>
     </div>
   `;
