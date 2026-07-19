@@ -49,10 +49,6 @@ const LANG = {
     draw: '🤝 НИЧЬЯ',
     playAgain: '🔄 Играть ещё',
     close: 'Закрыть',
-    withBot: '· с ботом',
-    withFriend: '· с другом',
-    vsBot: 'С ботом',
-    vsFriend: 'С другом',
     joinTitle: 'Присоединиться',
     joinBtn: 'Ввести код',
     joinPlaceholder: 'Введи код игры',
@@ -99,7 +95,6 @@ const LANG = {
     ckNoMoves: 'Нет ходов',
     backgammon: 'Нарды',
     bgSolo: '🕹️ Соло',
-    bgFriend: '👤 С другом',
     bgRoll: '🎲 Бросить',
     bgWaiting: '⏳ Ожидаем соперника...',
     bgWin: '🏆 Ты победил!',
@@ -112,7 +107,6 @@ const LANG = {
     selectDifficulty: 'Выбери сложность',
     pdTitle: 'Покер в кости',
     pdSolo: '🕹️ Соло',
-    pdFriend: '👤 С другом',
     pdRoll: '🎲 Бросить',
     pdScore: '📊 Закончить',
     pdWaiting: '⏳ Ожидаем соперника...',
@@ -231,10 +225,6 @@ const LANG = {
     draw: '🤝 НІЧИЯ',
     playAgain: '🔄 Грати ще',
     close: 'Закрити',
-    withBot: '· з ботом',
-    withFriend: '· з другом',
-    vsBot: 'З ботом',
-    vsFriend: 'З другом',
     joinTitle: 'Приєднатися',
     joinBtn: 'Ввести код',
     joinPlaceholder: 'Введи код гри',
@@ -281,7 +271,6 @@ const LANG = {
     ckNoMoves: 'Немає ходів',
     backgammon: 'Нарди',
     bgSolo: '🕹️ Соло',
-    bgFriend: '👤 З другом',
     bgRoll: '🎲 Кинути',
     bgWaiting: '⏳ Чекаємо суперника...',
     bgWin: '🏆 Ти переміг!',
@@ -294,7 +283,6 @@ const LANG = {
     selectDifficulty: 'Обери складність',
     pdTitle: 'Покер у кості',
     pdSolo: '🕹️ Соло',
-    pdFriend: '👤 З другом',
     pdRoll: '🎲 Кинути',
     pdScore: '📊 Закінчити',
     pdWaiting: '⏳ Чекаємо суперника...',
@@ -413,10 +401,6 @@ const LANG = {
     draw: '🤝 DRAW',
     playAgain: '🔄 Play again',
     close: 'Close',
-    withBot: '· vs bot',
-    withFriend: '· vs friend',
-    vsBot: 'vs Bot',
-    vsFriend: 'vs Friend',
     joinTitle: 'Join Game',
     joinBtn: 'Enter Code',
     joinPlaceholder: 'Enter game code',
@@ -463,7 +447,6 @@ const LANG = {
     ckNoMoves: 'No moves',
     backgammon: 'Backgammon',
     bgSolo: '🕹️ Solo',
-    bgFriend: '👤 With Friend',
     bgRoll: '🎲 Roll',
     bgWaiting: '⏳ Waiting for opponent...',
     bgWin: '🏆 You Win!',
@@ -476,7 +459,6 @@ const LANG = {
     selectDifficulty: 'Choose difficulty',
     pdTitle: 'Poker Dice',
     pdSolo: '🕹️ Solo',
-    pdFriend: '👤 With Friend',
     pdRoll: '🎲 Roll',
     pdScore: '📊 Score',
     pdWaiting: '⏳ Waiting for opponent...',
@@ -1988,8 +1970,7 @@ function renderStats(st){
       const icon = STATS_GAME_ICON[h.game] || '🎮';
       const gname = t(STATS_GAME_LABEL[h.game] || h.game);
       const resLabel = t(STATS_RESULT_LABEL[h.result] || h.result);
-      const vs = h.solo ? t('withBot') : t('withFriend');
-      html += `<div class="stats-hist-row ${h.result}"><span class="stats-hist-icon">${icon}</span><span class="stats-hist-name">${gname} <small>${vs}</small></span><span class="stats-hist-result ${h.result}">${resLabel}</span></div>`;
+      html += `<div class="stats-hist-row ${h.result}"><span class="stats-hist-icon">${icon}</span><span class="stats-hist-name">${gname}</span><span class="stats-hist-result ${h.result}">${resLabel}</span></div>`;
     }
     html += '</div>';
   }
@@ -2048,15 +2029,13 @@ function showSeaBattleMenu(){
   $('app').insertBefore($('status'), $('app').firstChild);
   $('actions').className='btn-row stack';
   $('actions').innerHTML=`
-      <div class="game-card" ${AR} aria-label="${t('vsBot')}" onclick="startSolo()" style="margin-bottom:8px">
+      <div class="game-card" ${AR} aria-label="${t('startBtn')}" onclick="startSolo()" style="margin-bottom:8px">
         <img src="/static/mode-bot.svg" class="card-icon" alt="">
-        <div class="name">${t('vsBot')}</div>
-      <div class="card-desc">${t('withBot')}</div>
+        <div class="card-desc">${t('startBtn')}</div>
     </div>
-    <div class="game-card" ${AR} aria-label="${t('vsFriend')}" onclick="chooseMultiMode()" style="margin-bottom:8px">
-      <img src="/static/mode-friend.svg" class="card-icon" alt="">
-      <div class="name">${t('vsFriend')}</div>
-      <div class="card-desc">${t('withFriend')}</div>
+    <div class="game-card" ${AR} aria-label="${t('startBtn')}" onclick="chooseMultiMode()" style="margin-bottom:8px">
+        <img src="/static/mode-friend.svg" class="card-icon" alt="">
+        <div class="card-desc">${t('startBtn')}</div>
     </div>
     <div class="game-card" ${AR} aria-label="${t('stripMode')}" onclick="newMulti(true)" id="stripCard" style="display:none;margin-bottom:8px">
       <img src="/static/mode-shirt.svg" class="card-icon" alt="">

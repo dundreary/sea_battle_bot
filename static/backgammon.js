@@ -30,16 +30,14 @@ function showBackgammon(){
       <button class="bg-variant-btn ${bgVariant==='short'?'active':''}" onclick="bgSetVariant('short')">${t('bgVariantShort')}</button>
       <button class="bg-variant-btn ${bgVariant==='long'?'active':''}" onclick="bgSetVariant('long')">${t('bgVariantLong')}</button>
     </div>
-    <div class="game-card" onclick="bgStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="bgStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
-      <div class="name">${t('bgSolo')}</div>
-      <div class="card-desc">${t('withBot')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ${!savedBg ? `
-    <div class="game-card" onclick="bgNewMulti()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="bgNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
-      <div class="name">${t('bgFriend')}</div>
-      <div class="card-desc">${t('withFriend')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>

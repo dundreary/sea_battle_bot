@@ -24,16 +24,14 @@ function showCheckers(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
-    <div class="game-card" onclick="ckStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="ckStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
-      <div class="name">${t('vsBot')}</div>
-      <div class="card-desc">${t('withBot')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ${!savedCk ? `
-    <div class="game-card" onclick="ckNewMulti()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="ckNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
-      <div class="name">${t('vsFriend')}</div>
-      <div class="card-desc">${t('withFriend')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>

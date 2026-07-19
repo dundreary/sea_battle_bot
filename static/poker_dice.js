@@ -72,16 +72,14 @@ function showPokerDice(){
   }
   $('actions').innerHTML=`
     ${resumeHtml}
-    <div class="game-card" onclick="pdStartSolo()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="pdStartSolo()" style="margin-bottom:8px">
       <img src="/static/mode-bot.svg" class="card-icon">
-      <div class="name">${t('pdSolo')}</div>
-      <div class="card-desc">${t('withBot')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ${!hasActiveGame ? `
-    <div class="game-card" onclick="pdNewMulti()" style="margin-bottom:8px">
+    <div class="game-card" aria-label="${t('startBtn')}" onclick="pdNewMulti()" style="margin-bottom:8px">
       <img src="/static/mode-friend.svg" class="card-icon">
-      <div class="name">${t('pdFriend')}</div>
-      <div class="card-desc">${t('withFriend')}</div>
+      <div class="card-desc">${t('startBtn')}</div>
     </div>
     ` : ''}
     <button class="btn outline quit-btn" onclick="showMainMenu()">${t('quit')}</button>
