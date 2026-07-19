@@ -946,6 +946,8 @@ let _rollWaitScheduled = false;
 let _rollWaitTimer = null;
 let _rollRerollScheduled = false;
 let _rollRerollTimer = null;
+let _rollProceedScheduled = false;
+let _rollProceedTimer = null;
 
 function _rollPopupInner(st, rollFn, rerollFn, o){
   const solo = o.solo;
@@ -1019,6 +1021,7 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
   const oppRolled = st.opp_roll != null;
   const tie = myRolled && oppRolled && st.my_roll === st.opp_roll;
   const waiting = !solo && myRolled && !oppRolled;
+  const decisive = myRolled && oppRolled && !tie;
 
   // Fresh roll (nothing thrown yet) -> (re)arm per-code guards for this game.
   if(st.my_roll==null && st.opp_roll==null){
@@ -1048,6 +1051,10 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
     document.body.appendChild(_rollPopupEl);
   }
   _rollPopupEl._st = st;
+  if(code !== _rollPopupCode){
+    if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
+    _rollProceedScheduled = false;
+  }
   _rollPopupCode = code;
   _rollPopupProceed = proceedFn;
   _rollPopupEl.innerHTML = `<div class="modal roll-popup">${_rollPopupInner(st, rollFn, rerollFn, {solo, code})}</div>`;
@@ -1069,6 +1076,10 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
   } else {
     if(_rollWaitTimer){ clearTimeout(_rollWaitTimer); _rollWaitTimer = null; }
     _rollWaitScheduled = false;
+    if(!decisive){
+      if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
+      _rollProceedScheduled = false;
+    }
   }
 
   // Auto-reroll on a tie when both sides have already rolled. Capped per code.
@@ -1087,14 +1098,33 @@ function showFirstRollPopup(st, rollFn, rerollFn, opts){
   } else {
     if(_rollRerollTimer){ clearTimeout(_rollRerollTimer); _rollRerollTimer = null; }
     _rollRerollScheduled = false;
+    if(!decisive){
+      if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
+      _rollProceedScheduled = false;
+    }
+  }
+
+  // Decisive (both rolled, not a tie) and a proceed callback is provided:
+  // auto-advance after a short beat so the game starts on its own (matching the
+  // Poker/Checkers/Backgammon behaviour). The manual "▶ Продолжить" button
+  // remains available as an immediate alternative.
+  if(decisive && proceedFn && !_rollProceedScheduled){
+    _rollProceedScheduled = true;
+    _rollProceedTimer = setTimeout(()=>{
+      _rollProceedScheduled = false;
+      if(_rollPopupCode === code) __rollPopupContinue();
+      _rollProceedTimer = null;
+    }, 1500);
   }
 }
 
 function closeFirstRollPopup(){
   if(_rollWaitTimer){ clearTimeout(_rollWaitTimer); _rollWaitTimer = null; }
   if(_rollRerollTimer){ clearTimeout(_rollRerollTimer); _rollRerollTimer = null; }
+  if(_rollProceedTimer){ clearTimeout(_rollProceedTimer); _rollProceedTimer = null; }
   _rollWaitScheduled = false;
   _rollRerollScheduled = false;
+  _rollProceedScheduled = false;
   if(_rollPopupEl){
     if(_rollPopupEl._onKey) document.removeEventListener('keydown', _rollPopupEl._onKey);
     _rollPopupEl.remove();
@@ -1195,8 +1225,8 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
 async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const btn = document.getElementById('rerollBtn');
   if(btn) btn.disabled = true;
-  const pending = Array.from(document.querySelectorAll('.roll-die-pending'));
-  const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
+  // On a reroll only the human's die re-rolls; the opponent/bot die must NOT spin.
+  const spinEls = [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
   if(spinEls.length){
     spinEls.forEach(d => {
@@ -1416,7 +1446,6 @@ function updateUI(){
 
   $('oppBoardWrap').style.display='block';
   closeFirstRollPopup();
-  showRollWinnerBanner(s, gameCode);
   updateSettingsUI();
   $('ownBoardWrap').after($('status'));
 
