@@ -153,6 +153,14 @@ async function bgShowGame(st, keepSelection=false){
     return;
   }
 
+  // Wait for the opening-roll popup to finish showing who won before we swap
+  // in the board — otherwise the winner result flashes by. The popup's own
+  // proceed timer calls closeFirstRollPopup()+bgRefreshState, re-entering here
+  // once the popup is gone. (Mirrors poker_dice.js / Sea Battle behaviour.)
+  if(document.getElementById('firstRollPopupOverlay')){
+    return;
+  }
+
   if(st.phase==='playing' && st.solo && !st.my_turn && !_bgBotOpening){
     _bgBotOpening = true;
     try{

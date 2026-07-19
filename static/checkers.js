@@ -162,8 +162,14 @@ async function ckShowGame(st){
     el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
     return;
   }
-  // Once the phase advances past the roll, drop any lingering popup and let
-  // the playing render takes over (board only; the winner was shown in the popup).
+  // Wait for the opening-roll popup to finish showing who won before we swap
+  // in the board — otherwise the winner result flashes by. The popup's own
+  // proceed timer calls closeFirstRollPopup()+ckRefreshState, re-entering here
+  // once the popup is gone. (Mirrors poker_dice.js / Sea Battle behaviour.)
+  if(document.getElementById('firstRollPopupOverlay')){
+    return;
+  }
+
   closeFirstRollPopup();
   if(st.phase==='playing' && st.solo && !st.my_turn && !_ckBotOpening){
     _ckBotOpening = true;
