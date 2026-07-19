@@ -1204,6 +1204,9 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
+  // Acknowledge the opening roll once it has resolved, so the shared
+  // _rollAckShown gate lets the game render (mirrors Sea Battle's ackRoll).
+  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
@@ -1233,6 +1236,9 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   await refreshFn();
+  // Acknowledge the opening roll once it has resolved, so the shared
+  // _rollAckShown gate lets the game render (mirrors Sea Battle's ackRoll).
+  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
   if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
     afterRoll(res);
   }
