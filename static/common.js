@@ -1386,13 +1386,9 @@ function updateUI(){
     $('app').insertBefore($('status'), $('app').firstChild);
     const alreadyConfirmed = s.ready && s.pnum && s.ready[s.pnum];
     const c = s.code;
-    // Keep BOTH boards visible the whole time (no flicker). The opponent board
-    // just shows a neutral "preparing" hint until the game actually starts.
-    $('oppBoardWrap').classList.remove('hidden');
-    renderBoard($('oppBoard'), s.opp, true, false, null, s.strip);
-    $('lblOpp').textContent = s.solo
-      ? {ru:'🎯 Флот противника', uk:'🎯 Флот суперника', en:'🎯 Opponent fleet'}[lang]
-      : {ru:'🎯 Соперник расставляет флот…', uk:'🎯 Суперник розставляє флот…', en:'🎯 Opponent is placing…'}[lang];
+    // During ship placement only the player's own board is shown (clean,
+    // focused). The opponent board appears later, at the dice-roll step.
+    $('oppBoardWrap').classList.add('hidden');
     $('actions').className = 'btn-col';
     if(alreadyConfirmed && !s.solo){
       setStatus(`📋 <b>${c}</b> — ${t('waitOpp')} ✅`, '');
@@ -1456,8 +1452,15 @@ function updateUI(){
       ownEl.classList.remove('my-turn');
       oppEl.classList.remove('my-turn');
       $('app').insertBefore($('status'), $('app').firstChild);
-      // Both boards stay visible (no flicker) — the roll popup overlays them.
-      $('oppBoardWrap').classList.remove('hidden');
+      // Reveal the opponent board with a soft fade/slide as the roll begins.
+      const ow = $('oppBoardWrap');
+      ow.classList.remove('hidden');
+      ow.style.opacity = '0';
+      ow.style.transform = 'translateY(12px)';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ow.style.opacity = '';
+        ow.style.transform = '';
+      }));
       setStatus('🎲 '+t('rollTitle'),'');
       // The popup now owns the opening-roll result. Continue runs ackRoll (which handles the solo
       // bot opening shot and the _rollAckShown guard).
