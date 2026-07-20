@@ -158,6 +158,7 @@ async function bgShowGame(st, keepSelection=false){
       // Opening toss now renders in the modal popup; surrender stays reachable
       // outside it. The popup re-renders idempotently on each poll.
       showFirstRollPopup(st, 'bgRollFirst', 'bgRerollFirst', { solo: st.solo, code: bgCode,       proceedFn: () => { _lastBGSig = null; bgRefreshState(); } });
+      const _ov = document.getElementById('firstRollPopupOverlay'); if(_ov) _ov.classList.add('bg-roll-popup');
       el.innerHTML = `<button class="btn outline" onclick="bgSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
       return;
     }
