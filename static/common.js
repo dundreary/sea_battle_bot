@@ -981,6 +981,7 @@ let _rollPopupCode = null;
 let _rollPopupProceed = null;
 const _rollPopupClosed = {};      // code -> true once the PvP "waiting" popup closed
 const _rollAutoRerollCount = {};  // code -> auto-reroll attempts so far (cap)
+const _rollPopupIntroDone = {};   // code -> true after first board reveal delay
 let _rollWaitScheduled = false;
 let _rollWaitTimer = null;
 let _rollRerollScheduled = false;
@@ -1200,7 +1201,7 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
   if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rollFirst()); return; }
   const elapsed = Date.now() - start;
-  const MIN = 600;
+  const MIN = 1200;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   // First refresh so the popup shows the winner ("Вы ходите первым" / "Соперник
@@ -1232,7 +1233,7 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
   if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rerollFirst()); return; }
   const elapsed = Date.now() - start;
-  const MIN = 600;
+  const MIN = 1200;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   // First refresh so the popup shows the winner, then acknowledge.
@@ -1347,7 +1348,7 @@ function updateUI(){
   }
 
   if(s.phase==='placing'||s.phase==='placing1'||s.phase==='placing2'){
-    $('header').classList.remove('in-game');
+    $('header').classList.add('in-game');
     ownEl.classList.remove('my-turn');
     oppEl.classList.remove('my-turn');
     $('app').insertBefore($('status'), $('app').firstChild);
@@ -1360,19 +1361,19 @@ function updateUI(){
       $('status').style.cursor='pointer';
       $('status').title=t('copyCode');
       $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
-       $('actions').innerHTML=`
+      $('actions').innerHTML=`
         <button class="btn success" disabled style="opacity:0.5;cursor:default">✅ ${t('confirm')}</button>
         ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()">📤 ${t('inviteFriend')}</button>` : ''}
-         <button class="btn outline" onclick="leaveGame(true)">${s.solo ? t('quit') : t('surrender')}</button>
-         <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>
-       `;
+        <button class="btn outline" onclick="leaveGame(true)">${s.solo ? t('quit') : t('surrender')}</button>
+        <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>
+      `;
+    }else{
+      if(!s.solo){
+        setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`, '');
+        $('status').style.cursor='pointer';
+        $('status').title=t('copyCode');
+        $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
       }else{
-        if(!s.solo){
-          setStatus(`📋 <b>${c}</b> — ${t('waitOpp')}`, '');
-          $('status').style.cursor='pointer';
-          $('status').title=t('copyCode');
-          $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('✅ '+c+' '+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
-        }else{
           setStatus(s.strip ? t('stripPlace') : t('placing'),'');
           $('status').style.cursor='';
           $('status').onclick=null;
@@ -1416,8 +1417,15 @@ function updateUI(){
     } else {
       ownEl.classList.remove('my-turn');
       oppEl.classList.remove('my-turn');
-      $('oppBoardWrap').classList.add('hidden');
       $('app').insertBefore($('status'), $('app').firstChild);
+      // Reveal both boards for 400ms before the popup overlay on first entry
+      if(s.phase==='roll' && !rollDecided && !_rollPopupIntroDone[gameCode]){
+        _rollPopupIntroDone[gameCode] = true;
+        setStatus('🎲 '+t('rollTitle'),'');
+        setTimeout(()=>updateUI(), 400);
+        return;
+      }
+      $('oppBoardWrap').classList.add('hidden');
       setStatus('🎲 '+t('rollTitle'),'');
       // The popup now owns the opening-roll result. Continue runs ackRoll (which handles the solo
       // bot opening shot and the _rollAckShown guard).

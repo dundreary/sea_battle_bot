@@ -12,6 +12,7 @@ function showBackgammon(){
   setStripLockVisible(false);
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
+  $('header').classList.remove('in-game');
   document.title=t('backgammon');
   $('gameInfo').textContent='';
   setStatus('');

@@ -10,6 +10,7 @@ function showCheckers(){
   setStripLockVisible(false);
   hideAllGameAreas();
   if($('legend'))$('legend').style.display='none';
+  $('header').classList.remove('in-game');
   document.title=t('checkers');
   $('gameInfo').textContent='';
   setStatus('');
