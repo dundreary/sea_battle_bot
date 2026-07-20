@@ -1954,8 +1954,7 @@ function getPlayerName(){
   return '';
 }
 function renderPlayerName(){
-  const el=document.getElementById('playerName');
-  if(el) el.textContent = getPlayerName() ? getPlayerName() : '';
+  // player name hidden
 }
 function savePlayerName(v){
   playerName = (v||'').trim().slice(0,24);
@@ -2061,20 +2060,8 @@ async function confirmPlace(){
   await refreshState();
 }
 
-function sbRenderOppHistory(bs){
-  const el=$('sbOppHistory');
-  if(!el)return;
-  const bn='ABCDEFGHIJ';
-  let html='';
-  for(const s of bs){
-    let txt='';
-    if(s.result==='hit')txt=`${t('botHit')} ${bn[s.c]}${s.r+1}`;
-    else if(s.result==='sunk')txt=`${t('botSunk')} ${bn[s.c]}${s.r+1}`;
-    else if(s.result==='mine')txt=`💣${t('mine')}`;
-    else txt=t('botMiss');
-    html+=`<div class="pd-opp-history-row">🤖 ${txt}</div>`;
-  }
-  el.innerHTML=html;
+function sbRenderOppHistory(_bs){
+  // bot labels removed
 }
 
 async function handleShot(r,c){
