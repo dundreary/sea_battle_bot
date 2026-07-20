@@ -3,6 +3,7 @@ let bgCode=null, bgState=null, bgSeenRoll='';
 let bgSelected=null, bgMoveTargets=[], bgVariant='short';
 let _lastBGSig=null;
 let _bgRefreshing=false;
+let _bgLastDiceSig='';
 
 const BG_CHECKER_COLORS = {1:'white',[-1]:'black'};
 
@@ -59,6 +60,7 @@ async function bgStartSolo(){
   if(!res||!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   _lastBGSig=null;
+  _bgLastDiceSig='';
   localStorage.setItem('bg_game',bgCode);
   const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
   $('actions').innerHTML='';
@@ -74,6 +76,7 @@ async function bgNewMulti(){
   if(!res.ok){setStatus(t('error'));return}
   bgCode=res.code;
   _lastBGSig=null;
+  _bgLastDiceSig='';
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
   startGamePoll('backgammon', bgCode, bgRefreshState);
@@ -85,6 +88,7 @@ async function bgJoin(code){
   if(!res.ok){setStatus(t('joinError'));return}
   bgCode=code.toUpperCase();
   _lastBGSig=null;
+  _bgLastDiceSig='';
   localStorage.setItem('bg_game',bgCode);
   bgShowGame(res.state);
   startGamePoll('backgammon', bgCode, bgRefreshState);
@@ -412,6 +416,16 @@ function bgRenderDice(st){
     diceDiv.appendChild(die);
   }
   cont.appendChild(diceDiv);
+  // Animate a fresh toss (only when the dice actually changed) so the tumble
+  // plays once on roll, not on every poll re-render.
+  const sig = (dice||[]).join(',');
+  if(sig && sig !== _bgLastDiceSig){
+    diceDiv.querySelectorAll('.bg-die:not(.used)').forEach(d => {
+      d.classList.add('rolling');
+      setTimeout(() => d.classList.remove('rolling'), 900);
+    });
+  }
+  _bgLastDiceSig = sig;
   if(st.my_turn && bgSelected===null){
     const moveHint=document.createElement('div');
     moveHint.className='bg-info';
