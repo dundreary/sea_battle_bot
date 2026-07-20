@@ -68,6 +68,8 @@ const LANG = {
     shareCopied: 'Код скопирован, отправь другу',
     copyCode: 'Нажми, чтобы скопировать код',
     settings: 'Настройки',
+    theme: 'Тема',
+    language: 'Язык',
     sound: 'Звук',
     vibration: 'Вибрация',
     shipHint: '🚢 Корабли: {0}',
@@ -246,6 +248,8 @@ const LANG = {
     shareCopied: 'Код скопійовано, надішли другу',
     copyCode: 'Натисни, щоб скопіювати код',
     settings: 'Налаштування',
+    theme: 'Тема',
+    language: 'Мова',
     sound: 'Звук',
     vibration: 'Вібрація',
     shipHint: '🚢 Кораблі: {0}',
@@ -424,6 +428,8 @@ const LANG = {
     shareCopied: 'Code copied, send to friend',
     copyCode: 'Tap to copy code',
     settings: 'Settings',
+    theme: 'Theme',
+    language: 'Language',
     sound: 'Sound',
     vibration: 'Vibration',
     shipHint: '🚢 Ships: {0}',
@@ -655,22 +661,38 @@ function showSettings(){
   const chk = on => on ? '✅' : '⬜';
   const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}"`;
   o.innerHTML=`
-    <div class="modal">
+    <div class="modal settings-compact">
       <h2>⚙️ ${t('settings')}</h2>
-      <div class="sett-row" ${AR} onclick="setTheme('ocean');showSettings()"><span>🌊 Ocean</span><span class="sett-val">${curTheme==='ocean'?'✅':''}</span></div>
-      <div class="sett-row" ${AR} onclick="setTheme('forest');showSettings()"><span>🌲 Forest</span><span class="sett-val">${curTheme==='forest'?'✅':''}</span></div>
-      <div class="sett-row" ${AR} onclick="toggleSnd();showSettings()"><span>🔊 ${t('sound')}</span><span class="sett-val" id="sndBtn">${chk(_snd)}</span></div>
-      <div class="sett-row" ${AR} onclick="toggleVibe();showSettings()"><span>📳 ${t('vibration')}</span><span class="sett-val" id="vibeBtn">${chk(_vibe)}</span></div>
-      <div class="sett-row" ${AR} onclick="setDifficulty(2);showSettings()"><span>🎯 ${t('stMedium')}</span><span class="sett-val">${gameDifficulty===2?'✅':''}</span></div>
-      <div class="sett-row" ${AR} onclick="setDifficulty(4);showSettings()"><span>💀 ${t('stExpert')}</span><span class="sett-val">${gameDifficulty===4?'✅':''}</span></div>
-      <div class="sett-row lang-btn" data-lang="ru" ${AR} onclick="setLang('ru');showSettings()"><span>🇷🇺 Русский</span><span class="sett-val">${lang==='ru'?'✅':''}</span></div>
-      <div class="sett-row lang-btn" data-lang="uk" ${AR} onclick="setLang('uk');showSettings()"><span>🇺🇦 Українська</span><span class="sett-val">${lang==='uk'?'✅':''}</span></div>
-      <div class="sett-row lang-btn" data-lang="en" ${AR} onclick="setLang('en');showSettings()"><span>🇬🇧 English</span><span class="sett-val">${lang==='en'?'✅':''}</span></div>
-      <div class="sett-row" style="flex-direction:column;align-items:stretch;gap:6px">
-        <span>👤 ${t('playerName')||'Ваше имя'}</span>
+
+      <div class="sett-sec">${t('theme')}</div>
+      <div class="sett-chips">
+        <button class="sett-chip ${curTheme==='ocean'?'on':''}" ${AR} onclick="setTheme('ocean');showSettings()">🌊 Ocean</button>
+        <button class="sett-chip ${curTheme==='forest'?'on':''}" ${AR} onclick="setTheme('forest');showSettings()">🌲 Forest</button>
+      </div>
+
+      <div class="sett-sec">${t('sound')} / ${t('vibration')}</div>
+      <div class="sett-chips">
+        <button class="sett-chip ${_snd?'on':''}" ${AR} onclick="toggleSnd();showSettings()">🔊 ${t('sound')}</button>
+        <button class="sett-chip ${_vibe?'on':''}" ${AR} onclick="toggleVibe();showSettings()">📳 ${t('vibration')}</button>
+      </div>
+
+      <div class="sett-sec">${t('selectDifficulty')}</div>
+      <div class="sett-chips">
+        <button class="sett-chip ${gameDifficulty===2?'on':''}" ${AR} onclick="setDifficulty(2);showSettings()">🎯 ${t('stMedium')}</button>
+        <button class="sett-chip ${gameDifficulty===4?'on':''}" ${AR} onclick="setDifficulty(4);showSettings()">💀 ${t('stExpert')}</button>
+      </div>
+
+      <div class="sett-sec">${t('language')}</div>
+      <div class="sett-chips">
+        <button class="sett-chip ${lang==='ru'?'on':''}" ${AR} onclick="setLang('ru');showSettings()">🇷🇺 RU</button>
+        <button class="sett-chip ${lang==='uk'?'on':''}" ${AR} onclick="setLang('uk');showSettings()">🇺🇦 UA</button>
+        <button class="sett-chip ${lang==='en'?'on':''}" ${AR} onclick="setLang('en');showSettings()">🇬🇧 EN</button>
+      </div>
+      <div class="sett-name-row">
+        <span class="sett-sec" style="padding:0">👤 ${t('playerName')||'Ваше имя'}</span>
         <input id="nameInput" class="sett-input" maxlength="24" value="${getPlayerName().replace(/"/g,'&quot;')}" oninput="savePlayerName(this.value)" placeholder="${t('playerNamePlaceholder')||'Введите имя'}" />
       </div>
-      <button class="btn outline" style="margin-top:16px" onclick="this.closest('.overlay').remove()">${t('close')}</button>
+      <button class="btn outline settings-close" onclick="this.closest('.overlay').remove()">${t('close')}</button>
     </div>`;
   document.body.appendChild(o);
 }

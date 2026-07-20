@@ -133,6 +133,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .sett-row:last-child{border-bottom:none}
 .sett-input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input,#1b2030);color:var(--text-primary,#fff);font-size:14px}
 .sett-val{font-size:20px}
+/* Compact settings layout: small section captions + chip groups */
+.settings-compact{padding:18px 16px}
+.settings-compact h2{font-size:18px;margin-bottom:10px}
+.sett-sec{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:12px 0 6px}
+.sett-chips{display:flex;gap:6px;flex-wrap:wrap}
+.sett-chip{flex:1 1 auto;min-width:0;padding:9px 10px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:600;cursor:pointer;transition:.15s;touch-action:manipulation;white-space:nowrap}
+.sett-chip.on{background:var(--color-btn-primary-1);border-color:var(--accent-primary);color:#fff}
+.sett-name-row{display:flex;flex-direction:column;gap:4px;margin-top:14px}
+.settings-close{margin-top:14px;width:100%}
 .btn-link{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;transition:.15s}
 .cell{border-radius:2px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:clamp(14px,4vw,22px);cursor:pointer;transition:background .12s;background:var(--bg-board-alt);user-select:none}
    .cell.empty{background:var(--bg-board-alt)}
