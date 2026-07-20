@@ -402,25 +402,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-die-row{display:flex;align-items:center;justify-content:center;gap:22px;width:100%}
 .roll-die-col{display:flex;flex-direction:column;align-items:center;gap:8px}
 .roll-die-label{font-size:12px;color:var(--text-hint);text-align:center}
-.roll-die3d{width:78px;height:78px;background:linear-gradient(145deg,#fffdf8,#e9e2d3);border-radius:16px;box-shadow:0 6px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.8);position:relative}
-.roll-die3d svg{width:100%;height:100%}
+.roll-die3d{width:78px;height:78px;background:linear-gradient(145deg,#fffdf8,#e9e2d3);border-radius:16px;box-shadow:0 6px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.8);position:relative;will-change:transform}
+.roll-die3d svg{width:100%;height:100%;display:block}
 .roll-die3d svg circle{fill:#2c2c2a}
 .roll-die3d.roll-die-pending{opacity:.35;background:linear-gradient(145deg,#3a3f4a,#20242c);box-shadow:0 4px 10px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
 .roll-die3d.roll-die-pending svg circle{fill:rgba(255,255,255,.25)}
-.roll-die3d.roll-die-spinning{animation:rollDieSpin 1.4s cubic-bezier(0.22,1,0.36,1) forwards}
+/* Smooth, physical tumble: the die tips in 3D, spins a few times with a soft
+   ease-out, then settles with a gentle bounce/landing. No hard jumps. */
+.roll-die3d.roll-die-spinning{animation:rollDieSpin 1.5s cubic-bezier(0.16,0.84,0.3,1) forwards, rollDieFloat 1.5s ease-in-out forwards}
 @keyframes rollDieSpin{
-0%{transform:rotate(0deg)scale(1)}
-10%{transform:rotate(240deg)scale(1.08)}
-24%{transform:rotate(560deg)scale(0.94)}
-38%{transform:rotate(900deg)scale(1.06)}
-50%{transform:rotate(1180deg)scale(0.97)}
-62%{transform:rotate(1360deg)scale(1.04)}
-72%{transform:rotate(1460deg)scale(0.86)translateY(6px)}
-78%{transform:rotate(1480deg)scale(1.16)translateY(-9px)}
-84%{transform:rotate(1490deg)scale(0.93)translateY(3px)}
-89%{transform:rotate(1496deg)scale(1.07)translateY(-3px)}
-94%{transform:rotate(1498deg)scale(0.97)}
-100%{transform:rotate(1500deg)scale(1)}
+  0%{transform:rotate(0deg) scale(1) rotateX(0deg) rotateY(0deg)}
+  20%{transform:rotate(120deg) scale(1.04) rotateX(18deg) rotateY(-12deg)}
+  45%{transform:rotate(380deg) scale(0.99) rotateX(-14deg) rotateY(16deg)}
+  70%{transform:rotate(660deg) scale(1.02) rotateX(10deg) rotateY(-8deg)}
+  88%{transform:rotate(880deg) scale(0.98) rotateX(-6deg) rotateY(6deg)}
+  100%{transform:rotate(900deg) scale(1) rotateX(0deg) rotateY(0deg)}
+}
+@keyframes rollDieFloat{
+  0%{translate:0 0}
+  55%{translate:0 -10px}
+  78%{translate:0 4px}
+  90%{translate:0 -2px}
+  100%{translate:0 0}
 }
 .roll-vs{font-size:13px;font-weight:700;color:var(--text-hint);letter-spacing:1px}
 .roll-cta{width:100%;max-width:220px;padding:14px 20px;font-size:15px}

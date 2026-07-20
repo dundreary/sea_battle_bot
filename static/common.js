@@ -1209,22 +1209,27 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
   const pending = Array.from(document.querySelectorAll('.roll-die-pending'));
   const spinEls = pending.length ? pending : [document.querySelector('.roll-die-col:first-child .roll-die3d')].filter(Boolean);
   let anim = null;
+  let faceTimer = null;
   if(spinEls.length){
-    spinEls.forEach(d => {
-      d.classList.add('roll-die-spinning');
-      // set a single random face once (visual only; authoritative value comes from refresh)
+    spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
+    // Cycle through random faces while spinning so the die looks like it is
+    // genuinely tumbling, rather than frozen on one random face.
+    const setFace = (d) => {
       const svg = d.querySelector('svg');
       if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
-    });
+    };
+    spinEls.forEach(setFace);
+    faceTimer = setInterval(() => spinEls.forEach(setFace), 90);
     anim = true; // still used by the MIN_ANIM wait below; keep the variable name
   }
   try{ sfxRoll(); }catch(e){}
   const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
-  if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rollFirst()); return; }
+  if(res===null){ if(faceTimer) clearInterval(faceTimer); spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rollFirst()); return; }
   const elapsed = Date.now() - start;
   const MIN = 1200;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
+  if(faceTimer) clearInterval(faceTimer);
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   // First refresh so the popup shows the winner ("Вы ходите первым" / "Соперник
   // ходит первым"). Then acknowledge the roll so polling does not re-show popup.
@@ -1241,22 +1246,27 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
   // On a reroll BOTH dice (my die and the opponent/bot die) must spin.
   const spinEls = Array.from(document.querySelectorAll('#firstRollPopupOverlay .roll-die3d'));
   let anim = null;
+  let faceTimer = null;
   if(spinEls.length){
-    spinEls.forEach(d => {
-      d.classList.add('roll-die-spinning');
-      // set a single random face once (visual only; authoritative value comes from refresh)
+    spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
+    // Cycle through random faces while spinning so the die looks like it is
+    // genuinely tumbling, rather than frozen on one random face.
+    const setFace = (d) => {
       const svg = d.querySelector('svg');
       if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
-    });
+    };
+    spinEls.forEach(setFace);
+    faceTimer = setInterval(() => spinEls.forEach(setFace), 90);
     anim = true; // still used by the MIN_ANIM wait below; keep the variable name
   }
   try{ sfxClick(); }catch(e){}
   const start = Date.now();
   const res = await api(endpoint, {uid:getUid(), code:codeVal});
-  if(res===null){ spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rerollFirst()); return; }
+  if(res===null){ if(faceTimer) clearInterval(faceTimer); spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rerollFirst()); return; }
   const elapsed = Date.now() - start;
   const MIN = 1200;
   if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
+  if(faceTimer) clearInterval(faceTimer);
   spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
   // First refresh so the popup shows the winner, then acknowledge.
   await refreshFn();
@@ -1376,7 +1386,13 @@ function updateUI(){
     $('app').insertBefore($('status'), $('app').firstChild);
     const alreadyConfirmed = s.ready && s.pnum && s.ready[s.pnum];
     const c = s.code;
-    $('oppBoardWrap').classList.add('hidden');
+    // Keep BOTH boards visible the whole time (no flicker). The opponent board
+    // just shows a neutral "preparing" hint until the game actually starts.
+    $('oppBoardWrap').classList.remove('hidden');
+    renderBoard($('oppBoard'), s.opp, true, false, null, s.strip);
+    $('lblOpp').textContent = s.solo
+      ? {ru:'🎯 Флот противника', uk:'🎯 Флот суперника', en:'🎯 Opponent fleet'}[lang]
+      : {ru:'🎯 Соперник расставляет флот…', uk:'🎯 Суперник розставляє флот…', en:'🎯 Opponent is placing…'}[lang];
     $('actions').className = 'btn-col';
     if(alreadyConfirmed && !s.solo){
       setStatus(`📋 <b>${c}</b> — ${t('waitOpp')} ✅`, '');
@@ -1440,14 +1456,8 @@ function updateUI(){
       ownEl.classList.remove('my-turn');
       oppEl.classList.remove('my-turn');
       $('app').insertBefore($('status'), $('app').firstChild);
-      // Reveal both boards for 400ms before the popup overlay on first entry
-      if(s.phase==='roll' && !rollDecided && !_rollPopupIntroDone[gameCode]){
-        _rollPopupIntroDone[gameCode] = true;
-        setStatus('🎲 '+t('rollTitle'),'');
-        setTimeout(()=>updateUI(), 400);
-        return;
-      }
-      $('oppBoardWrap').classList.add('hidden');
+      // Both boards stay visible (no flicker) — the roll popup overlays them.
+      $('oppBoardWrap').classList.remove('hidden');
       setStatus('🎲 '+t('rollTitle'),'');
       // The popup now owns the opening-roll result. Continue runs ackRoll (which handles the solo
       // bot opening shot and the _rollAckShown guard).
