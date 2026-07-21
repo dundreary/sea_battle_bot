@@ -1212,16 +1212,7 @@ async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
  let anim = null;
  let faceTimer = null;
  if(spinEls.length){
- spinEls.forEach(d => { d.classList.remove('roll-die-pending'); d.classList.add('roll-die-spinning'); });
- // Cycle through random faces while spinning so the die looks like it is
- // genuinely tumbling, rather than frozen on one random face.
- const setFace = (d) => {
- const svg = d.querySelector('svg');
- if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
- };
- spinEls.forEach(setFace);
- faceTimer = setInterval(() => spinEls.forEach(setFace), 90);
- anim = true; // still used by the MIN_ANIM wait below; keep the variable name
+   spinEls.forEach(d => { d.classList.remove('roll-die-pending'); d.classList.add('roll-die-spinning'); });
  }
  try{ sfxRoll(); }catch(e){}
  const start = Date.now();
@@ -1249,16 +1240,7 @@ async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
  let anim = null;
  let faceTimer = null;
  if(spinEls.length){
- spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
- // Cycle through random faces while spinning so the die looks like it is
- // genuinely tumbling, rather than frozen on one random face.
- const setFace = (d) => {
- const svg = d.querySelector('svg');
- if(svg){ const n = 1 + Math.floor(Math.random()*6); const pips = DIE_PIPS[n] || []; svg.innerHTML = pips.map(([x,y]) => `<circle cx="${x}" cy="${y}" r="9"></circle>`).join(''); }
- };
- spinEls.forEach(setFace);
- faceTimer = setInterval(() => spinEls.forEach(setFace), 90);
- anim = true; // still used by the MIN_ANIM wait below; keep the variable name
+   spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
  }
  try{ sfxClick(); }catch(e){}
  const start = Date.now();
