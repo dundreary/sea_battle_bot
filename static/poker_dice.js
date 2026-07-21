@@ -684,7 +684,7 @@ function pdRenderResult(st){
  }
 
  // Scorecard final table — first thing visible
- html += '<table class="pd-scorecard" style="margin:8px auto;max-width:415px">';
+ html += '<table class="pd-scorecard" style="margin:8px auto;max-width:445px">';
  html += `<tr><th class="cat-name"></th><th class="cat-score"> ${t('pdMe')||'Я'}</th><th class="cat-score"> ${t('pdOpp')||'Сопер.'}</th></tr>`;
 
  const sc = st.scorecard_all || {};
