@@ -618,14 +618,27 @@ async function pdDoScore(category){
  }
 }
 
+function _fetchWithTimeout(url, opts, ms){
+ return Promise.race([
+  api(url, opts),
+  new Promise((_, rej)=> setTimeout(()=> rej(new Error('bot_turn_timeout')), ms))
+ ]);
+}
+
 async function pdRunBotTurn(){
  if(!pdCode) return;
- const res = await api('/api/pd_bot_turn', {uid:getUid(), code:pdCode});
- if(!res || !res.ok) return;
- if(!pdCode) return;
- // Replay the AI's throws in the shared dice tray, then show our own turn.
- await pdMaybeAnimateOpponent(res.state);
- pdShowGame(res.state);
+ const myCode = pdCode;
+ try {
+  const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 4000);
+  if(!res || !res.ok) return;
+  if(!pdCode) return;
+  await pdMaybeAnimateOpponent(res.state);
+  pdShowGame(res.state);
+ } catch (e) {
+  console.error('[pd] bot turn failed', e);
+ } finally {
+  if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
+ }
 }
 
 // Called by doFirstRoll/doRerollFirst when the opening-roll response says the
