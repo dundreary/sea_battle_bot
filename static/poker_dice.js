@@ -629,11 +629,16 @@ function _fetchWithTimeout(url, opts, ms){
 async function pdRunBotTurn(){
  if(!pdCode) return;
  const myCode = pdCode;
+ // Raise the guard BEFORE stepping so the pdShowGame() calls inside
+ // pdRunBotTurnSteps don't re-trigger another pdRunBotTurn (which used to
+ // recurse and run the step loop concurrently, corrupting the bot turn).
+ _pdBotOpening = true;
  try {
   await pdRunBotTurnSteps();
  } catch (e) {
   console.error('[pd] bot turn failed', e);
  } finally {
+  _pdBotOpening = false;
   if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
  }
 }
@@ -649,7 +654,8 @@ async function pdRunBotTurnSteps(){
   if(!res || !res.ok) return;
   if(!pdCode) return;
   const st = res.state;
-  // Animate the dice roll for this step.
+  // Animate the dice roll for this step. _pdBotOpening is held true by the
+  // caller so pdShowGame below won't re-trigger the bot turn recursively.
   await pdMaybeAnimateOpponent(st);
   pdShowGame(st);
   if(st.phase === 'finished') return;
