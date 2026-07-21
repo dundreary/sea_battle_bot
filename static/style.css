@@ -262,15 +262,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .pd-opp-history-label{font-size:11px;color:var(--text-hint);margin-bottom:3px}
 .pd-opp-history-dice{margin:2px auto;min-height:0;width:100%;max-width:340px}
 .pd-dot-die:active{transform:scale(.88)}
-.pd-dot-die.rolling{animation:pdDieToss 1.0s cubic-bezier(0.22,1,0.36,1) forwards}
-@keyframes pdDieToss{
-  0%{transform:translateY(-90px) rotate(-30deg) rotateX(0) rotateY(0) scale(.85);opacity:0}
-  18%{opacity:1}
-  55%{transform:translateY(8px) rotate(160deg) rotateX(120deg) rotateY(-90deg) scale(1.04)}
-  74%{transform:translateY(-5px) rotate(210deg) rotateX(170deg) rotateY(-120deg) scale(1)}
-  88%{transform:translateY(3px) rotate(244deg) rotateX(220deg) rotateY(-140deg) scale(1.02)}
-  100%{transform:translateY(0) rotate(360deg) rotateX(360deg) rotateY(-180deg) scale(1)}
-}
+/* Simple in-place 2D spin while rolling; faces are cycled by JS timer. */
+.pd-dot-die.rolling{animation:pdSpin 0.45s linear infinite}
+@keyframes pdSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 /* Poker-dice tumble: 6-face vertical stack cycled by CSS steps() (0 JS per frame).
    Each .pd-face is a 3x3 grid of .dot; only the visible die window shows one face. */
 .pd-faces{position:absolute;left:0;right:0;top:0;height:600%;will-change:transform}
