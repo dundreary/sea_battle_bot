@@ -1,5 +1,5 @@
 // ---- Poker Dice ----
-let pdCode = null, pdState = null, pdKept = new Set(), pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false;
+let pdCode = null, pdState = null, pdKept = new Set(), pdSeenScore='', pdOpeningPending = false, pdOppRollSpun = '', pdAnimating = false, _pdResultPopupEl = null;
 let pdOpeningTimer = null;
 let _pdBotOpening = false;
 let _lastPDSig = null, _pdRefreshing = false;
@@ -786,7 +786,7 @@ function pdRenderResult(st){
  setStatus(t('pdDraw'),'');
  }
 
- // Scorecard final table — first thing visible
+ // Scorecard final table — rendered inside a modal popup (see showPdResultPopup)
  html += '<table class="pd-scorecard" style="margin:8px auto;max-width:340px">';
  html += `<tr><th class="cat-name"></th><th class="cat-score"> ${t('pdMe')||'Я'}</th><th class="cat-score"> ${t('pdOpp')||'Сопер.'}</th></tr>`;
 
@@ -818,8 +818,49 @@ function pdRenderResult(st){
 
  div.innerHTML = html;
 
+ // Show the result table in a modal popup instead of inline
+ showPdResultPopup(st, html);
+
  // Clear saved game on finish so it doesn't show in menu
  if(pdCode) localStorage.removeItem('pd_game');
+}
+
+// Show the final scorecard in a modal popup (overlay + .modal), matching the
+// project's existing popup style (.overlay / .modal from common.js).
+function showPdResultPopup(st, tableHtml){
+ // Remove any existing result popup
+ if(_pdResultPopupEl){ _pdResultPopupEl.remove(); _pdResultPopupEl=null; }
+ const playAgainFn = st.solo ? 'pdStartSolo()': 'pdNewMulti()';
+ const popup = document.createElement('div');
+ popup.className = 'overlay';
+ popup.id = 'pdResultPopup';
+ popup.setAttribute('role','dialog');
+ popup.setAttribute('aria-modal','true');
+ popup._onKey = (e)=>{ if(e.key==='Escape') closePdResultPopup(); };
+ document.addEventListener('keydown', popup._onKey);
+ popup.innerHTML = `
+  <div class="modal" style="max-width:360px;text-align:center">
+   <h2>${st.winner===st.you_id ? (t('pdWin')||'Победа!') : st.winner===-1 ? (t('pdDraw')||'Ничья') : (t('pdLose')||'Поражение')}</h2>
+   ${tableHtml}
+   <div class="btn-col" style="margin-top:12px">
+    <button class="btn success" onclick="${playAgainFn}"> ${t('pdPlayAgain')}</button>
+    <button class="btn outline" onclick="closePdResultPopup()">${t('quit')}</button>
+   </div>
+  </div>
+ `;
+ document.body.appendChild(popup);
+ _pdResultPopupEl = popup;
+}
+
+function closePdResultPopup(){
+ if(_pdResultPopupEl){
+  document.removeEventListener('keydown', _pdResultPopupEl._onKey);
+  _pdResultPopupEl.remove();
+  _pdResultPopupEl=null;
+ }
+ // Return to main menu after closing the popup
+ $('pdArea').style.display='none';
+ showMainMenu();
 }
 
 function leavePdGame(){
