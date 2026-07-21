@@ -471,6 +471,14 @@ function pdRenderDice(st){
  await _aiDelay(400);
  }
 
+ // If the bot stopped before using all 3 rolls, it means it decided to keep all 5 dice.
+ // Highlight them so the user understands why the bot isn't rerolling!
+ if (history.length < 3) {
+ await _aiDelay(600);
+ for(let i = 0; i < 5; i++) diceEls[i].classList.add('kept');
+ await _aiDelay(600);
+ }
+
  // Brief "thinking" beat before revealing the bot's chosen category.
  await _aiDelay(800);
 
@@ -738,6 +746,16 @@ function pdAfterOpeningRoll(){
  pdOpeningTimer = setTimeout(async () => {
  pdOpeningPending = false;
  if(pdCode !== myCode) return;
+ 
+ _rollAckShown[pdCode] = true;
+ closeFirstRollPopup();
+ if (pdState) {
+ pdRenderScorecard(pdState);
+ pdRenderDice(pdState);
+ pdRenderActions(pdState);
+ pdRenderInfo(pdState);
+ }
+
  _pdBotOpening = true;
  try { await pdRunBotTurn(); } finally { _pdBotOpening = false; }
  }, 700);
