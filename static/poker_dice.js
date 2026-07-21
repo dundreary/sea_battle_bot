@@ -458,7 +458,7 @@ function pdRenderDice(st){
  sfxRoll();
  const spinEls = isFirst ? diceEls : rerolled.map(i => diceEls[i]);
  for(const el of spinEls) el.classList.add('rolling');
- await _aiDelay(1100);
+ await _aiDelay(1600);
  for(const el of spinEls) el.classList.remove('rolling');
  // Set the final faces once, after the rotation ends.
  for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
@@ -476,18 +476,22 @@ function pdRenderDice(st){
  if (cat) {
  const row = document.querySelector(`#pdScorecardEl tr[data-cat="${cat}"]`);
  if (row) {
- const originalBg = row.style.backgroundColor;
- row.style.transition = 'background-color 0.4s ease';
+ row.style.transition = '';
  row.style.backgroundColor = 'var(--accent-primary)';
- await _aiDelay(400);
+ await _aiDelay(150);
+ row.style.backgroundColor = '';
+ await _aiDelay(150);
+ row.style.backgroundColor = 'var(--accent-primary)';
+ await _aiDelay(150);
+ 
  const oppCell = row.querySelectorAll('.cat-score')[1];
  if (oppCell) {
  oppCell.textContent = pts !== undefined ? pts : '';
  oppCell.style.color = 'var(--bg-main)';
  oppCell.style.fontWeight = 'bold';
  }
- await _aiDelay(1200);
- row.style.backgroundColor = originalBg;
+ await _aiDelay(1000);
+ row.style.backgroundColor = '';
  if (oppCell) {
  oppCell.style.color = '';
  oppCell.style.fontWeight = '';
@@ -591,7 +595,7 @@ async function pdDoRoll(){
  sfxRoll();
  const keep=Array.from(pdKept);
  const start=Date.now();
- const MIN_ANIM=450;
+ const MIN_ANIM=950;
 
  const cont=$('pdDice');
  const diceEls=[];
@@ -663,21 +667,32 @@ async function pdRunBotTurn(){
  pdAnimating = true;
  const cont = $('pdDice');
  if(cont) {
- const label = document.createElement('div');
- label.className = 'thinking-indicator';
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--text-hint);font-style:italic;margin-top:20px;animation: pulse 1.5s infinite;';
- label.innerHTML = '🤔 ' + (t('pdBotThinking') || 'Бот думает...');
+ cont.style.minHeight = cont.offsetHeight + 'px';
  cont.innerHTML = '';
+ const label = document.createElement('div');
+ label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
  cont.appendChild(label);
+ for(let i=0; i<5; i++){
+ const die = document.createElement('div');
+ die.className = 'pd-dot-die rolling';
+ die.style.cursor = 'default';
+ die.dataset.idx = i;
+ die.innerHTML = pdDieInner();
+ cont.appendChild(die);
+ }
  }
 
  const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 20000);
+ 
+ pdAnimating = false;
+
  if(!res || !res.ok) return;
  if(!pdCode) return;
  await pdMaybeAnimateOpponent(res.state);
  pdShowGame(res.state);
  } catch (e) {
  console.error('[pd] bot turn failed', e);
+ pdAnimating = false;
  } finally {
  pdAnimating = false;
  if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
