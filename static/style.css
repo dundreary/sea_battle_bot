@@ -452,9 +452,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-die3d.roll-die-pending{opacity:.55;background:linear-gradient(150deg,#5a616e,#333842);box-shadow:0 6px 14px rgba(0,0,0,.4),inset 0 2px 3px rgba(255,255,255,.12),inset 0 -4px 8px rgba(0,0,0,.4)}
 .roll-die3d.roll-die-pending svg circle{fill:rgba(255,255,255,.85)}
 /* Real "throw": the die is tossed from above with a tumbling spin, arcs down,
- and lands with a soft bounce — like a physical cube, not an on-the-spot
- rotation. Both translate (flight) and rotate (tumble) are eased so it feels
- weighty and satisfying. */
+and lands with a soft bounce — like a physical cube, not an on-the-spot
+rotation. Both translate (flight) and rotate (tumble) are eased so it feels
+weighty and satisfying. */
 .roll-die3d.roll-die-spinning{animation:dieThrow 1.15s cubic-bezier(0.22,1,0.36,1) forwards}
 @keyframes dieThrow{
  0%{transform:translateY(-180px) rotate(-40deg) rotateX(0deg) rotateY(0deg) scale(.9);opacity:0}
@@ -465,9 +465,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
  92%{transform:translateY(-2px) rotate(352deg) rotateX(340deg) rotateY(-184deg) scale(1)}
  100%{transform:translateY(0) rotate(360deg) rotateX(360deg) rotateY(-180deg) scale(1)}
 }
-/* Gentle attention pulse on a waiting (not-yet-thrown) die. */
-.roll-die3d.roll-die-pending{animation:dieBreathe 1.8s ease-in-out infinite}
-@keyframes dieBreathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* Pending die: static dim look, no pulsing/jitter. */
+.roll-die3d.roll-die-pending{opacity:.55;background:linear-gradient(150deg,#5a616e,#333842);box-shadow:0 6px 14px rgba(0,0,0,.4),inset 0 2px 3px rgba(255,255,255,.12),inset 0 -4px 8px rgba(0,0,0,.4);transition:opacity .25s ease,background .25s ease,box-shadow .25s ease}
 .roll-vs{font-size:13px;font-weight:700;color:var(--text-hint);letter-spacing:1px}
 .roll-cta{width:100%;max-width:220px;padding:14px 20px;font-size:15px}
 .roll-wait{font-size:13px;color:var(--text-hint);text-align:center;animation:rollWaitPulse 1.6s ease-in-out infinite}
