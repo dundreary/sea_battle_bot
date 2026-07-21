@@ -292,7 +292,7 @@ function pdRenderDice(st){
  // We no longer statically replay the opponent's last roll at the start of
  // the player's turn; the throw animation already reveals it. So showOpp is
  // disabled and the player simply sees their own (empty) tray.
- const showOpp = false;
+ const showOpp = st.my_turn && (!st.dice || st.dice.length === 0);
 
  if(st.my_turn || showOpp){
  let labelColor = 'var(--accent-primary)';
@@ -442,9 +442,17 @@ function pdRenderDice(st){
  ? `${t('pdThrow')} 1`
  : `${t('pdThrow')} ${h + 1} · ${t('pdKept')} ${kept.length}, ${t('pdDiscarded')} ${rerolled.length}`;
 
+ if(!isFirst) {
+ // Pause to "think" about what to keep
+ await _aiDelay(600);
  for(let i = 0; i < 5; i++){
- if(!isFirst && kept.includes(i)) diceEls[i].classList.add('kept');
+ if(kept.includes(i)) diceEls[i].classList.add('kept');
  else diceEls[i].classList.remove('kept');
+ }
+ // Pause to show the kept selection before rolling
+ await _aiDelay(600);
+ } else {
+ for(let i = 0; i < 5; i++) diceEls[i].classList.remove('kept');
  }
 
  sfxRoll();
@@ -454,7 +462,7 @@ function pdRenderDice(st){
  for(const el of spinEls) el.classList.remove('rolling');
  // Set the final faces once, after the rotation ends.
  for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
- await _aiDelay(350);
+ await _aiDelay(400);
  }
 
  // Brief "thinking" beat before revealing the bot's chosen category.
@@ -464,6 +472,28 @@ function pdRenderDice(st){
  label.textContent = cat
  ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
  : t('pdOppHand');
+ 
+ if (cat) {
+ const row = document.querySelector(`#pdScorecardEl tr[data-cat="${cat}"]`);
+ if (row) {
+ const originalBg = row.style.backgroundColor;
+ row.style.transition = 'background-color 0.4s ease';
+ row.style.backgroundColor = 'var(--accent-primary)';
+ await _aiDelay(400);
+ const oppCell = row.querySelectorAll('.cat-score')[1];
+ if (oppCell) {
+ oppCell.textContent = pts !== undefined ? pts : '';
+ oppCell.style.color = 'var(--bg-main)';
+ oppCell.style.fontWeight = 'bold';
+ }
+ await _aiDelay(1200);
+ row.style.backgroundColor = originalBg;
+ if (oppCell) {
+ oppCell.style.color = '';
+ oppCell.style.fontWeight = '';
+ }
+ }
+ }
  } finally {
  // Release the pinned height now that the final layout is settled so the
  // container can size naturally for the human's turn.

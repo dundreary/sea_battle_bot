@@ -140,22 +140,22 @@ class Board:
     def cell_display(self, r, c, hide_ships=False):
         v = self.grid[r][c]
         if v == EMPTY:
-            return "⬜"
+            return "·"
         if v == SHIP:
-            return "⬜" if hide_ships else "🟩"
+            return "·" if hide_ships else "S"
         if v == MINE:
-            return "⬜" if hide_ships else "💣"
+            return "·" if hide_ships else "*"
         if v == MINE_HIT:
-            return "💣"
+            return "*"
         if v == HIT:
-            return "❌"
+            return "X"
         if v == MISS:
             return "·"
         if v == SUNK:
-            return "✖"
+            return "?"
         if v == DEAD:
             return "·"
-        return "⬜"
+        return "·"
 
     def render(self, hide_ships=True):
         return "\n".join(

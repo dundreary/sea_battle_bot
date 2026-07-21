@@ -15,9 +15,9 @@ import config
 logger = logging.getLogger(__name__)
 
 STRIP_LOSE_CAPTIONS = {
-    'ru': '👗 Твой друг проиграл в режиме «На раздевание»!',
-    'uk': '👗 Твій друг програв у режимі «На роздягання»!',
-    'en': '👗 Your friend lost in Strip Mode!',
+    'ru': ' Твой друг проиграл в режиме «На раздевание»!',
+    'uk': ' Твій друг програв у режимі «На роздягання»!',
+    'en': ' Your friend lost in Strip Mode!',
 }
 
 STRIP_PHOTO_BOUNDARY = '----StripPhotoBoundary'

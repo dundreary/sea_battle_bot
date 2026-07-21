@@ -170,18 +170,18 @@ def run_bot():
             me = await app.bot.get_me()
             config.BOT_USERNAME = me.username
             config.BOT_ID = me.id
-            logger.info("✅ Bot username: @%s", me.username)
+            logger.info(" Bot username: @%s", me.username)
         except Exception as e:
             logger.warning("Could not get bot info: %s", e)
         cmds = [
-            BotCommand("start", "🏠 Открыть меню"),
+            BotCommand("start", " Открыть меню"),
         ]
         try:
             await app.bot.set_my_commands(cmds)
             if base:
-                btn = MenuButtonWebApp(text="🎮 Games", web_app=WebAppInfo(url=base))
+                btn = MenuButtonWebApp(text=" Games", web_app=WebAppInfo(url=base))
                 await app.bot.set_chat_menu_button(menu_button=btn)
-            logger.info("✅ Menu + commands set")
+            logger.info(" Menu + commands set")
         except Exception as e:
             logger.warning("Menu setup skipped: %s", e)
 

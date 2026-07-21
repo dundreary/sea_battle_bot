@@ -313,7 +313,7 @@ _mg.board1.grid[3][3] = MINE
 _mres = _mg.board1.receive_shot(3, 3)
 check(_mres == "mine", "mine shot returns 'mine'")
 check(_mg.board1.grid[3][3] == MINE_HIT, "hit mine cell is MINE_HIT, not HIT")
-check(_mg.board1.cell_display(3, 3) == "💣", "hit mine renders as mine glyph")
+check(_mg.board1.cell_display(3, 3) == "*", "hit mine renders as mine glyph")
 _mflat = _mg.board1.to_flat_list(hide_ships=True)
 check(_mflat[3 * 10 + 3] == MINE_HIT, "hit mine stays visible on opponent board")
 

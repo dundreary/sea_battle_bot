@@ -1,11 +1,11 @@
-# 🎨 Sea Battle Game - Color Palettes
+# Sea Battle Game - Color Palettes
 
 ## Overview
 Added selectable color palettes to the Sea Battle game using CSS custom properties (variables) and localStorage persistence.
 
 ## Palettes
 
-### 1. 🌊 Ocean (Default)
+### 1. Ocean (Default)
 - **Primary Accent:** `#4fc3f7` (Cyan)
 - **Background:** `#0a1628` (Dark Blue)
 - **Board Background:** `#0d1f3c` (Navy)
@@ -15,7 +15,7 @@ Added selectable color palettes to the Sea Battle game using CSS custom properti
 - **Warning Color:** `#ffd54f` (Yellow)
 - **Theme Name:** `ocean`
 
-### 2. 🌲 Forest
+### 2. Forest
 - **Primary Accent:** `#00d084` (Bright Green)
 - **Background:** `#0d1117` (Very Dark)
 - **Board Background:** `#1a1a2e` (Dark Navy)
@@ -44,16 +44,16 @@ All colors are defined as CSS custom properties under `body.palette-{name}` sele
 - Defaults to 'ocean' if not set
 
 ### UI
-- **Theme Selector:** Located in the Settings panel (⚙️ button in the top bar)
-- **Buttons:** 🌊 Ocean, 🌲 Forest
+- **Theme Selector:** Located in the Settings panel ( button in the top bar)
+- **Buttons:** Ocean, Forest
 - **Active State:** Selected theme button highlighted
 - **Position:** Inside the Settings overlay (theme/sound/vibration moved out of the individual games)
 
 ## How to Use
 
 ### For Players
-1. Open the Settings panel from the top bar (⚙️)
-2. Tap the theme you want (🌊 Ocean or 🌲 Forest)
+1. Open the Settings panel from the top bar ()
+2. Tap the theme you want ( Ocean or Forest)
 3. Your choice is automatically saved
 4. Theme applies immediately with smooth transition
 
@@ -67,39 +67,39 @@ Add a new theme by:
 
 ### CSS Variables Structure
 ```
---bg-dark              # Main background
---bg-board             # Game board background
---bg-board-alt         # Alternative board color
---border-color         # Borders and dividers
---accent-primary       # Main accent color
+--bg-dark # Main background
+--bg-board # Game board background
+--bg-board-alt # Alternative board color
+--border-color # Borders and dividers
+--accent-primary # Main accent color
 --accent-primary-light # Light accent
---accent-primary-alt   # Alternative accent
---text-muted           # Muted text
---text-secondary       # Secondary text
---text-tertiary        # Tertiary text
---text-hint            # Hint text
---color-ship           # Ship cells
---color-hit            # Hit cells
---color-sunk-dark      # Sunk ship color
---color-btn-primary-1  # Button gradient start
---color-btn-primary-2  # Button gradient end
---color-btn-success-1  # Success button start
---color-btn-success-2  # Success button end
+--accent-primary-alt # Alternative accent
+--text-muted # Muted text
+--text-secondary # Secondary text
+--text-tertiary # Tertiary text
+--text-hint # Hint text
+--color-ship # Ship cells
+--color-hit # Hit cells
+--color-sunk-dark # Sunk ship color
+--color-btn-primary-1 # Button gradient start
+--color-btn-primary-2 # Button gradient end
+--color-btn-success-1 # Success button start
+--color-btn-success-2 # Success button end
 --color-btn-outline-border # Outline button border
---color-warning        # Warning color
---color-header-grad-1  # Header gradient start
---color-header-grad-2  # Header gradient end
+--color-warning # Warning color
+--color-header-grad-1 # Header gradient start
+--color-header-grad-2 # Header gradient end
 ```
 
 ## Features
 
-✅ Smooth theme transitions (0.3s CSS animations)
-✅ Persistent storage using localStorage
-✅ Three pre-designed palettes
-✅ Easy to add more themes
-✅ Works with all game components (boards, buttons, modals, etc.)
-✅ Maintains contrast and readability across all themes
-✅ Mobile-friendly theme selector
+OK Smooth theme transitions (0.3s CSS animations)
+OK Persistent storage using localStorage
+OK Three pre-designed palettes
+OK Easy to add more themes
+OK Works with all game components (boards, buttons, modals, etc.)
+OK Maintains contrast and readability across all themes
+OK Mobile-friendly theme selector
 
 ## Browser Compatibility
 
