@@ -525,10 +525,15 @@ def _expert_ev(dice, rolls_left: int, rem_key: frozenset, upper_sum: int) -> flo
         _EXPERT_CACHE[key] = val
         return val
 
+    unique_kept = {}
+    for mask in range(32):
+        kept = tuple(ms[i] for i in range(5) if (mask >> i) & 1)
+        if kept not in unique_kept:
+            unique_kept[kept] = mask
+
     best = -1e18
     score_now = None
-    for mask in _keep_candidates(list(ms)):
-        kept = [ms[i] for i in range(5) if (mask >> i) & 1]
+    for kept, mask in unique_kept.items():
         reroll = 5 - len(kept)
         # Keeping all dice means "stop and score now" in the real game loop
         # (the caller breaks on the keep-all mask), so evaluate it as the
@@ -540,7 +545,7 @@ def _expert_ev(dice, rolls_left: int, rem_key: frozenset, upper_sum: int) -> flo
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
-                new = tuple(sorted(kept + list(combo)))
+                new = tuple(sorted(kept + combo))
                 total += w * _expert_ev(new, rolls_left - 1, rem_key, upper_sum)
             val = total
         if val > best:
@@ -556,14 +561,17 @@ def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str],
     rem_key = frozenset(remaining)
     upper_sum = _upper_sum(scorecard) if scorecard is not None else 0
     ms = tuple(sorted(dice))
+    unique_kept = {}
+    for mask in range(1, 32):
+        kept = tuple(ms[i] for i in range(5) if (mask >> i) & 1)
+        if kept not in unique_kept:
+            unique_kept[kept] = mask
+
     best_mask = _KEEP_ALL
     best_val = -1e18
     score_now = None
-    for mask in _keep_candidates(list(ms)):
-        # Never consider "reroll all 5 dice" (mask 0); _keep_candidates only
-        # ever returns masks that keep at least one die, which is essentially
-        # always correct in poker dice and matches the Hard tier's behaviour.
-        kept = [ms[i] for i in range(5) if (mask >> i) & 1]
+    for kept, mask in unique_kept.items():
+        # Never consider "reroll all 5 dice" (mask 0) as it is essentially always better to keep at least one matching die
         reroll = 5 - len(kept)
         # Keeping all dice means "stop and score now" in the real game loop
         # (the caller breaks on the keep-all mask), so evaluate it as the
@@ -575,7 +583,7 @@ def _expert_best_keep(dice: List[int], rolls_left: int, remaining: List[str],
         else:
             total = 0.0
             for combo, w in _reroll_outcomes(reroll):
-                new = tuple(sorted(kept + list(combo)))
+                new = tuple(sorted(kept + combo))
                 total += w * _expert_ev(new, rolls_left - 1, rem_key, upper_sum)
             val = total
         if val > best_val:

@@ -660,15 +660,27 @@ async function pdRunBotTurn(){
  if(!pdCode) return;
  const myCode = pdCode;
  try {
-  const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 4000);
-  if(!res || !res.ok) return;
-  if(!pdCode) return;
-  await pdMaybeAnimateOpponent(res.state);
-  pdShowGame(res.state);
+ pdAnimating = true;
+ const cont = $('pdDice');
+ if(cont) {
+ const label = document.createElement('div');
+ label.className = 'thinking-indicator';
+ label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--text-hint);font-style:italic;margin-top:20px;animation: pulse 1.5s infinite;';
+ label.innerHTML = '🤔 ' + (t('pdBotThinking') || 'Бот думает...');
+ cont.innerHTML = '';
+ cont.appendChild(label);
+ }
+
+ const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 20000);
+ if(!res || !res.ok) return;
+ if(!pdCode) return;
+ await pdMaybeAnimateOpponent(res.state);
+ pdShowGame(res.state);
  } catch (e) {
-  console.error('[pd] bot turn failed', e);
+ console.error('[pd] bot turn failed', e);
  } finally {
-  if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
+ pdAnimating = false;
+ if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
  }
 }
 
