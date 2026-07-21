@@ -431,7 +431,7 @@ def _handle_join(data, uid, code):
     save()
     return (
         {"ok": True, "state": as_dict(game, uid)},
-        _notify_opponent(game, uid, " Друг подключился к игре. Расставьте корабли, чтобы начать.", "join", force=True),
+        _notify_opponent(game, uid, "⚓ Друг подключился к игре. Расставьте корабли, чтобы начать.", "join", force=True),
     )
 
 
@@ -460,10 +460,10 @@ def _handle_shoot(data, uid, code):
         if game.phase == 'finished':
             _record_match_stats("sea_battle", game)
             pending_notifications = _notify_opponent(
-                game, uid, " Игра в Морской бой окончена.", "finished", force=True)
+                game, uid, "⚓ Игра в Морской бой окончена.", "finished", force=True)
         elif game.current_player() != uid:
             pending_notifications = _notify_opponent(
-                game, uid, " Ваш ход в Морском бое.", f"shoot:{uid}:{r}:{c}")
+                game, uid, "⚓ Ваш ход в Морском бое.", f"shoot:{uid}:{r}:{c}")
     pending_stake = None
     # When a strip game finishes, deliver the loser's pre-committed stake
     # photo to the winner. Regular finished games are retained for up to a
@@ -506,10 +506,10 @@ def _handle_confirm(data, uid, code):
     pending = []
     if started:
         if game.solo:
-            pending = _notify_recipient(game, game.current_player(), " Ваш ход в Морском бое.", "started")
+            pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
         else:
             pending = _notify_opponent(
-                game, uid, " Оба флота готовы! Бросьте кубик — кто больше, тот ходит первым.",
+                game, uid, "🎲 Оба флота готовы! Бросьте кубик — кто больше, тот ходит первым.",
                 "roll", force=True)
     return {"ok": True, "started": started, "state": state}, pending
 
@@ -545,7 +545,7 @@ def _handle_roll_first(data, uid, code):
             # lazily when the client calls /api/bot_opening_shot after showing
             # the dice result. _bot_shoots is intentionally deferred.
             game.bot_pending_first = True
-        pending = _notify_recipient(game, game.current_player(), " Ваш ход в Морском бое.", "started")
+        pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
     _mark_active(game, uid)
     save()
     return {"ok": True, "state": as_dict(game, uid), "roll": res,
@@ -577,7 +577,7 @@ def _handle_reroll_first(data, uid, code):
         if res.get("winner"):
             if game.turn == 2:
                 game.bot_pending_first = True
-            pending = _notify_recipient(game, game.current_player(), " Ваш ход в Морском бое.", "started")
+            pending = _notify_recipient(game, game.current_player(), "⚓ Ваш ход в Морском бое.", "started")
         _mark_active(game, uid)
         save()
         return ({"ok": True, "state": as_dict(game, uid), "roll": res,
@@ -631,10 +631,10 @@ def _handle_rematch(data, uid, code):
         pending = []
     elif restarted:
         pending = _notify_opponent(
-            game, uid, " Реванш начался! Расставьте корабли.", "rematch_start", force=True)
+            game, uid, "⚓ Реванш начался! Расставьте корабли.", "rematch_start", force=True)
     else:
         pending = _notify_opponent(
-            game, uid, " Соперник хочет реванш! Расставьте корабли.", "rematch", force=True)
+            game, uid, "⚓ Соперник хочет реванш! Расставьте корабли.", "rematch", force=True)
     save()
     return {"ok": True, "restarted": bool(restarted), "state": state}, pending
 
@@ -709,7 +709,7 @@ def _handle_surrender(data, uid, code):
     _stats.record_match("sea_battle", game.code, game.player1_id, game.player2_id, game.solo, p1_result)
     state = as_dict(game, uid)
     _mark_active(game, uid)
-    pending = _notify_opponent(game, uid, " Друг сдался в Морском бое.", "surrender", force=True)
+    pending = _notify_opponent(game, uid, "⚓ Друг сдался в Морском бое.", "surrender", force=True)
     pending_stake = None
     if game.strip:
         # The surrendering player (uid) is the loser; deliver their
@@ -774,7 +774,7 @@ def _handle_message_opponent(data, uid, code):
 def _handle_pd_join(data, uid, code):
     return _join_game(
         pd_games, pd_player_games, code, uid,
-        " Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
+        "🎲 Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
         lambda g, u: g.get_state(g.player_num(u)),
         start_roll=True,
     )
@@ -811,7 +811,7 @@ def _handle_pd_roll_first(data, uid, code):
     if res.get("winner"):
         first_uid = game.player1_id if game.turn == 1 else game.player2_id
         pending = _notify_recipient(
-            game, first_uid, " Ваш ход в Покерных костях.", "started")
+            game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
     return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
              "roll_resolved": bool(res.get("winner")),
              "needs_bot_turn": needs_bot_turn}, pending)
@@ -842,7 +842,7 @@ def _handle_pd_reroll_first(data, uid, code):
         if res.get("winner"):
             first_uid = game.player1_id if game.turn == 1 else game.player2_id
             pending = _notify_recipient(
-                game, first_uid, " Ваш ход в Покерных костях.", "started")
+                game, first_uid, "🎲 Ваш ход в Покерных костях.", "started")
         return ({"ok": True, "state": game.get_state(pnum), "roll": res,
                  "roll_resolved": bool(res.get("winner")),
                  "needs_bot_turn": needs_bot_turn}, pending)
@@ -875,13 +875,13 @@ def _handle_pd_score(data, uid, code):
     _mark_active(game, uid)
     if game.phase == 'finished':
         _record_match_stats("poker_dice", game)
-        pending = _notify_opponent(game, uid, " Игра в Покерные кости окончена.", "finished", force=True)
+        pending = _notify_opponent(game, uid, "🎲 Игра в Покерные кости окончена.", "finished", force=True)
     elif game.player_num(uid) != game.turn:
         # In solo, turn==2 here means the bot is up next but hasn't played
         # yet (bot_turn() runs as a separate follow-up request), so there is
         # no opponent to notify yet.
         if not game.solo:
-            pending = _notify_opponent(game, uid, " Ваш ход в Покерных костях.", f"score:{uid}:{category}")
+            pending = _notify_opponent(game, uid, "🎲 Ваш ход в Покерных костях.", f"score:{uid}:{category}")
         else:
             pending = []
     else:
@@ -934,49 +934,10 @@ def _handle_pd_bot_turn(data, uid, code):
         return {"ok": True, "state": st}
 
 
-def _handle_pd_bot_step(data, uid, code):
-    """Execute ONE step of the bot's poker-dice turn (a single roll or the
-    final category choice), so the client can animate each roll live and show
-    the bot 'thinking' between rolls. The first call computes the full AI plan
-    up front (the slow part), then each subsequent call executes one queued
-    action cheaply.
-
-    Like _handle_pd_bot_turn, the AI computation runs without holding the
-    global state lock.
-    """
-    with _state_lock:
-        game, err = _get_game(pd_games, code, uid)
-        if err:
-            return err
-        if game.player_num(uid) != 1:
-            return {"error": "not_in_game"}
-        can_play = game.solo and game.phase == 'playing' and game.turn == 2
-
-    if can_play:
-        st = game.bot_step()
-    else:
-        st = None
-
-    with _state_lock:
-        game = pd_games.get(code)
-        if game is None:
-            return {"ok": True, "state": None}
-        if can_play and game.solo and game.phase == 'playing' and game.turn == 2:
-            # bot_step already committed/advances internally; just fetch state
-            pass
-        st = game.get_state(1)
-        _mark_active(game, uid)
-        if game.phase == 'finished':
-            _record_match_stats("poker_dice", game)
-            _evict_game(code, pd_games, pd_player_games)
-        save()
-        return {"ok": True, "state": st}
-
-
 def _handle_pd_surrender(data, uid, code):
     return _surrender_game(
         pd_games, pd_player_games, code, uid,
-        " Друг сдался в Покерных костях.", "surrender", "poker_dice",
+        "🎲 Друг сдался в Покерных костях.", "surrender", "poker_dice",
     )
 
 
@@ -1097,7 +1058,7 @@ def _evict_game(code, games_dict, player_games_dict):
 def _handle_checkers_join(data, uid, code):
     return _join_game(
         checkers_games, checkers_player_games, code, uid,
-        " Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
+        "♟ Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
         lambda g, u: g.get_state(u),
         start_roll=True,
     )
@@ -1132,7 +1093,7 @@ def _handle_checkers_roll_first(data, uid, code):
     pending = []
     if res.get("winner"):
         pending = _notify_recipient(
-            game, game.current_player, " Ваш ход в Шашках.", "started")
+            game, game.current_player, "♟ Ваш ход в Шашках.", "started")
     return ({"ok": True, "state": game.get_state(uid), "roll": res,
              "roll_resolved": bool(res.get("winner"))}, pending)
 
@@ -1160,7 +1121,7 @@ def _handle_checkers_reroll_first(data, uid, code):
         pending = []
         if res.get("winner"):
             pending = _notify_recipient(
-                game, game.current_player, " Ваш ход в Шашках.", "started")
+                game, game.current_player, "♟ Ваш ход в Шашках.", "started")
         return ({"ok": True, "state": game.get_state(uid), "roll": res,
                  "roll_resolved": bool(res.get("winner"))}, pending)
     _mark_active(game, uid)
@@ -1212,7 +1173,7 @@ def _handle_checkers_move(data, uid, code):
         _record_match_stats("checkers", game)
         state = game.get_state(uid)
         _mark_active(game, uid)
-        pending = _notify_opponent(game, uid, " Игра в Шашки окончена.", "finished", force=True)
+        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
         _evict_game(code, checkers_games, checkers_player_games)
         flush()
         return {"ok": True, "state": state, "finished": True}, pending
@@ -1255,9 +1216,9 @@ def _handle_checkers_move(data, uid, code):
         _record_match_stats("checkers", game)
     _mark_active(game, uid)
     if finished:
-        pending = _notify_opponent(game, uid, " Игра в Шашки окончена.", "finished", force=True)
+        pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
     elif not game.solo and game.current_player != uid:
-        pending = _notify_opponent(game, uid, " Ваш ход в Шашках.", f"move:{game.last_move}")
+        pending = _notify_opponent(game, uid, "♟ Ваш ход в Шашках.", f"move:{game.last_move}")
     else:
         pending = []
     save()
@@ -1341,7 +1302,7 @@ def _handle_checkers_bot_turn(data, uid, code):
             _record_match_stats("checkers", game)
         _mark_active(game, uid)
         if finished:
-            pending = _notify_opponent(game, uid, " Игра в Шашки окончена.", "finished", force=True)
+            pending = _notify_opponent(game, uid, "♟ Игра в Шашки окончена.", "finished", force=True)
         else:
             pending = []
         save()
@@ -1356,7 +1317,7 @@ def _handle_checkers_bot_turn(data, uid, code):
 def _handle_checkers_surrender(data, uid, code):
     return _surrender_game(
         checkers_games, checkers_player_games, code, uid,
-        " Друг сдался в Шашках.", "surrender", "checkers",
+        "♟ Друг сдался в Шашках.", "surrender", "checkers",
     )
 
 
@@ -1411,7 +1372,7 @@ def _do_bg_new_multi(data, uid):
 def _handle_bg_join(data, uid, code):
     return _join_game(
         bg_games, bg_player_games, code, uid,
-        " Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
+        "🎲 Друг подключился! Бросьте кубик — кто больше, тот ходит первым.", "roll",
         lambda g, u: g.get_state(u),
         start_roll=True,
     )
@@ -1444,7 +1405,7 @@ def _handle_bg_roll_first(data, uid, code):
     pending = []
     if res.get("winner"):
         pending = _notify_recipient(
-            game, game.current_player, " Ваш ход в Нардах.", "started")
+            game, game.current_player, "🎲 Ваш ход в Нардах.", "started")
     return ({"ok": True, "state": game.get_state(uid), "roll": res,
              "roll_resolved": bool(res.get("winner"))}, pending)
 
@@ -1472,7 +1433,7 @@ def _handle_bg_reroll_first(data, uid, code):
         pending = []
         if res.get("winner"):
             pending = _notify_recipient(
-                game, game.current_player, " Ваш ход в Нардах.", "started")
+                game, game.current_player, "🎲 Ваш ход в Нардах.", "started")
         return ({"ok": True, "state": game.get_state(uid), "roll": res,
                  "roll_resolved": bool(res.get("winner"))}, pending)
     _mark_active(game, uid)
@@ -1520,9 +1481,9 @@ def _handle_bg_move(data, uid, code):
     needs_bot_turn = bool(game.solo and game.phase == 'playing' and game.turn == -1)
     if game.phase == 'finished':
         _record_match_stats("backgammon", game)
-        pending = _notify_opponent(game, uid, " Игра в Нарды окончена.", "finished", force=True)
+        pending = _notify_opponent(game, uid, "🎲 Игра в Нарды окончена.", "finished", force=True)
     elif not game.solo and game.turn != (1 if uid == game.player1_id else -1):
-        pending = _notify_opponent(game, uid, " Ваш ход в Нардах.", f"move:{uid}")
+        pending = _notify_opponent(game, uid, "🎲 Ваш ход в Нардах.", f"move:{uid}")
     else:
         pending = []
     if game.phase == 'finished':
@@ -1552,7 +1513,7 @@ def _handle_bg_bot_turn(data, uid, code):
 def _handle_bg_surrender(data, uid, code):
     return _surrender_game(
         bg_games, bg_player_games, code, uid,
-        " Друг сдался в Нардах.", "surrender", "backgammon",
+        "🎲 Друг сдался в Нардах.", "surrender", "backgammon",
     )
 
 
@@ -1580,7 +1541,6 @@ _HANDLERS = {
     "/api/pd_roll": _handle_pd_roll,
     "/api/pd_score": _handle_pd_score,
     "/api/pd_bot_turn": _handle_pd_bot_turn,
-    "/api/pd_bot_step": _handle_pd_bot_step,
     "/api/pd_state": _handle_pd_state,
     "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
@@ -1629,7 +1589,7 @@ NOTIFY_PATHS = {
 # game), so it's split out from the plain default-locked set below rather
 # than reusing NOTIFY_PATHS, which always wraps the whole call in the lock.
 UNLOCKED_NOTIFY_PATHS = {"/api/checkers_bot_turn"}
-UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn", "/api/pd_bot_step"}
+UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn"}
 
 # Handlers on these paths can end a strip game and must deliver the loser's
 # pre-committed stake photo to the winner before the game is evicted. They

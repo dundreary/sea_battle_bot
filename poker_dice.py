@@ -707,8 +707,9 @@ class PokerDiceGame(BaseGame):
         especially the Expert-difficulty expectimax search) never blocks the
         response that confirms the player's own move.
 
-        Kept as a synchronous convenience wrapper around prepare/compute/commit
-        (below) for callers that don't need the unlocked-compute split themselves.
+        Kept as a synchronous convenience wrapper around prepare/compute/
+        commit (below) for callers that don't need the unlocked-compute
+        split themselves.
         """
         if not self.solo or self.phase != 'playing' or self.turn != 2:
             return None
@@ -717,129 +718,6 @@ class PokerDiceGame(BaseGame):
             self._advance_turn(2)
         else:
             self.commit_bot_play(self.compute_bot_play(p))
-        return self.get_state(1)
-
-    def bot_step(self) -> Optional[Dict]:
-        """Execute ONE step of the bot's turn (a single roll or the final
-        category choice), so the client can animate each roll live and then
-        show the bot 'thinking' between rolls.
-
-        State is persisted in self.players[2] between calls via the bot_plan
-        field, which stores the working copy and the keep-decision queue.
-        Returns the game state after this step, or None if the turn is over.
-        """
-        if not self.solo or self.phase != 'playing' or self.turn != 2:
-            return None
-        live = self.players[2]
-        plan = live.get('bot_plan')
-        if plan is None:
-            # First step: prepare the working copy and compute the full
-            # keep-decision queue up front (the AI search is the slow part;
-            # doing it once here means each subsequent step is cheap).
-            p = self.prepare_bot_play()
-            if p is None:
-                self._advance_turn(2)
-                return self.get_state(1)
-            plan = self._compute_bot_plan(p)
-            live['bot_plan'] = plan
-            p = plan['working']
-        else:
-            p = plan['working']
-        # Execute the next queued action: either a roll or the category pick.
-        if plan['queue']:
-            action = plan['queue'].pop(0)
-            if action['type'] == 'roll':
-                mask = action['keep_mask']
-                fresh = []
-                for i in range(5):
-                    if (mask >> i) & 1 and len(p['dice']) == 5:
-                        fresh.append(p['dice'][i])
-                    else:
-                        fresh.append(random.randint(1, 6))
-                p['dice'] = fresh
-                if p['rolls'] > 0:
-                    p['rolls'] -= 1
-                p['dice_history'].append(list(fresh))
-                kept = [i for i in range(5) if (mask >> i) & 1 and len(p['dice']) == 5]
-                rerolled = [i for i in range(5) if i not in set(kept)]
-                p['roll_history'].append({'dice': list(fresh), 'kept': kept, 'rerolled': rerolled})
-            elif action['type'] == 'score':
-                best_cat = action['category']
-                scored_points = score_for_category(p['dice'], best_cat)
-                p['scorecard'][best_cat] = scored_points
-                p['hand'] = evaluate(p['dice'])
-                p['last_scored_category'] = best_cat
-                p['last_scored_score'] = scored_points
-                p['scored'] = True
-        # If the queue is now empty, commit the working copy and advance.
-        if not plan['queue']:
-            self.commit_bot_play(p)
-            del live['bot_plan']
-        else:
-            # Persist the working copy back so the next step sees it.
-            live['dice'] = p['dice']
-            live['rolls'] = p['rolls']
-            live['scored'] = p['scored']
-            live['hand'] = p['hand']
-            live['last_scored_category'] = p['last_scored_category']
-            live['last_scored_score'] = p['last_scored_score']
-            live['scorecard'] = p['scorecard']
-            live['dice_history'] = p['dice_history']
-            live['roll_history'] = p['roll_history']
-        return self.get_state(1)
-
-    def _compute_bot_plan(self, p: Dict[str, Any]) -> Dict[str, Any]:
-        """Compute the full bot turn up front and return a plan dict with a
-        queue of actions (rolls + final category) the caller can execute one
-        at a time via bot_step(). Mirrors compute_bot_play's logic.
-        """
-        remaining = _remaining_categories(p['scorecard'])
-        diff = self.difficulty
-        queue = []
-
-        def _bot_roll(keep_mask: int):
-            fresh = []
-            for i in range(5):
-                if (keep_mask >> i) & 1 and len(p['dice']) == 5:
-                    fresh.append(p['dice'][i])
-                else:
-                    fresh.append(random.randint(1, 6))
-            p['dice'] = fresh
-            if p['rolls'] > 0:
-                p['rolls'] -= 1
-            p['dice_history'].append(list(fresh))
-            kept = [i for i in range(5) if (keep_mask >> i) & 1 and len(p['dice']) == 5]
-            rerolled = [i for i in range(5) if i not in set(kept)]
-            p['roll_history'].append({'dice': list(fresh), 'kept': kept, 'rerolled': rerolled})
-
-        if diff <= 1:
-            queue.append({'type': 'roll', 'keep_mask': 0})
-            _bot_roll(0)
-            best_cat = max(remaining, key=lambda c: score_for_category(p['dice'], c))
-            queue.append({'type': 'score', 'category': best_cat})
-        else:
-            queue.append({'type': 'roll', 'keep_mask': 0})
-            _bot_roll(0)
-            while p['rolls'] > 0:
-                if diff == 2:
-                    mask = _bot_keep_simple(p['dice'])
-                elif diff == 3:
-                    mask = _bot_best_keep(p['dice'], p['rolls'], remaining)
-                else:
-                    if os.environ.get('PD_USE_OLD_EXACT') == '1':
-                        mask = _expert_best_keep(p['dice'], p['rolls'], remaining, p['scorecard'])
-                    else:
-                        mask = _expert_best_keep_mc(p['dice'], p['rolls'], remaining, p['scorecard'])
-                if mask == _KEEP_ALL:
-                    break
-                queue.append({'type': 'roll', 'keep_mask': mask})
-                _bot_roll(mask)
-            if diff >= 4:
-                best_cat = _expert_best_category_v2(p['dice'], remaining, p['scorecard'])
-            else:
-                best_cat = _bot_choose_category(p['dice'], remaining, p['scorecard'])
-            queue.append({'type': 'score', 'category': best_cat})
-        return {'working': p, 'queue': queue}
         return self.get_state(1)
 
     def prepare_bot_play(self) -> Optional[Dict[str, Any]]:

@@ -629,42 +629,16 @@ function _fetchWithTimeout(url, opts, ms){
 async function pdRunBotTurn(){
  if(!pdCode) return;
  const myCode = pdCode;
- // Raise the guard BEFORE stepping so the pdShowGame() calls inside
- // pdRunBotTurnSteps don't re-trigger another pdRunBotTurn (which used to
- // recurse and run the step loop concurrently, corrupting the bot turn).
- _pdBotOpening = true;
  try {
-  await pdRunBotTurnSteps();
+  const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 4000);
+  if(!res || !res.ok) return;
+  if(!pdCode) return;
+  await pdMaybeAnimateOpponent(res.state);
+  pdShowGame(res.state);
  } catch (e) {
   console.error('[pd] bot turn failed', e);
  } finally {
-  _pdBotOpening = false;
   if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
- }
-}
-
-// Run the bot's turn one step at a time, animating each roll and pausing
-// briefly between rolls so the player sees the bot 'thinking'.
-async function pdRunBotTurnSteps(){
- const thinkDelay = (ms) => new Promise(r => setTimeout(r, ms));
- let step = 0;
- while(pdCode === myCode && step < 50) {
-  step++;
-  const res = await _fetchWithTimeout('/api/pd_bot_step', {uid:getUid(), code:pdCode}, 4000);
-  if(!res || !res.ok) return;
-  if(!pdCode) return;
-  const st = res.state;
-  // Animate the dice roll for this step. _pdBotOpening is held true by the
-  // caller so pdShowGame below won't re-trigger the bot turn recursively.
-  await pdMaybeAnimateOpponent(st);
-  pdShowGame(st);
-  if(st.phase === 'finished') return;
-  // If it's still the bot's turn, pause before the next step.
-  if(st.solo && !st.my_turn && st.phase === 'playing') {
-   await thinkDelay(600);
-  } else {
-   return;
-  }
  }
 }
 
