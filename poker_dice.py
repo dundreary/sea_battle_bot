@@ -741,7 +741,7 @@ class PokerDiceGame(BaseGame):
         p['scorecard'] = dict(live['scorecard'])
         return p
 
-    def compute_bot_play(self, p: Dict[str, Any]) -> Dict[str, Any]:
+    def compute_bot_play(self, p: Dict[str, Any], initial_dice: Optional[List[int]] = None) -> Dict[str, Any]:
         """Fill in a working copy from prepare_bot_play() with a full bot
         turn: rolls, keep decisions (up to Expert-difficulty exact
         expectimax, which is the slow part) and final category choice.
@@ -776,13 +776,29 @@ class PokerDiceGame(BaseGame):
                 'rerolled': rerolled,
             })
 
+        def _apply_first_roll(initial: List[int]):
+            p['dice'] = list(initial)
+            p['rolls'] -= 1
+            p['dice_history'].append(list(initial))
+            p['roll_history'].append({
+                'dice': list(initial),
+                'kept': [],
+                'rerolled': [0, 1, 2, 3, 4],
+            })
+
         if diff <= 1:
             # Easy: one roll, score the highest raw category (legacy behaviour).
-            _bot_roll(0)
+            if initial_dice and len(initial_dice) == 5:
+                _apply_first_roll(initial_dice)
+            else:
+                _bot_roll(0)
             best_cat = max(remaining, key=lambda c: score_for_category(p['dice'], c))
         else:
             # Normal / Hard / Expert: up to 3 rolls, choosing which dice to keep.
-            _bot_roll(0)
+            if initial_dice and len(initial_dice) == 5:
+                _apply_first_roll(initial_dice)
+            else:
+                _bot_roll(0)
             while p['rolls'] > 0:
                 if diff == 2:
                     mask = _bot_keep_simple(p['dice'])

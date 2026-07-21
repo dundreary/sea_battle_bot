@@ -912,7 +912,8 @@ def _handle_pd_bot_turn(data, uid, code):
         plan = game.prepare_bot_play() if can_play else None
 
     if plan is not None:
-        plan = game.compute_bot_play(plan)
+        initial_dice = data.get("initial_dice")
+        plan = game.compute_bot_play(plan, initial_dice=initial_dice)
 
     with _state_lock:
         game = pd_games.get(code)

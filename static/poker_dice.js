@@ -153,7 +153,7 @@ async function pdRefreshState(){
  _lastPDSig = sig;
  // Replay the opponent's throws live in the shared dice tray the moment their
  // turn is delivered (only once, guarded inside pdMaybeAnimateOpponent).
- await pdMaybeAnimateOpponent(st);
+ await pdMaybeAnimateOpponent(st, false);
  if(!pdAnimating) await pdShowGame(st);
  } finally {
  _pdRefreshing=false;
@@ -370,7 +370,7 @@ function pdRenderDice(st){
  // the discarded ones spin again in place, up to the third throw. No separate
  // / duplicated "opponent table" — everything happens in #pdDice.
 
- async function pdMaybeAnimateOpponent(st){
+ async function pdMaybeAnimateOpponent(st, skipFirstRoll = false){
  const hist = st.opponent_roll_history || [];
  if(!hist.length) return false;
  const key = hist.map(h => (h.dice||[]).join(',')).join('|') + ':'+ (st.opponent_scored_category || '');
@@ -382,11 +382,11 @@ function pdRenderDice(st){
  // before this animation); the bot's new score is revealed only by the
  // pdShowGame call that follows the animation, so the dice spin to their
  // result before the table updates.
- await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points, st);
+ await pdAnimateBotTurn(hist, st.opponent_scored_category, st.opponent_scored_points, st, skipFirstRoll);
  return true;
  }
 
- async function pdAnimateBotTurn(history, cat, pts, st){
+ async function pdAnimateBotTurn(history, cat, pts, st, skipFirstRoll = false){
  if(pdAnimating) return;
  pdAnimating = true;
  const myCode = pdCode;
@@ -433,7 +433,13 @@ function pdRenderDice(st){
  };
 
  try {
- for(let h = 0; h < history.length; h++){
+ if (skipFirstRoll && history.length > 0) {
+ const entry = history[0];
+ label.textContent = `${t('pdThrow')} 1`;
+ for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
+ }
+
+ for(let h = skipFirstRoll ? 1 : 0; h < history.length; h++){
  const entry = history[h] || {};
  const kept = entry.kept || [];
  const rerolled = entry.rerolled || [];
@@ -665,13 +671,23 @@ async function pdRunBotTurn(){
  const myCode = pdCode;
  try {
  pdAnimating = true;
+ const initialDice = [
+ Math.floor(Math.random() * 6) + 1,
+ Math.floor(Math.random() * 6) + 1,
+ Math.floor(Math.random() * 6) + 1,
+ Math.floor(Math.random() * 6) + 1,
+ Math.floor(Math.random() * 6) + 1
+ ];
+
  const cont = $('pdDice');
  if(cont) {
  cont.style.minHeight = cont.offsetHeight + 'px';
  cont.innerHTML = '';
  const label = document.createElement('div');
  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
+ label.textContent = `${t('pdThrow')} 1`;
  cont.appendChild(label);
+ const diceEls = [];
  for(let i=0; i<5; i++){
  const die = document.createElement('div');
  die.className = 'pd-dot-die rolling';
@@ -679,16 +695,28 @@ async function pdRunBotTurn(){
  die.dataset.idx = i;
  die.innerHTML = pdDieInner();
  cont.appendChild(die);
+ diceEls.push(die);
  }
+ 
+ sfxRoll();
+ await _aiDelay(1600);
+ for(let i=0; i<5; i++) {
+ diceEls[i].classList.remove('rolling');
+ const f = diceEls[i].querySelector('.pd-faces');
+ const val = initialDice[i];
+ if(f){ f.style.opacity = val ? '1': '0'; f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; }
+ }
+ // Short delay before fetch
+ await _aiDelay(50);
  }
 
- const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode}, 20000);
+ const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode, initial_dice: initialDice}, 20000);
  
  pdAnimating = false;
 
  if(!res || !res.ok) return;
  if(!pdCode) return;
- await pdMaybeAnimateOpponent(res.state);
+ await pdMaybeAnimateOpponent(res.state, true);
  pdShowGame(res.state);
  } catch (e) {
  console.error('[pd] bot turn failed', e);
