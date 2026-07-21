@@ -445,25 +445,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-die-label{font-size:12px;color:var(--text-hint);text-align:center}
 /* Professional-looking die: rounded, glossy 3D face with a soft drop shadow
  and an inner top highlight so it reads as a physical cube, not a flat tile. */
-.roll-die3d{width:76px;height:76px;background:linear-gradient(150deg,#ffffff 0%,#f3ede0 45%,#d9cfb8 100%);border-radius:18px;box-shadow:0 10px 22px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -4px 8px rgba(120,105,70,.35);position:relative;will-change:transform;transform-style:preserve-3d}
+.roll-die3d{width:76px;height:76px;background:linear-gradient(150deg,#ffffff 0%,#f3ede0 45%,#d9cfb8 100%);border-radius:18px;box-shadow:0 10px 22px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -4px 8px rgba(120,105,70,.35);position:relative}
 .roll-die3d svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .roll-die3d svg circle{fill:#2b2b2b}
 /* Opponent/bot die that hasn't been thrown yet: dim, neutral, lifted. */
 .roll-die3d.roll-die-pending{opacity:.55;background:linear-gradient(150deg,#5a616e,#333842);box-shadow:0 6px 14px rgba(0,0,0,.4),inset 0 2px 3px rgba(255,255,255,.12),inset 0 -4px 8px rgba(0,0,0,.4)}
 .roll-die3d.roll-die-pending svg circle{fill:rgba(255,255,255,.85)}
-/* Real "throw": the die is tossed from above with a tumbling spin, arcs down,
-and lands with a soft bounce — like a physical cube, not an on-the-spot
-rotation. Both translate (flight) and rotate (tumble) are eased so it feels
-weighty and satisfying. */
-.roll-die3d.roll-die-spinning{animation:dieThrow 1.15s cubic-bezier(0.22,1,0.36,1) forwards}
+/* Real "throw": the die is tossed from above with a turn-over spin, and
+	lands softly. */
+.roll-die3d.roll-die-spinning{animation:dieThrow 1.0s cubic-bezier(0.22,1,0.36,1) forwards}
 @keyframes dieThrow{
- 0%{transform:translateY(-180px) rotate(-40deg) rotateX(0deg) rotateY(0deg) scale(.9);opacity:0}
- 15%{opacity:1}
- 55%{transform:translateY(14px) rotate(220deg) rotateX(160deg) rotateY(-120deg) scale(1.05)}
- 72%{transform:translateY(-8px) rotate(290deg) rotateX(220deg) rotateY(-150deg) scale(1)}
- 84%{transform:translateY(4px) rotate(338deg) rotateX(300deg) rotateY(-170deg) scale(1.02)}
- 92%{transform:translateY(-2px) rotate(352deg) rotateX(340deg) rotateY(-184deg) scale(1)}
- 100%{transform:translateY(0) rotate(360deg) rotateX(360deg) rotateY(-180deg) scale(1)}
+ 0%{transform:translateY(-120px) rotate(-20deg) rotateY(-30deg) scale(.92);opacity:0}
+ 14%{opacity:1}
+ 55%{transform:translateY(10px) rotate(180deg) rotateY(150deg) scale(1.03)}
+ 75%{transform:translateY(-5px) rotate(250deg) rotateY(190deg) scale(1)}
+ 90%{transform:translateY(2px) rotate(335deg) rotateY(215deg) scale(1.01)}
+ 100%{transform:translateY(0) rotate(360deg) rotateY(180deg) scale(1)}
 }
 /* Pending die: static dim look, no pulsing/jitter. */
 .roll-die3d.roll-die-pending{opacity:.55;background:linear-gradient(150deg,#5a616e,#333842);box-shadow:0 6px 14px rgba(0,0,0,.4),inset 0 2px 3px rgba(255,255,255,.12),inset 0 -4px 8px rgba(0,0,0,.4);transition:opacity .25s ease,background .25s ease,box-shadow .25s ease}
