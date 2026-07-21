@@ -398,7 +398,7 @@ function pdRenderDice(st){
  cont.style.minHeight = '';
  cont.innerHTML = '';
  const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px;min-height:20px';
+ label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
  cont.appendChild(label);
 
  const diceEls = [];
@@ -684,7 +684,7 @@ function pdRenderResult(st){
  }
 
  // Scorecard final table — first thing visible
- html += '<table class="pd-scorecard" style="margin:8px auto">';
+ html += '<table class="pd-scorecard" style="margin:8px auto;max-width:415px">';
  html += `<tr><th class="cat-name"></th><th class="cat-score"> ${t('pdMe')||'Я'}</th><th class="cat-score"> ${t('pdOpp')||'Сопер.'}</th></tr>`;
 
  const sc = st.scorecard_all || {};
