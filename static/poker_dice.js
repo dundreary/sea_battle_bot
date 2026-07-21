@@ -325,19 +325,20 @@ function pdRenderDice(st){
  cont.appendChild(die);
  }
  } else if(st.solo){
- // Solo bot turn: don't reveal the bot's stale (previous-round) dice; they
- // are replayed by the throw animation once the AI move is computed.
- const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
- label.textContent = '' + t('pdOppHand');
- cont.appendChild(label);
- for(let i=0;i<5;i++){
- const die=document.createElement('div');
- die.className='pd-dot-die';
- die.style.cursor='default';
- die.innerHTML = pdDieInner();
- cont.appendChild(die);
- }
+  // Solo bot turn: show empty dice tray instead of fake all-ones.
+  const label = document.createElement('div');
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
+  label.textContent = '' + t('pdOppHand');
+  cont.appendChild(label);
+  for(let i=0;i<5;i++){
+   const die=document.createElement('div');
+   die.className='pd-dot-die';
+   die.style.cursor='default';
+   die.innerHTML = pdDieInner();
+   const f = die.querySelector('.pd-faces');
+   if(f){ f.style.opacity = '0'; f.style.transform = 'translateY(0%)'; }
+   cont.appendChild(die);
+  }
  } else {
  // Multiplayer: the opponent's current dice are live, show them.
  const label = document.createElement('div');
