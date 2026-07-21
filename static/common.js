@@ -1206,57 +1206,29 @@ const _sbAutoAck = {};
 async function doFirstRoll(endpoint, codeVal, refreshFn, afterRoll){
  const btn = document.getElementById('rollBtn');
  if(btn) btn.disabled = true;
- // Spin BOTH dice (same look as a reroll): drop the grey "pending" state so
- // they read as real dice while tumbling, not grey placeholders.
  const spinEls = Array.from(document.querySelectorAll('#firstRollPopupOverlay .roll-die3d'));
- let anim = null;
- let faceTimer = null;
- if(spinEls.length){
-   spinEls.forEach(d => { d.classList.remove('roll-die-pending'); d.classList.add('roll-die-spinning'); });
- }
+ spinEls.forEach(d => { d.classList.remove('roll-die-pending'); d.classList.add('roll-die-spinning'); });
  try{ sfxRoll(); }catch(e){}
- const start = Date.now();
  const res = await api(endpoint, {uid:getUid(), code:codeVal});
- if(res===null){ if(faceTimer) clearInterval(faceTimer); spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rollFirst()); return; }
- const elapsed = Date.now() - start;
- const MIN = 1200;
- if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
- if(faceTimer) clearInterval(faceTimer);
  spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
- // First refresh so the popup shows the winner ("Вы ходите первым" / "Соперник
- // ходит первым"). Then acknowledge the roll so polling does not re-show popup.
+ if(res===null){ showRetry(t('error'), ()=>rollFirst()); return; }
  await refreshFn();
  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
- if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
- afterRoll(res);
- }
+ if(res && res.needs_bot_turn && typeof afterRoll === 'function'){ afterRoll(res); }
 }
 
 async function doRerollFirst(endpoint, codeVal, refreshFn, afterRoll){
  const btn = document.getElementById('rerollBtn');
  if(btn) btn.disabled = true;
- // On a reroll BOTH dice (my die and the opponent/bot die) must spin.
  const spinEls = Array.from(document.querySelectorAll('#firstRollPopupOverlay .roll-die3d'));
- let anim = null;
- let faceTimer = null;
- if(spinEls.length){
-   spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
- }
+ spinEls.forEach(d => { d.classList.add('roll-die-spinning'); });
  try{ sfxClick(); }catch(e){}
- const start = Date.now();
  const res = await api(endpoint, {uid:getUid(), code:codeVal});
- if(res===null){ if(faceTimer) clearInterval(faceTimer); spinEls.forEach(d => d.classList.remove('roll-die-spinning')); showRetry(t('error'), ()=>rerollFirst()); return; }
- const elapsed = Date.now() - start;
- const MIN = 1200;
- if(anim) await new Promise(r=>setTimeout(r, Math.max(0, MIN - elapsed)));
- if(faceTimer) clearInterval(faceTimer);
  spinEls.forEach(d => d.classList.remove('roll-die-spinning'));
- // First refresh so the popup shows the winner, then acknowledge.
+ if(res===null){ showRetry(t('error'), ()=>rerollFirst()); return; }
  await refreshFn();
  if(res && res.roll_resolved){ _rollAckShown[codeVal] = true; }
- if(res && res.needs_bot_turn && typeof afterRoll === 'function'){
- afterRoll(res);
- }
+ if(res && res.needs_bot_turn && typeof afterRoll === 'function'){ afterRoll(res); }
 }
 
 function rollFirst(){ return doFirstRoll('/api/roll_first', gameCode, refreshState); }
