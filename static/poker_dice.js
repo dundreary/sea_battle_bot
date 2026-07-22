@@ -795,11 +795,15 @@ async function pdRunBotTurn(){
      for(const idx of keepRes2.rerolled) diceEls[idx].classList.add('rolling');
      await _aiDelay(1600);
      for(const idx of keepRes2.rerolled) diceEls[idx].classList.remove('rolling');
-     for(let i = 0; i < 5; i++){
-       diceEls[i].classList.remove('kept');
-       setDie(diceEls[i], currentDice[i], true);
-     }
-     rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
+      for(let i = 0; i < 5; i++){
+        diceEls[i].classList.remove('kept');
+        setDie(diceEls[i], currentDice[i], true);
+      }
+      // [DEBUG] log final dice after roll 3 animation
+      console.log('[PD_DEBUG] roll3 display dice:', JSON.stringify(currentDice));
+      rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
+      console.log('[PD_DEBUG] rollHistory[last] dice:', JSON.stringify(rollHistory[rollHistory.length-1].dice));
+      console.log('[PD_DEBUG] rollHistory full:', JSON.stringify(rollHistory));
    } else {
      // Bot keeps all after roll 2
      await _aiDelay(600);
@@ -815,11 +819,12 @@ async function pdRunBotTurn(){
 
  // === SCORE: server picks category and commits (fast) ===
  await _aiDelay(400);
- const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
-   {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
- if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
+  const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
+    {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
+  console.log('[PD_DEBUG] score response state:', JSON.stringify(scoreRes.state));
+  if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
 
- const st = scoreRes.state;
+  const st = scoreRes.state;
  const cat = st.opponent_scored_category;
  const pts = st.opponent_scored_points;
 
