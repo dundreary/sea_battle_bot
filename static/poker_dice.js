@@ -492,9 +492,9 @@ function pdRenderDice(st){
  await _aiDelay(800);
 
  const catNameStr = cat ? catName(cat) : '';
-  label.textContent = cat
-    ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')} [${(st.opponent_dice||[]).join(',')}]`
-    : t('pdOppHand');
+ label.textContent = cat
+     ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
+     : t('pdOppHand');
  
  if (cat) {
  const row = document.querySelector(`#pdScorecardEl tr[data-cat="${cat}"]`);
@@ -731,7 +731,7 @@ async function pdRunBotTurn(){
  let currentDice = genDice();
 
  // === ROLL 1: animate all 5 dice ===
-  label.textContent = `${t('pdThrow')} 1 [${currentDice.join(',')}]`;
+   label.textContent = `${t('pdThrow')} 1`;
   sfxRoll();
  for(const el of diceEls) el.classList.add('rolling');
 
@@ -755,7 +755,7 @@ async function pdRunBotTurn(){
      if(keepRes.kept.includes(i)) diceEls[i].classList.add('kept');
      else diceEls[i].classList.remove('kept');
    }
-    label.textContent = `${t('pdThrow')} 2 [${currentDice.join(',')}] · ${t('pdKept')} ${keepRes.kept.length}, ${t('pdDiscarded')} ${keepRes.rerolled.length}`;
+     label.textContent = `${t('pdThrow')} 2 · ${t('pdKept')} ${keepRes.kept.length}, ${t('pdDiscarded')} ${keepRes.rerolled.length}`;
     await _aiDelay(600);
 
    // === ROLL 2: reroll unkept dice ===
@@ -786,7 +786,7 @@ async function pdRunBotTurn(){
        if(keepRes2.kept.includes(i)) diceEls[i].classList.add('kept');
        else diceEls[i].classList.remove('kept');
      }
-      label.textContent = `${t('pdThrow')} 3 [${currentDice.join(',')}] · ${t('pdKept')} ${keepRes2.kept.length}, ${t('pdDiscarded')} ${keepRes2.rerolled.length}`;
+       label.textContent = `${t('pdThrow')} 3 · ${t('pdKept')} ${keepRes2.kept.length}, ${t('pdDiscarded')} ${keepRes2.rerolled.length}`;
       await _aiDelay(600);
 
      // === ROLL 3: final reroll ===
@@ -799,7 +799,6 @@ async function pdRunBotTurn(){
         diceEls[i].classList.remove('kept');
         setDie(diceEls[i], currentDice[i], true);
       }
-      label.textContent = `${t('pdThrow')} 3 [${currentDice.join(',')}]`;
        // [DEBUG] log final dice after roll 3 animation
        console.log('[PD_DEBUG] roll3 display dice:', JSON.stringify(currentDice));
       rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
@@ -831,7 +830,7 @@ async function pdRunBotTurn(){
 
  const catNameStr = cat ? catName(cat) : '';
  label.textContent = cat
-    ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')} [${(st.opponent_dice||[]).join(',')}]`
+     ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
     : t('pdOppHand');
 
  // Blink the scorecard row
