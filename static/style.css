@@ -101,7 +101,7 @@
 .pd-scorecard tr.available:active{background:var(--bg-board-alt);}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
 .header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
-.header .sub{position:relative;z-index:1;font-size:11px;color:var(--accent-primary-light)}
+.header .sub{position:relative;z-index:1;font-size:11px;color:var(--accent-primary-light);height:18px;line-height:18px;overflow:hidden}
 .player-name{position:relative;z-index:1;font-size:13px;font-weight:600;color:var(--text-primary,#fff);margin-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
 .header.in-game{display:none}
 #header{position:relative}
