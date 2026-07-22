@@ -419,16 +419,23 @@ function pdRenderDice(st){
  // children captures the real, final layout height.
  cont.style.minHeight = cont.offsetHeight + 'px';
 
- const setDie = (el, val) => {
+ const setDie = (el, val, snap=false) => {
  const f = el.querySelector('.pd-faces');
  if(f){
+ if(snap) f.style.transition = 'none';
  f.style.opacity = val ? '1': '0';
  f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)';
+ if(snap) { void f.offsetWidth; f.style.transition = ''; }
  } else {
  // Fallback: (shouldn't happen) rebuild the faces stack, then land it.
  el.innerHTML = pdDieInner();
  const nf = el.querySelector('.pd-faces');
- if(nf){ nf.style.opacity = val ? '1': '0'; nf.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; }
+ if(nf){ 
+ if(snap) nf.style.transition = 'none';
+ nf.style.opacity = val ? '1': '0'; 
+ nf.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; 
+ if(snap) { void nf.offsetWidth; nf.style.transition = ''; }
+ }
  }
  };
 
@@ -436,7 +443,7 @@ function pdRenderDice(st){
  if (skipFirstRoll && history.length > 0) {
  const entry = history[0];
  label.textContent = `${t('pdThrow')} 1`;
- for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0);
+ for(let i = 0; i < 5; i++) setDie(diceEls[i], entry.dice ? (entry.dice[i] || 0) : 0, true);
  }
 
  for(let h = skipFirstRoll ? 1 : 0; h < history.length; h++){
@@ -702,9 +709,14 @@ async function pdRunBotTurn(){
  }
  cont.style.minHeight = cont.offsetHeight + 'px';
 
- const setDie = (el, val) => {
+ const setDie = (el, val, snap=false) => {
  const f = el.querySelector('.pd-faces');
- if(f){ f.style.opacity = val ? '1':'0'; f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; }
+ if(f){ 
+ if(snap) f.style.transition = 'none';
+ f.style.opacity = val ? '1':'0'; 
+ f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; 
+ if(snap) { void f.offsetWidth; f.style.transition = ''; }
+ }
  };
 
  const genDice = () => [
@@ -727,7 +739,7 @@ async function pdRunBotTurn(){
 
  await _aiDelay(1600);
  for(const el of diceEls) el.classList.remove('rolling');
- for(let i = 0; i < 5; i++) setDie(diceEls[i], currentDice[i]);
+ for(let i = 0; i < 5; i++) setDie(diceEls[i], currentDice[i], true);
  rollHistory.push({dice: [...currentDice], kept: [], rerolled: [0,1,2,3,4]});
 
  // Wait for keep decision (may already be done if server was fast)
@@ -755,9 +767,9 @@ async function pdRunBotTurn(){
 
    await _aiDelay(1600);
    for(const idx of keepRes.rerolled) diceEls[idx].classList.remove('rolling');
-   for(let i = 0; i < 5; i++){
+   for(let i = 0; i < 5; i++) {
      diceEls[i].classList.remove('kept');
-     setDie(diceEls[i], currentDice[i]);
+     setDie(diceEls[i], currentDice[i], true);
    }
    rollHistory.push({dice: [...currentDice], kept: keepRes.kept, rerolled: keepRes.rerolled});
 
@@ -783,7 +795,7 @@ async function pdRunBotTurn(){
      for(const idx of keepRes2.rerolled) diceEls[idx].classList.remove('rolling');
      for(let i = 0; i < 5; i++){
        diceEls[i].classList.remove('kept');
-       setDie(diceEls[i], currentDice[i]);
+       setDie(diceEls[i], currentDice[i], true);
      }
      rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
    } else {
