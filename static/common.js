@@ -1428,11 +1428,7 @@ function updateUI(){
  }
 
  $('oppBoardWrap').classList.remove('hidden');
- // Don't close the roll popup if the bot still owes its opening shot
- // (the auto-proceed timer needs to fire first to call ackRoll)
- if (!(s.solo && s.turn === 2 && _rollPopupCode === gameCode)) {
-     closeFirstRollPopup();
- }
+ closeFirstRollPopup();
  updateSettingsUI();
  $('ownBoardWrap').after($('status'));
 
