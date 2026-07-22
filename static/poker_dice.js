@@ -942,12 +942,7 @@ function pdRenderResult(st){
  html += `<tr class="${totalCls}"><td>Σ ${t('pdTotal')||'Итого'}</td><td>${st.total_score}</td><td>${st.opponent_total_score}</td></tr>`;
  html += '</table>';
 
- // Action buttons right below the table
- const playAgainFn = st.solo ? 'pdStartSolo()': 'pdNewMulti()';
- html += `<div class="btn-col" style="margin-top:12px">
- <button class="btn success" onclick="${playAgainFn}"> ${t('pdPlayAgain')}</button>
- <button class="btn outline" onclick="showMenu()">${t('quit')}</button>
- </div>`;
+  // Action buttons are rendered inside the popup by showPdResultPopup
 
  div.innerHTML = html;
 
