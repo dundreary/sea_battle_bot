@@ -983,11 +983,11 @@ def _handle_pd_bot_keep(data, uid, code):
         else:
             mask = _expert_best_keep_mc(dice, rolls_left, remaining, scorecard)
 
-    # Map the mask (which is indexed by *sorted* dice positions) back to the
-    # original (unsorted) positions the client sent.
-    sorted_indices = sorted(range(5), key=lambda i: dice[i])
-    kept = sorted(sorted_indices[j] for j in range(5) if (mask >> j) & 1)
-    rerolled = sorted(i for i in range(5) if i not in set(kept))
+    # All currently active keep algorithms (_expert_best_keep_mc, _bot_best_keep,
+    # _bot_keep_simple) return a mask corresponding to the *raw* (unsorted)
+    # dice array passed in.
+    kept = [i for i in range(5) if (mask >> i) & 1]
+    rerolled = [i for i in range(5) if i not in set(kept)]
     all_kept = (mask == _KEEP_ALL)
 
     return {"ok": True, "kept": kept, "rerolled": rerolled, "all_kept": all_kept}
