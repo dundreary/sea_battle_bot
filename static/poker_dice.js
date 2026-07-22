@@ -684,10 +684,11 @@ function _fetchWithTimeout(url, opts, ms){
 }
 
 async function pdRunBotTurn(){
- if(!pdCode) return;
- const myCode = pdCode;
- try {
- pdAnimating = true;
+  if(!pdCode) return;
+  if(pdAnimating) return;  // guard against concurrent execution
+  const myCode = pdCode;
+  try {
+    pdAnimating = true;
  stopGamePoll('poker_dice');
 
  const cont = $('pdDice');
@@ -873,8 +874,10 @@ async function pdRunBotTurn(){
   pdRenderScorecard(st);
   pdRenderActions(st);
   pdRenderInfo(st);
-  _pdBotRetries = 0;
-  } catch (e) {
+   _pdBotRetries = 0;
+   // Record state signature so the next poll skips pdShowGame (keeps dice intact)
+   _lastPDSig = JSON.stringify([st.phase, st.dice, st.my_turn, st.rolls_left, st.scored, st.scorecard_all, st.opponent_scorecard_all, st.categories_left, st.turn, st.solo, st.opponent_joined]);
+   } catch (e) {
   console.error('[pd] bot turn failed', e);
   _pdBotRetries++;
   } finally {
@@ -883,7 +886,7 @@ async function pdRunBotTurn(){
     if(_pdBotRetries >= MAX_PD_BOT_RETRIES) {
       setStatus({ru:'Ошибка хода бота',uk:'Помилка ходу бота',en:'Bot turn error'}[lang], '');
       _pdBotRetries = 0;
-    } else {
+     } else {
       startGamePoll('poker_dice', pdCode, pdRefreshState);
     }
   }
@@ -900,9 +903,10 @@ function pdAfterOpeningRoll(){
  const myCode = pdCode;
  pdOpeningTimer = setTimeout(async () => {
  pdOpeningPending = false;
- if(pdCode !== myCode) return;
- 
- _rollAckShown[pdCode] = true;
+  if(pdCode !== myCode) return;
+  if(_pdBotOpening) return;   // already handled by pdShowGame -> pdRunBotTurn
+  
+  _rollAckShown[pdCode] = true;
  closeFirstRollPopup();
  if (pdState) {
  pdRenderScorecard(pdState);
