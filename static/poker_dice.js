@@ -306,7 +306,7 @@ function pdRenderDice(st){
  labelText = st.hand_name ? `${t('pdYourHand')}: ${pdHandName(st.hand_name)} (${diceTotal(dice)} ${t('pdPts')})` : t('pdYourHand');
  }
  const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:'+labelColor+';font-weight:600;margin-bottom:6px;margin-top:10px';
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:'+labelColor+';font-weight:600;margin-bottom:6px;margin-top:10px;height:20px;line-height:20px;overflow:hidden';
  label.textContent = labelText;
  cont.appendChild(label);
 
@@ -329,7 +329,7 @@ function pdRenderDice(st){
  } else if(st.solo){
   // Solo bot turn: show empty dice tray instead of fake all-ones.
   const label = document.createElement('div');
-  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px;height:20px;line-height:20px;overflow:hidden';
   label.textContent = '' + t('pdOppHand');
   cont.appendChild(label);
   for(let i=0;i<5;i++){
@@ -344,7 +344,7 @@ function pdRenderDice(st){
  } else {
  // Multiplayer: the opponent's current dice are live, show them.
  const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px';
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--accent-primary);font-weight:600;margin-bottom:6px;margin-top:10px;height:20px;line-height:20px;overflow:hidden';
  if(st.opponent_hand_name){
  label.textContent = `${t('pdOppHand')}: ${pdHandName(st.opponent_hand_name)} (${diceTotal(dice)} ${t('pdPts')})`;
  } else {
