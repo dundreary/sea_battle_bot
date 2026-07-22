@@ -830,6 +830,72 @@ class PokerDiceGame(BaseGame):
         p['scored'] = True
         return p
 
+    def get_keep_decision(self, dice: List[int], rolls_left: int) -> int:
+        """Compute the bot's keep mask for given dice without modifying state.
+
+        Used by the step-by-step client-driven bot turn flow so each keep
+        decision can be computed as a separate API call, letting the client
+        animate each roll while the server thinks about the next one.
+
+        Returns a bitmask where bit *i* means 'keep the i-th die in
+        **sorted** order'.  The API handler maps this back to original
+        (unsorted) positions before sending it to the client.
+        """
+        remaining = _remaining_categories(self.players[2]['scorecard'])
+        diff = self.difficulty
+        scorecard = self.players[2]['scorecard']
+        if diff <= 1:
+            return _KEEP_ALL
+        elif diff == 2:
+            return _bot_keep_simple(dice)
+        elif diff == 3:
+            return _bot_best_keep(dice, rolls_left, remaining)
+        else:
+            if os.environ.get('PD_USE_OLD_EXACT') == '1':
+                return _expert_best_keep(dice, rolls_left, remaining, scorecard)
+            else:
+                return _expert_best_keep_mc(dice, rolls_left, remaining, scorecard)
+
+    def commit_driven_bot_turn(self, roll_history: List[Dict],
+                               final_dice: List[int]) -> Optional[Dict]:
+        """Score and commit a bot turn whose rolls were driven client-side.
+
+        The client calls get_keep_decision between each roll and generates
+        the dice itself; this method just picks the best category, records
+        the score, stores the history for replay, and advances the turn.
+        """
+        p = self.players[2]
+        if p['scored']:
+            self._reset_player(2)
+            p = self.players[2]
+
+        remaining = _remaining_categories(p['scorecard'])
+        if not remaining:
+            return None
+
+        p['dice'] = list(final_dice)
+        p['rolls'] = 0
+        p['dice_history'] = [entry['dice'] for entry in roll_history]
+        p['roll_history'] = list(roll_history)
+
+        diff = self.difficulty
+        if diff >= 4:
+            best_cat = _expert_best_category_v2(p['dice'], remaining,
+                                                p['scorecard'])
+        else:
+            best_cat = _bot_choose_category(p['dice'], remaining,
+                                            p['scorecard'])
+
+        scored_points = score_for_category(p['dice'], best_cat)
+        p['scorecard'][best_cat] = scored_points
+        p['hand'] = evaluate(p['dice'])
+        p['last_scored_category'] = best_cat
+        p['last_scored_score'] = scored_points
+        p['scored'] = True
+
+        self._advance_turn(2)
+        return self.get_state(1)
+
     def commit_bot_play(self, p: Dict[str, Any]) -> None:
         """Write a computed working copy back and advance the turn. Cheap --
         call while holding the state lock."""

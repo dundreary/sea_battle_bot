@@ -935,6 +935,98 @@ def _handle_pd_bot_turn(data, uid, code):
         return {"ok": True, "state": st}
 
 
+def _handle_pd_bot_keep(data, uid, code):
+    """Compute just the bot's keep-mask for the given dice, without touching
+    game state.  Called by the step-by-step client-driven bot turn so the
+    server thinks while the client animates each roll.
+
+    The expensive Expert expectimax runs WITHOUT the global lock (same
+    pattern as _handle_pd_bot_turn / _handle_checkers_hint).
+    """
+    dice = data.get("dice")
+    rolls_left = data.get("rolls_left", 0)
+    if not dice or len(dice) != 5:
+        return {"ok": False, "error": "invalid_dice"}
+
+    with _state_lock:
+        game, err = _get_game(pd_games, code, uid)
+        if err:
+            return err
+        if game.player_num(uid) != 1:
+            return {"ok": False, "error": "not_in_game"}
+        if not game.solo:
+            return {"ok": False, "error": "not_solo"}
+        # Snapshot mutable state needed for the computation.
+        diff = game.difficulty
+
+    # Heavy computation outside the lock.
+    from poker_dice import (_bot_keep_simple, _bot_best_keep,
+                            _expert_best_keep, _expert_best_keep_mc,
+                            _KEEP_ALL, _remaining_categories)
+    with _state_lock:
+        game2 = pd_games.get(code)
+        if game2 is None:
+            return {"ok": False, "error": "game_not_found"}
+        remaining = _remaining_categories(game2.players[2]['scorecard'])
+        scorecard = dict(game2.players[2]['scorecard'])
+
+    if diff <= 1:
+        mask = _KEEP_ALL
+    elif diff == 2:
+        mask = _bot_keep_simple(dice)
+    elif diff == 3:
+        mask = _bot_best_keep(dice, rolls_left, remaining)
+    else:
+        if os.environ.get('PD_USE_OLD_EXACT') == '1':
+            mask = _expert_best_keep(dice, rolls_left, remaining, scorecard)
+        else:
+            mask = _expert_best_keep_mc(dice, rolls_left, remaining, scorecard)
+
+    # Map the mask (which is indexed by *sorted* dice positions) back to the
+    # original (unsorted) positions the client sent.
+    sorted_indices = sorted(range(5), key=lambda i: dice[i])
+    kept = sorted(sorted_indices[j] for j in range(5) if (mask >> j) & 1)
+    rerolled = sorted(i for i in range(5) if i not in set(kept))
+    all_kept = (mask == _KEEP_ALL)
+
+    return {"ok": True, "kept": kept, "rerolled": rerolled, "all_kept": all_kept}
+
+
+def _handle_pd_bot_score(data, uid, code):
+    """Commit a bot turn whose rolls were driven client-side.
+
+    The client already animated all rolls and keep decisions; this just
+    picks the best category, records the score, and advances the turn.
+    Fast — runs entirely under the lock.
+    """
+    roll_history = data.get("roll_history", [])
+    if not roll_history:
+        return {"ok": False, "error": "missing_roll_history"}
+    final_dice = roll_history[-1].get("dice", [])
+    if len(final_dice) != 5:
+        return {"ok": False, "error": "invalid_final_dice"}
+
+    with _state_lock:
+        game, err = _get_game(pd_games, code, uid)
+        if err:
+            return err
+        if game.player_num(uid) != 1:
+            return {"ok": False, "error": "not_in_game"}
+        if not (game.solo and game.phase == 'playing' and game.turn == 2):
+            return {"ok": False, "error": "not_bot_turn"}
+
+        st = game.commit_driven_bot_turn(roll_history, final_dice)
+        if st is None:
+            return {"ok": False, "error": "no_categories"}
+
+        _mark_active(game, uid)
+        if game.phase == 'finished':
+            _record_match_stats("poker_dice", game)
+            _evict_game(code, pd_games, pd_player_games)
+        save()
+        return {"ok": True, "state": st}
+
+
 def _handle_pd_surrender(data, uid, code):
     return _surrender_game(
         pd_games, pd_player_games, code, uid,
@@ -1542,6 +1634,8 @@ _HANDLERS = {
     "/api/pd_roll": _handle_pd_roll,
     "/api/pd_score": _handle_pd_score,
     "/api/pd_bot_turn": _handle_pd_bot_turn,
+    "/api/pd_bot_keep": _handle_pd_bot_keep,
+    "/api/pd_bot_score": _handle_pd_bot_score,
     "/api/pd_state": _handle_pd_state,
     "/api/pd_surrender": _handle_pd_surrender,
     "/api/bot_info": _handle_bot_info,
@@ -1590,7 +1684,7 @@ NOTIFY_PATHS = {
 # game), so it's split out from the plain default-locked set below rather
 # than reusing NOTIFY_PATHS, which always wraps the whole call in the lock.
 UNLOCKED_NOTIFY_PATHS = {"/api/checkers_bot_turn"}
-UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn"}
+UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn", "/api/pd_bot_keep"}
 
 # Handlers on these paths can end a strip game and must deliver the loser's
 # pre-committed stake photo to the winner before the game is evicted. They
