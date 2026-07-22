@@ -867,7 +867,13 @@ async function pdRunBotTurn(){
  pdSeenScore = key;
 
  cont.style.minHeight = '';
-  pdShowGame(st);
+  // Update state and UI but DON'T re-render dice (already correct from animation)
+  pdState = st;
+  closeFirstRollPopup();
+  showIncomingMessages(st.messages);
+  pdRenderScorecard(st);
+  pdRenderActions(st);
+  pdRenderInfo(st);
   _pdBotRetries = 0;
   } catch (e) {
   console.error('[pd] bot turn failed', e);
