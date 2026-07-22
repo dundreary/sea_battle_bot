@@ -398,9 +398,9 @@ function pdRenderDice(st){
 
  const cont = $('pdDice');
  cont.style.minHeight = '';
- cont.innerHTML = '';
- const label = document.createElement('div');
-  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;height:20px;line-height:20px;overflow:hidden';
+  cont.innerHTML = '';
+  const label = document.createElement('div');
+   label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px;height:20px;line-height:20px;overflow:hidden';
  cont.appendChild(label);
 
  const diceEls = [];
@@ -697,7 +697,7 @@ async function pdRunBotTurn(){
   cont.innerHTML = '';
 
   const label = document.createElement('div');
-  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;height:20px;line-height:20px;overflow:hidden';
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:10px;height:20px;line-height:20px;overflow:hidden';
   cont.appendChild(label);
 
   const diceEls = [];
