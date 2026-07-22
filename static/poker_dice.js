@@ -679,56 +679,177 @@ async function pdRunBotTurn(){
  const myCode = pdCode;
  try {
  pdAnimating = true;
- const initialDice = [
- Math.floor(Math.random() * 6) + 1,
- Math.floor(Math.random() * 6) + 1,
- Math.floor(Math.random() * 6) + 1,
- Math.floor(Math.random() * 6) + 1,
- Math.floor(Math.random() * 6) + 1
- ];
+ stopGamePoll('poker_dice');
 
  const cont = $('pdDice');
- if(cont) {
+ if(!cont) return;
  cont.style.minHeight = cont.offsetHeight + 'px';
  cont.innerHTML = '';
+
  const label = document.createElement('div');
  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
- label.textContent = `${t('pdThrow')} 1`;
  cont.appendChild(label);
+
  const diceEls = [];
- for(let i=0; i<5; i++){
+ for(let i = 0; i < 5; i++){
  const die = document.createElement('div');
- die.className = 'pd-dot-die rolling';
+ die.className = 'pd-dot-die';
  die.style.cursor = 'default';
  die.dataset.idx = i;
  die.innerHTML = pdDieInner();
  cont.appendChild(die);
  diceEls.push(die);
  }
- 
+ cont.style.minHeight = cont.offsetHeight + 'px';
+
+ const setDie = (el, val) => {
+ const f = el.querySelector('.pd-faces');
+ if(f){ f.style.opacity = val ? '1':'0'; f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; }
+ };
+
+ const genDice = () => [
+ Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1,
+ Math.floor(Math.random()*6)+1, Math.floor(Math.random()*6)+1,
+ Math.floor(Math.random()*6)+1
+ ];
+
+ const rollHistory = [];
+ let currentDice = genDice();
+
+ // === ROLL 1: animate all 5 dice ===
+ label.textContent = `${t('pdThrow')} 1`;
  sfxRoll();
+ for(const el of diceEls) el.classList.add('rolling');
+
+ // Start server thinking IN PARALLEL with roll animation
+ let keepPromise = _fetchWithTimeout('/api/pd_bot_keep',
+   {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 2}, 20000);
+
  await _aiDelay(1600);
- for(let i=0; i<5; i++) {
- diceEls[i].classList.remove('rolling');
- const f = diceEls[i].querySelector('.pd-faces');
- const val = initialDice[i];
- if(f){ f.style.opacity = val ? '1': '0'; f.style.transform = 'translateY(-'+ ((val?val-1:0)*100/6) + '%)'; }
- }
- // Short delay before fetch
- await _aiDelay(50);
+ for(const el of diceEls) el.classList.remove('rolling');
+ for(let i = 0; i < 5; i++) setDie(diceEls[i], currentDice[i]);
+ rollHistory.push({dice: [...currentDice], kept: [], rerolled: [0,1,2,3,4]});
+
+ // Wait for keep decision (may already be done if server was fast)
+ let keepRes = await keepPromise;
+ if(!keepRes || !keepRes.ok || pdCode !== myCode) return;
+
+ if(!keepRes.all_kept) {
+   // Show which dice the bot keeps
+   await _aiDelay(400);
+   for(let i = 0; i < 5; i++){
+     if(keepRes.kept.includes(i)) diceEls[i].classList.add('kept');
+     else diceEls[i].classList.remove('kept');
+   }
+   label.textContent = `${t('pdThrow')} 2 · ${t('pdKept')} ${keepRes.kept.length}, ${t('pdDiscarded')} ${keepRes.rerolled.length}`;
+   await _aiDelay(600);
+
+   // === ROLL 2: reroll unkept dice ===
+   for(const idx of keepRes.rerolled) currentDice[idx] = Math.floor(Math.random()*6)+1;
+   sfxRoll();
+   for(const idx of keepRes.rerolled) diceEls[idx].classList.add('rolling');
+
+   // Start server thinking for roll 2 IN PARALLEL
+   keepPromise = _fetchWithTimeout('/api/pd_bot_keep',
+     {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 1}, 20000);
+
+   await _aiDelay(1600);
+   for(const idx of keepRes.rerolled) diceEls[idx].classList.remove('rolling');
+   for(let i = 0; i < 5; i++){
+     diceEls[i].classList.remove('kept');
+     setDie(diceEls[i], currentDice[i]);
+   }
+   rollHistory.push({dice: [...currentDice], kept: keepRes.kept, rerolled: keepRes.rerolled});
+
+   // Wait for keep decision 2
+   const keepRes2 = await keepPromise;
+   if(!keepRes2 || !keepRes2.ok || pdCode !== myCode) return;
+
+   if(!keepRes2.all_kept) {
+     // Show which dice the bot keeps
+     await _aiDelay(400);
+     for(let i = 0; i < 5; i++){
+       if(keepRes2.kept.includes(i)) diceEls[i].classList.add('kept');
+       else diceEls[i].classList.remove('kept');
+     }
+     label.textContent = `${t('pdThrow')} 3 · ${t('pdKept')} ${keepRes2.kept.length}, ${t('pdDiscarded')} ${keepRes2.rerolled.length}`;
+     await _aiDelay(600);
+
+     // === ROLL 3: final reroll ===
+     for(const idx of keepRes2.rerolled) currentDice[idx] = Math.floor(Math.random()*6)+1;
+     sfxRoll();
+     for(const idx of keepRes2.rerolled) diceEls[idx].classList.add('rolling');
+     await _aiDelay(1600);
+     for(const idx of keepRes2.rerolled) diceEls[idx].classList.remove('rolling');
+     for(let i = 0; i < 5; i++){
+       diceEls[i].classList.remove('kept');
+       setDie(diceEls[i], currentDice[i]);
+     }
+     rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
+   } else {
+     // Bot keeps all after roll 2
+     await _aiDelay(600);
+     for(let i = 0; i < 5; i++) diceEls[i].classList.add('kept');
+     await _aiDelay(600);
+   }
+ } else {
+   // Bot keeps all after roll 1
+   await _aiDelay(600);
+   for(let i = 0; i < 5; i++) diceEls[i].classList.add('kept');
+   await _aiDelay(600);
  }
 
- const res = await _fetchWithTimeout('/api/pd_bot_turn', {uid:getUid(), code:pdCode, initial_dice: initialDice}, 20000);
- 
- pdAnimating = false;
+ // === SCORE: server picks category and commits (fast) ===
+ await _aiDelay(400);
+ const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
+   {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
+ if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
 
- if(!res || !res.ok) return;
- if(!pdCode) return;
- await pdMaybeAnimateOpponent(res.state, true);
- pdShowGame(res.state);
+ const st = scoreRes.state;
+ const cat = st.opponent_scored_category;
+ const pts = st.opponent_scored_points;
+
+ const catNameStr = cat ? catName(cat) : '';
+ label.textContent = cat
+   ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
+   : t('pdOppHand');
+
+ // Blink the scorecard row
+ if (cat) {
+   pdRenderScorecard(st);
+   const row = document.querySelector(`#pdScorecardEl tr[data-cat="${cat}"]`);
+   if (row) {
+     row.style.transition = '';
+     row.style.backgroundColor = 'var(--accent-primary)';
+     await _aiDelay(150);
+     row.style.backgroundColor = '';
+     await _aiDelay(150);
+     row.style.backgroundColor = 'var(--accent-primary)';
+     await _aiDelay(150);
+     const oppCell = row.querySelectorAll('.cat-score')[1];
+     if (oppCell) {
+       oppCell.textContent = pts !== undefined ? pts : '';
+       oppCell.style.color = 'var(--bg-main)';
+       oppCell.style.fontWeight = 'bold';
+     }
+     await _aiDelay(1000);
+     row.style.backgroundColor = '';
+     if (oppCell) {
+       oppCell.style.color = '';
+       oppCell.style.fontWeight = '';
+     }
+   }
+ }
+
+ // Mark this turn as seen so pdMaybeAnimateOpponent won't replay it
+ const hist = st.opponent_roll_history || [];
+ const key = hist.map(h => (h.dice||[]).join(',')).join('|') + ':'+ (st.opponent_scored_category || '');
+ pdSeenScore = key;
+
+ cont.style.minHeight = '';
+ pdShowGame(st);
  } catch (e) {
  console.error('[pd] bot turn failed', e);
- pdAnimating = false;
  } finally {
  pdAnimating = false;
  if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
@@ -839,10 +960,10 @@ function showPdResultPopup(st, tableHtml){
  popup._onKey = (e)=>{ if(e.key==='Escape') closePdResultPopup(); };
  document.addEventListener('keydown', popup._onKey);
  popup.innerHTML = `
-  <div class="modal" style="max-width:360px;text-align:center">
+  <div class="modal" style="max-width:340px;text-align:center">
    <h2>${st.winner===st.you_id ? (t('pdWin')||'Победа!') : st.winner===-1 ? (t('pdDraw')||'Ничья') : (t('pdLose')||'Поражение')}</h2>
    ${tableHtml}
-   <div class="btn-col" style="margin-top:12px">
+   <div class="btn-row" style="margin-top:12px;gap:8px">
     <button class="btn success" onclick="${playAgainFn}"> ${t('pdPlayAgain')}</button>
     <button class="btn outline" onclick="closePdResultPopup()">${t('quit')}</button>
    </div>
