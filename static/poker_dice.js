@@ -3,6 +3,8 @@ let pdCode = null, pdState = null, pdKept = new Set(), pdSeenScore='', pdOpening
 let pdOpeningTimer = null;
 let _pdBotOpening = false;
 let _lastPDSig = null, _pdRefreshing = false;
+let _pdBotRetries = 0;
+const MAX_PD_BOT_RETRIES = 3;
 
 const PD_DOTS = [
  [[1,1]],
@@ -735,7 +737,7 @@ async function pdRunBotTurn(){
 
  // Start server thinking IN PARALLEL with roll animation
  let keepPromise = _fetchWithTimeout('/api/pd_bot_keep',
-   {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 2}, 20000);
+    {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 2}, 60000);
 
  await _aiDelay(1600);
  for(const el of diceEls) el.classList.remove('rolling');
@@ -859,13 +861,22 @@ async function pdRunBotTurn(){
  pdSeenScore = key;
 
  cont.style.minHeight = '';
- pdShowGame(st);
- } catch (e) {
- console.error('[pd] bot turn failed', e);
- } finally {
- pdAnimating = false;
- if(pdCode === myCode) startGamePoll('poker_dice', pdCode, pdRefreshState);
- }
+  pdShowGame(st);
+  _pdBotRetries = 0;
+  } catch (e) {
+  console.error('[pd] bot turn failed', e);
+  _pdBotRetries++;
+  } finally {
+  pdAnimating = false;
+  if(pdCode === myCode) {
+    if(_pdBotRetries >= MAX_PD_BOT_RETRIES) {
+      setStatus({ru:'Ошибка хода бота',uk:'Помилка ходу бота',en:'Bot turn error'}[lang], '');
+      _pdBotRetries = 0;
+    } else {
+      startGamePoll('poker_dice', pdCode, pdRefreshState);
+    }
+  }
+  }
 }
 
 // Called by doFirstRoll/doRerollFirst when the opening-roll response says the
