@@ -1310,7 +1310,7 @@ function updateUI(){
  _stripPhotoWaitTimer = null;
  stopGamePoll('sea_battle');
  localStorage.removeItem('sb_game');
-  if(!document.querySelector('.overlay'))showResult('',t('win'),{ru:'Соперник не отправил фото',uk:'Суперник не надіслав фото',en:'Opponent did not send a photo'}[lang], true);
+ showResult('',t('win'),{ru:'Соперник не отправил фото',uk:'Суперник не надіслав фото',en:'Opponent did not send a photo'}[lang], true);
  }, 60000);
  }
  return;
@@ -1329,8 +1329,8 @@ function updateUI(){
  $('actions').innerHTML = `<div class="result-notice ${won ? 'win': 'lose'}">${resultTitle}<br><span style="font-size:13px;font-weight:400">${resultDesc}</span></div>`;
  if(!rematchPending) localStorage.removeItem('sb_game');
  $('app').insertBefore($('status'), $('app').firstChild);
-  if(won && !document.querySelector('.overlay'))showResult('',resultTitle,resultDesc,s.strip);
-  else if(s.my_all_sunk && !document.querySelector('.overlay'))showResult('',resultTitle,resultDesc,s.strip);
+ if(won)showResult('',resultTitle,resultDesc,s.strip);
+ else if(s.my_all_sunk)showResult('',resultTitle,resultDesc,s.strip);
  return;
  }
 
