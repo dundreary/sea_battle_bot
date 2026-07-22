@@ -492,9 +492,9 @@ function pdRenderDice(st){
  await _aiDelay(800);
 
  const catNameStr = cat ? catName(cat) : '';
- label.textContent = cat
- ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
- : t('pdOppHand');
+  label.textContent = cat
+    ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')} [${(st.opponent_dice||[]).join(',')}]`
+    : t('pdOppHand');
  
  if (cat) {
  const row = document.querySelector(`#pdScorecardEl tr[data-cat="${cat}"]`);
@@ -731,8 +731,8 @@ async function pdRunBotTurn(){
  let currentDice = genDice();
 
  // === ROLL 1: animate all 5 dice ===
- label.textContent = `${t('pdThrow')} 1`;
- sfxRoll();
+  label.textContent = `${t('pdThrow')} 1 [${currentDice.join(',')}]`;
+  sfxRoll();
  for(const el of diceEls) el.classList.add('rolling');
 
  // Start server thinking IN PARALLEL with roll animation
@@ -755,8 +755,8 @@ async function pdRunBotTurn(){
      if(keepRes.kept.includes(i)) diceEls[i].classList.add('kept');
      else diceEls[i].classList.remove('kept');
    }
-   label.textContent = `${t('pdThrow')} 2 · ${t('pdKept')} ${keepRes.kept.length}, ${t('pdDiscarded')} ${keepRes.rerolled.length}`;
-   await _aiDelay(600);
+    label.textContent = `${t('pdThrow')} 2 [${currentDice.join(',')}] · ${t('pdKept')} ${keepRes.kept.length}, ${t('pdDiscarded')} ${keepRes.rerolled.length}`;
+    await _aiDelay(600);
 
    // === ROLL 2: reroll unkept dice ===
    for(const idx of keepRes.rerolled) currentDice[idx] = Math.floor(Math.random()*6)+1;
@@ -786,8 +786,8 @@ async function pdRunBotTurn(){
        if(keepRes2.kept.includes(i)) diceEls[i].classList.add('kept');
        else diceEls[i].classList.remove('kept');
      }
-     label.textContent = `${t('pdThrow')} 3 · ${t('pdKept')} ${keepRes2.kept.length}, ${t('pdDiscarded')} ${keepRes2.rerolled.length}`;
-     await _aiDelay(600);
+      label.textContent = `${t('pdThrow')} 3 [${currentDice.join(',')}] · ${t('pdKept')} ${keepRes2.kept.length}, ${t('pdDiscarded')} ${keepRes2.rerolled.length}`;
+      await _aiDelay(600);
 
      // === ROLL 3: final reroll ===
      for(const idx of keepRes2.rerolled) currentDice[idx] = Math.floor(Math.random()*6)+1;
@@ -799,8 +799,9 @@ async function pdRunBotTurn(){
         diceEls[i].classList.remove('kept');
         setDie(diceEls[i], currentDice[i], true);
       }
-      // [DEBUG] log final dice after roll 3 animation
-      console.log('[PD_DEBUG] roll3 display dice:', JSON.stringify(currentDice));
+      label.textContent = `${t('pdThrow')} 3 [${currentDice.join(',')}]`;
+       // [DEBUG] log final dice after roll 3 animation
+       console.log('[PD_DEBUG] roll3 display dice:', JSON.stringify(currentDice));
       rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
       console.log('[PD_DEBUG] rollHistory[last] dice:', JSON.stringify(rollHistory[rollHistory.length-1].dice));
       console.log('[PD_DEBUG] rollHistory full:', JSON.stringify(rollHistory));
@@ -819,10 +820,10 @@ async function pdRunBotTurn(){
 
  // === SCORE: server picks category and commits (fast) ===
  await _aiDelay(400);
-  const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
-    {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
-  console.log('[PD_DEBUG] score response state:', JSON.stringify(scoreRes.state));
-  if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
+   const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
+     {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
+   if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
+   console.log('[PD_DEBUG] score response state:', JSON.stringify(scoreRes.state));
 
   const st = scoreRes.state;
  const cat = st.opponent_scored_category;
@@ -830,8 +831,8 @@ async function pdRunBotTurn(){
 
  const catNameStr = cat ? catName(cat) : '';
  label.textContent = cat
-   ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')}`
-   : t('pdOppHand');
+    ? `${t('pdOppHand')}: ${catNameStr} — ${pts || 0} ${t('pdPts')} [${(st.opponent_dice||[]).join(',')}]`
+    : t('pdOppHand');
 
  // Blink the scorecard row
  if (cat) {
