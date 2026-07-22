@@ -400,7 +400,7 @@ function pdRenderDice(st){
  cont.style.minHeight = '';
  cont.innerHTML = '';
  const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;height:20px;line-height:20px;overflow:hidden';
  cont.appendChild(label);
 
  const diceEls = [];
@@ -693,14 +693,14 @@ async function pdRunBotTurn(){
 
  const cont = $('pdDice');
  if(!cont) return;
- cont.style.minHeight = cont.offsetHeight + 'px';
- cont.innerHTML = '';
+  cont.style.minHeight = cont.offsetHeight + 'px';
+  cont.innerHTML = '';
 
- const label = document.createElement('div');
- label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;min-height:20px';
- cont.appendChild(label);
+  const label = document.createElement('div');
+  label.style.cssText = 'width:100%;text-align:center;font-size:13px;color:var(--color-hit);font-weight:600;margin-bottom:6px;margin-top:6px;height:20px;line-height:20px;overflow:hidden';
+  cont.appendChild(label);
 
- const diceEls = [];
+  const diceEls = [];
  for(let i = 0; i < 5; i++){
  const die = document.createElement('div');
  die.className = 'pd-dot-die';
