@@ -260,15 +260,16 @@ function ckRenderBoard(st){
  // pieces appear at the bottom. 63 - idx is the mirrored (7-r, 7-c) cell.
  const flip = st.my_color === 2;
  const toCan = (i)=> flip ? 63 - i : i;
- const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>toCan(r*8+c)));
+ const toVis = (i)=> flip ? 63 - i : i;
+ const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>toVis(r*8+c)));
  const lastMove=st.last_move;
  const lastCells=new Set();
  const ckDests=ckComputeDests(st, ckSelected);
  if(lastMove){
  // last_move arrives in canonical (server) coordinates
  // For BLACK (flip), convert to visual coordinates for correct highlighting
- const toVis = (r, c) => flip ? 63 - (r*8 + c) : (r*8 + c);
- for(const s of lastMove[1])lastCells.add(toVis(s[0], s[1]));
+ const toVisMove = (r, c) => flip ? 63 - (r*8 + c) : (r*8 + c);
+ for(const s of lastMove[1])lastCells.add(toVisMove(s[0], s[1]));
  }
  // Reuse existing cell elements instead of clearing innerHTML and rebuilding
  // all 64 from scratch.  Destroying/recreating the cells on every poll causes
@@ -309,7 +310,7 @@ function ckRenderBoard(st){
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));
  cell.appendChild(el);
  }
- if(isDark&&st.my_turn&&highlighted.has(canIdx)){
+ if(isDark&&st.my_turn&&highlighted.has(visIdx)){
  cell.classList.add('highlight-src');
  cell.style.cursor='pointer';
  cell.onclick=()=>ckCellClick(r,c);
