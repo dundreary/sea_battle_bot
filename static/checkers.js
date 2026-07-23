@@ -309,7 +309,7 @@ function ckRenderBoard(st){
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));
  cell.appendChild(el);
  }
- if(isDark&&st.my_turn&&highlighted.has(visIdx)){
+ if(isDark&&st.my_turn&&highlighted.has(canIdx)){
  cell.classList.add('highlight-src');
  cell.style.cursor='pointer';
  cell.onclick=()=>ckCellClick(r,c);
