@@ -352,7 +352,7 @@ function ckComputeDests(st, sel){
  const flip = st.my_color === 2;
  const visIdx=sel[0]*8+sel[1];
  const canIdx = flip ? 63 - visIdx : visIdx;
- const arr=st.valid_dests[canIdx];
+ const arr=st.valid_dests[String(canIdx)];
  if(!arr)return null;
  return new Set(flip ? arr.map(i=>63-i) : arr);
 }
