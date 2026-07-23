@@ -154,7 +154,6 @@ async function ckShowGame(st){
  // Pulse the board on my turn (like Sea Battle)
  const _ckb=document.getElementById('ckBoard');
  if(_ckb){
- _ckb.style.visibility = (st.phase==='roll') ? 'hidden': '';
  _ckb.classList.toggle('my-turn', st.my_turn);
  }
  if(st.phase==='finished'){
