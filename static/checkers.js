@@ -118,8 +118,22 @@ async function ckShowGame(st){
  showIncomingMessages(st.messages);
  ckSelected=null;
  ckHint=null;
+ // Only hide/show areas when ckArea isn't already visible.  The previous
+ // code called hideAllGameAreas() (which sets ckArea.style.display='none')
+ // and then immediately set it back to '' on EVERY call — including every
+ // poll and every turn change.  That display:none → display:'' toggle
+ // triggers a layout reflow and is a major cause of the board "jumping".
+ if($('ckArea').style.display === 'none'){
  hideAllGameAreas();
  $('ckArea').style.display='';
+ }else{
+ // ckArea is already visible — just make sure no other game area is.
+ $('ownBoardWrap').classList.add('hidden');
+ $('oppBoardWrap').classList.add('hidden');
+ $('pdArea').style.display='none';
+ $('bgArea').style.display='none';
+ const _sh=$('shipHint'); if(_sh) _sh.innerHTML='';
+ }
  setThemeSelectorVisibility(false);
  $('header').classList.add('in-game');
  document.title=t('checkers');
