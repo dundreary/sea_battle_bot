@@ -2290,8 +2290,12 @@ function resumeCk(code){
  ckCode=code;
  localStorage.setItem('ck_game',code);
  $('actions').innerHTML='';
+ _lastCKSig=null; currentScreen='checkers';
+ // Reset ckArea visibility and roll ack shown state
+ if($('ckArea')) $('ckArea').style.display='';
+ delete _rollAckShown[ckCode];
  ckRefreshState();
- startGamePoll('checkers', ckCode, ckRefreshState);
+ setTimeout(()=>startGamePoll('checkers', ckCode, ckRefreshState),500);
 }
 
 function tryReconnect(){
