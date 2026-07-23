@@ -1300,12 +1300,10 @@ def _handle_checkers_move(data, uid, code):
         return {"error": "illegal_move"}
 
     finished = game.make_move(winning_move)
-    # Capture the position right after the player's move so the client can show
-    # the checker sliding into place *immediately*, before the (slower) AI move
-    # is computed. The AI's move is now a separate step (see
-    # _handle_checkers_bot_turn), triggered by the client right after it
-    # renders this response, instead of being computed synchronously here.
-    player_state = game.get_state(uid)
+    # Get player_state BEFORE the turn switch so the client sees the board with their
+    # pieces in the right positions and my_turn still true. This is only needed
+    # for non-finished games - when the game ends, both states are "finished".
+    player_state = game.get_player_state(uid) if not finished else None
 
     if finished:
         _evict_game(code, checkers_games, checkers_player_games)

@@ -305,6 +305,55 @@ class CheckersGame(BaseGame):
             return True
         return False
 
+    def get_player_state(self, uid):
+        """Get state before turn switch for immediate UI feedback after player move.
+        
+        This returns the state where it's still the player's perspective after their
+        move but before we switch to the opponent's turn. Used to show the board
+        correctly after a player move (before checking for win/lose).
+        """
+        color = self.player_color(uid)
+        my_turn = self.turn == color
+        # Use cached moves if available and still valid
+        if not hasattr(self, '_cached_moves') or self._cached_turn != self.turn:
+            self._cached_moves = self.get_moves_for_color(self.turn) if self.phase == "playing" else []
+            self._cached_turn = self.turn
+        moves = self._cached_moves if my_turn and self.phase == "playing" else []
+        highlighted = set()
+        valid_dests = {}
+        for m in moves:
+            sr, sc = m[0]
+            highlighted.add((sr, sc))
+            src_key = sr * BOARD_SIZE + sc
+            dest_key = m[1][-1][0] * BOARD_SIZE + m[1][-1][1]
+            valid_dests.setdefault(src_key, set()).add(dest_key)
+
+        return {
+            "code": self.code,
+            "difficulty": self.difficulty,
+            "phase": self.phase,
+            "board": board_to_dict(self.board),
+            "turn": self.turn,
+            "my_color": color,
+            "my_turn": my_turn,
+            "you": uid,
+            "solo": self.solo,
+            "opponent_joined": self.player2_id is not None,
+            "my_roll": self.first_roll.get(self.player_num(uid)),
+            "opp_roll": (self.first_roll.get(3 - self.player_num(uid))
+                         if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
+                         else None),
+            "winner": self.winner,
+            "draw": self.draw,
+            "last_move": self.last_move,
+            "piece_counts": {
+                "white": count_pieces(self.board, WHITE),
+                "black": count_pieces(self.board, BLACK),
+            },
+            "highlighted_cells": list(highlighted),
+            "valid_dests": {str(k): list(v) for k, v in valid_dests.items()},
+        }
+
     def get_state(self, uid):
         color = self.player_color(uid)
         my_turn = self.turn == color
