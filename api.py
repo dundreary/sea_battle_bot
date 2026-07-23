@@ -1185,11 +1185,13 @@ def _handle_checkers_roll_first(data, uid, code):
     _mark_active(game, uid)
     save()
     pending = []
+    # In solo, if the bot won the roll it needs to move first
+    needs_bot_turn = bool(game.solo and game.phase == "playing" and game.turn == BLACK)
     if res.get("winner"):
         pending = _notify_recipient(
             game, game.current_player, "♟ Ваш ход в Шашках.", "started")
     return ({"ok": True, "state": game.get_state(uid), "roll": res,
-             "roll_resolved": bool(res.get("winner"))}, pending)
+             "roll_resolved": bool(res.get("winner")), "needs_bot_turn": needs_bot_turn}, pending)
 
 
 def _handle_checkers_reroll_first(data, uid, code):
