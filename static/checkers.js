@@ -51,6 +51,7 @@ async function ckStartSolo(){
  localStorage.setItem('ck_game',ckCode);
  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
  ckShowGame(res.state);
+ startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 async function ckNewMulti(){
