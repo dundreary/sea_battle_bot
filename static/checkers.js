@@ -151,10 +151,12 @@ async function ckShowGame(st){
  // on every poll without the performance/visible-jump penalty.
  // The only guard we keep is to skip if ckArea isn't visible.
  ckRenderBoard(st);
- // Hide the board behind the overlay during the roll phase (like Sea Battle)
- // so the centered popup doesn't appear to shift against the board.
+ // Pulse the board on my turn (like Sea Battle)
  const _ckb=document.getElementById('ckBoard');
- if(_ckb) _ckb.style.visibility = (st.phase==='roll') ? 'hidden': '';
+ if(_ckb){
+ _ckb.style.visibility = (st.phase==='roll') ? 'hidden': '';
+ _ckb.classList.toggle('my-turn', st.my_turn);
+ }
  if(st.phase==='finished'){
  stopGamePoll('checkers');
  localStorage.removeItem('ck_game');
