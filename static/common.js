@@ -2290,10 +2290,12 @@ function resumeCk(code){
  ckCode=code;
  localStorage.setItem('ck_game',code);
  $('actions').innerHTML='';
- _lastCKSig=null; currentScreen='checkers';
+ _lastCKSig=null; _lastCKBoardSig=null; currentScreen='checkers';
  // Reset ckArea visibility and roll ack shown state
  if($('ckArea')) $('ckArea').style.display='';
  delete _rollAckShown[ckCode];
+ // Also reset the bot opening flag so the game renders correctly
+ _ckBotOpening=false;
  ckRefreshState();
  setTimeout(()=>startGamePoll('checkers', ckCode, ckRefreshState),500);
 }
