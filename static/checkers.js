@@ -2,7 +2,7 @@
 let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='', ckHint=null;
 
 const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
-let _lastCKSig=null, _ckRefreshing=false;
+let _lastCKSig=null, _ckRefreshing=false, _lastCKBoardSig=null;
 
 function showCheckers(){
  currentGameType='checkers'; setHelpVisible(true);
@@ -47,7 +47,7 @@ async function ckStartSolo(){
  if(res===null){ showRetry(t('error'), ()=>ckStartSolo()); return; }
  if(!res||!res.ok){setStatus(t('error'));return}
  ckCode=res.code;
- _lastCKSig=null;
+ _lastCKSig=null; _lastCKBoardSig=null;
  localStorage.setItem('ck_game',ckCode);
  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
  ckShowGame(res.state);
@@ -61,7 +61,7 @@ async function ckNewMulti(){
  if(res===null){ showRetry(t('error'), () => ckNewMulti()); return; }
  if(!res.ok){setStatus(t('error'));return}
  ckCode=res.code;
- _lastCKSig=null;
+ _lastCKSig=null; _lastCKBoardSig=null;
  localStorage.setItem('ck_game',ckCode);
  ckShowGame(res.state);
  startGamePoll('checkers', ckCode, ckRefreshState);
@@ -72,7 +72,7 @@ async function ckJoin(code){
  if(res===null){ showRetry(t('error'), () => ckJoin(code)); return; }
  if(!res.ok){setStatus(t('joinError'));return}
  ckCode=code.toUpperCase();
- _lastCKSig=null;
+ _lastCKSig=null; _lastCKBoardSig=null;
  localStorage.setItem('ck_game',ckCode);
  ckShowGame(res.state);
  startGamePoll('checkers', ckCode, ckRefreshState);
@@ -126,7 +126,17 @@ async function ckShowGame(st){
  $('gameInfo').textContent='';
  $('actions').innerHTML='';
  $('actions').className='btn-row';
+ // Only re-render the board when the board-relevant state actually changed.
+ // This avoids unnecessary DOM work (and the visual "jump") when ckShowGame
+ // is called multiple times with the same board — e.g. ckCellClick calls
+ // ckShowGame twice (player_state + state) and the bot-opening path may
+ // trigger an extra render.  Reusing cells in ckRenderBoard already prevents
+ // a full reflow, but skipping the call entirely is even cheaper.
+ const _ckBoardSig = st.board.join(',') + '|' + st.turn + '|' + (st.last_move ? JSON.stringify(st.last_move) : '');
+ if(_ckBoardSig !== _lastCKBoardSig){
+ _lastCKBoardSig = _ckBoardSig;
  ckRenderBoard(st);
+ }
  // Hide the board behind the overlay during the roll phase (like Sea Battle)
  // so the centered popup doesn't appear to shift against the board.
  const _ckb=document.getElementById('ckBoard');
@@ -224,7 +234,6 @@ function ariaCellLabel(r,c,piece,isSrc){
 
 function ckRenderBoard(st){
  const board=$('ckBoard');
- board.innerHTML='';
  const grid=st.board;
  // BLACK viewer sits on the opposite side: rotate the board 180° so their
  // pieces appear at the bottom. 63 - idx is the mirrored (7-r, 7-c) cell.
@@ -238,11 +247,31 @@ function ckRenderBoard(st){
  lastCells.add(toCan(lastMove[0][0]*8+lastMove[0][1]));
  for(const s of lastMove[1])lastCells.add(toCan(s[0]*8+s[1]));
  }
+ // Reuse existing cell elements instead of clearing innerHTML and rebuilding
+ // all 64 from scratch.  Destroying/recreating the cells on every poll causes
+ // the board to "jump" (a full reflow + repaint) whenever the turn changes.
+ // By updating cells in place the board stays visually anchored.
+ const existing=board.children;
+ let idx=0;
  for(let r=0;r<8;r++){
  for(let c=0;c<8;c++){
- const cell=document.createElement('div');
+ let cell=existing[idx];
+ if(!cell){
+ cell=document.createElement('div');
+ board.appendChild(cell);
+ }
+ // Reset every mutable property so stale state from a previous render
+ // (classes, handlers, aria, inline styles) never leaks into this cell.
+ cell.className='ck-cell';
+ cell.innerHTML='';
+ cell.onclick=null;
+ cell.onkeydown=null;
+ cell.style.cursor='';
+ cell.removeAttribute('role');
+ cell.removeAttribute('aria-label');
+ cell.removeAttribute('tabindex');
  const isDark=(r+c)%2===1;
- cell.className='ck-cell '+(isDark?'dark':'light');
+ cell.classList.add(isDark?'dark':'light');
  const visIdx=r*8+c;
  const canIdx=toCan(visIdx);
  const piece=grid[canIdx];
@@ -279,9 +308,18 @@ function ckRenderBoard(st){
  if(ckHint[0]===r && ckHint[1]===c) cell.classList.add('highlight-src');
  if(ckHint[2]===r && ckHint[3]===c) cell.classList.add('highlight-capture');
  }
- board.appendChild(cell);
+ idx++;
  }
  }
+ // Remove any surplus cells (shouldn't happen for a fixed 8×8 board, but
+ // keeps the DOM clean if the board size ever changes).
+ while(board.children.length>idx){
+ board.removeChild(board.children[board.children.length-1]);
+ }
+ // Keep the board-signature in sync even when ckRenderBoard is called
+ // directly (e.g. from ckCellClick on select/deselect), so the guard in
+ // ckShowGame doesn't skip a render that's actually needed.
+ _lastCKBoardSig = st.board.join(',') + '|' + st.turn + '|' + (st.last_move ? JSON.stringify(st.last_move) : '');
 }
 
 function ckComputeDests(st, sel){
@@ -312,7 +350,11 @@ async function ckCellClick(r,c){
  // right after this paints, instead of arriving bundled in this response.
  if(res.player_state) ckShowGame(res.player_state);
  ckShowGame(res.state);
- if(res.needs_bot_turn) await ckRunBotTurn();
+ // ckShowGame(res.player_state) may have already entered the bot-opening
+ // path (which calls ckRunBotTurn internally).  Guard against a duplicate
+ // call here — without this the bot turn fires twice, causing an extra
+ // board re-render and a visible "jump".
+ if(res.needs_bot_turn && !_ckBotOpening) await ckRunBotTurn();
  return;
  }
  let pr=r, pc=c;
