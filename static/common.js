@@ -754,7 +754,7 @@ function getUid(){
  return uid
 }
 
-function setStatus(text,cls=''){const s=$('status');s.innerHTML=text;s.className='status'+(cls?''+cls:'')}
+function setStatus(text,cls=''){const s=$('status');s.innerHTML=text;s.className='status'+(cls?' '+cls:'')}
 
 let gameMessageQueue=[];
 function showIncomingMessages(messages){
