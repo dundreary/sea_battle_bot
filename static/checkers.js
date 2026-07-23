@@ -181,11 +181,12 @@ async function ckShowGame(st){
  el.className='btn-col';
  let html='';
  const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
- // Only show roll popup if we're actually in the roll phase OR (roll decided but not yet acknowledged AND still in roll phase)
+ // Only show roll popup if we're actually in the roll phase
  if(st.phase==='roll'){
+ // If roll decided and acknowledged, close popup and continue to game
  if(rollDecided && _rollAckShown[ckCode]){
  closeFirstRollPopup();
- } else if(rollDecided && !_rollAckShown[ckCode]){
+ } else {
  setStatus(''+t('rollTitle'),'');
  // Opening toss now renders in the modal popup; surrender stays reachable
  // outside it. The popup re-renders idempotently on each poll.
