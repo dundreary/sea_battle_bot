@@ -327,8 +327,9 @@ function ckRenderBoard(st){
  cell.onkeydown = (e)=>{ if(e.key==='Enter'||e.key===''){ e.preventDefault(); ckCellClick(r,c); } };
  }
  if(ckHint){
- if(ckHint[0]===r && ckHint[1]===c) cell.classList.add('highlight-src');
- if(ckHint[2]===r && ckHint[3]===c) cell.classList.add('highlight-capture');
+ const isCaptureHint = Math.abs(ckHint[0] - ckHint[2]) > 1 || Math.abs(ckHint[1] - ckHint[3]) > 1;
+ if(ckHint[0]===r && ckHint[1]===c) cell.classList.add('highlight-hint-src');
+ if(ckHint[2]===r && ckHint[3]===c) cell.classList.add(isCaptureHint ? 'highlight-capture' : 'highlight-dest');
  }
  idx++;
  }
