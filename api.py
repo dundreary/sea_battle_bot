@@ -1300,10 +1300,11 @@ def _handle_checkers_move(data, uid, code):
         return {"error": "illegal_move"}
 
     finished = game.make_move(winning_move)
-    # Get player_state BEFORE the turn switch so the client sees the board with their
-    # pieces in the right positions and my_turn still true. This is only needed
-    # for non-finished games - when the game ends, both states are "finished".
-    player_state = game.get_player_state(uid) if not finished else None
+
+    # Get player_state AFTER the move for immediate UI feedback. When the game ends,
+    # return None so the client immediately shows the finished popup instead of
+    # trying to render a board state that doesn't represent the player's turn.
+    player_state = game.get_state(uid) if not finished else None
 
     if finished:
         _evict_game(code, checkers_games, checkers_player_games)

@@ -246,6 +246,9 @@ class CheckersGame(BaseGame):
                 self.first_roll = {1: self.first_roll.get(2), 2: self.first_roll.get(1)}
             self.turn = WHITE
             self.phase = "playing"
+            # Clear move cache since phase changed and we now need moves for the playing phase
+            if hasattr(self, '_cached_moves'):
+                del self._cached_moves
         return res
 
     def _position_key(self):
