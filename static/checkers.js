@@ -266,8 +266,10 @@ function ckRenderBoard(st){
  const lastCells=new Set();
  const ckDests=ckComputeDests(st, ckSelected);
  if(lastMove){
- lastCells.add(toCan(lastMove[0][0]*8+lastMove[0][1]));
- for(const s of lastMove[1])lastCells.add(toCan(s[0]*8+s[1]));
+ // last_move arrives in canonical (server) coordinates
+ // For BLACK (flip), convert to visual coordinates for correct highlighting
+ const toVis = (r, c) => flip ? 63 - (r*8 + c) : (r*8 + c);
+ for(const s of lastMove[1])lastCells.add(toVis(s[0], s[1]));
  }
  // Reuse existing cell elements instead of clearing innerHTML and rebuilding
  // all 64 from scratch.  Destroying/recreating the cells on every poll causes
@@ -303,7 +305,7 @@ function ckRenderBoard(st){
  const color=piece===1||piece===3?'white':'black';
  const isKing=piece===3||piece===4;
  el.className='ck-piece '+color+(isKing?'king':'');
- if(lastCells.has(canIdx))el.classList.add('last-move');
+ if(lastCells.has(visIdx))el.classList.add('last-move');
  el.setAttribute('role','img');
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));
  cell.appendChild(el);
