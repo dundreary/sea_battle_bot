@@ -147,11 +147,10 @@ async function ckShowGame(st){
  // ckShowGame twice (player_state + state) and the bot-opening path may
  // trigger an extra render.  Reusing cells in ckRenderBoard already prevents
  // a full reflow, but skipping the call entirely is even cheaper.
- const _ckBoardSig = st.board.join(',') + '|' + st.turn + '|' + (st.last_move ? JSON.stringify(st.last_move) : '');
- if(_ckBoardSig !== _lastCKBoardSig){
- _lastCKBoardSig = _ckBoardSig;
+ // Board rendering: cell reuse prevents reflow, so we can safely render
+ // on every poll without the performance/visible-jump penalty.
+ // The only guard we keep is to skip if ckArea isn't visible.
  ckRenderBoard(st);
- }
  // Hide the board behind the overlay during the roll phase (like Sea Battle)
  // so the centered popup doesn't appear to shift against the board.
  const _ckb=document.getElementById('ckBoard');
