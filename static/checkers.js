@@ -169,7 +169,10 @@ async function ckShowGame(st){
  title = won ? t('win') : t('lose');
  }
  desc = t('checkers');
+ // Only show popup if none exists (handles double call on win: player_state + state)
+ if(!document.querySelector('.overlay')){
  showResult(icon,title,desc,false,'ckStartSolo()',t('playAgain'));
+ }
  const el=$('ckActions');
  el.className='btn-col';
  el.innerHTML=`
@@ -181,13 +184,17 @@ async function ckShowGame(st){
  el.className='btn-col';
  let html='';
  const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
- // Show roll popup only during the roll phase (not playing)
- if(st.phase==='roll'){
+ // Show roll popup during roll phase, or when roll is decided but not yet acknowledged
+ if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode])){
+ if(rollDecided && _rollAckShown[ckCode]){
+ closeFirstRollPopup();
+ } else {
  setStatus(''+t('rollTitle'),'');
  // Opening toss now renders in the modal popup; surrender stays reachable
  // outside it. The popup re-renders idempotently on each poll.
  showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => { _rollAckShown[ckCode] = true; _lastCKSig = null; ckRefreshState(); } });
  el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
+ }
  return;
  }
  closeFirstRollPopup();
