@@ -105,7 +105,7 @@ async function ckRefreshState(){
  showRevealBanner(''+{ru:'Ход соперника',uk:'Хід суперника',en:"Opponent's move"}[lang]);
  }
  }
- const sig = JSON.stringify([st.phase, st.board, st.turn, st.my_color, st.my_turn, st.solo, st.opponent_joined, st.winner, st.last_move]);
+ const sig = JSON.stringify([st.phase, st.board, st.turn, st.my_color, st.my_turn, st.highlighted_cells, st.solo, st.opponent_joined, st.winner, st.last_move]);
  if(sig===_lastCKSig) return;
  _lastCKSig = sig;
  ckShowGame(res.state);
@@ -154,6 +154,7 @@ async function ckShowGame(st){
  // Pulse the board on my turn (like Sea Battle)
  const _ckb=document.getElementById('ckBoard');
  if(_ckb){
+ _ckb.style.visibility = (st.phase==='roll') ? 'hidden': '';
  _ckb.classList.toggle('my-turn', st.my_turn);
  }
  if(st.phase==='finished'){
