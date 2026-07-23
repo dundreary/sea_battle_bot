@@ -192,14 +192,23 @@ async function ckShowGame(st){
  }
  }
  closeFirstRollPopup();
+ // Bot opening turn in solo mode: show the full UI first, then run the bot.
+ // Previously this block returned early before the buttons were rendered,
+ // leaving only the "quit" button visible until the bot moved.
  if(st.phase==='playing'&& st.solo && !st.my_turn && !_ckBotOpening){
  _ckBotOpening = true;
- try{
  setStatus(''+{ru:'ХОД СОПЕРНИКА...',uk:'ХІД СУПЕРНИКА...',en:"OPPONENT'S TURN..."}[lang],'');
- await ckRunBotTurn();
- }finally{
- _ckBotOpening = false;
- }
+ // Render buttons first, then let the bot think.
+ html+=`<div class="btn-row"><button class="btn success" onclick="ckGetHint()" disabled style="opacity:0.45;cursor:default"> ${t('ckHint')}</button></div>`;
+ html+=`<div class="btn-row" style="margin-top:8px">
+ <button class="btn outline" onclick="ckSurrender()">${t('quit')}</button>
+ <button class="btn outline" onclick="leaveCkGame()" title="${t('gameSaved')}">${t('minimize')}</button>
+ </div>`;
+ el.innerHTML=html;
+ // Now run the bot asynchronously.
+ (async () => {
+ try{ await ckRunBotTurn(); } finally { _ckBotOpening = false; }
+ })();
  return;
  }
  if(st.my_turn){
@@ -411,7 +420,7 @@ async function ckGetHint(){
  // destination and look like several moves at once.
  ckSelected=null;
  ckHint=[sr,sc,er,ec];
- setStatus(''+String.fromCharCode(65+ec)+(8-er),'');
+ setStatus(''+String.fromCharCode(65+sc)+(8-sr)+' → '+String.fromCharCode(65+ec)+(8-er),'');
  ckRenderBoard(ckState);
 }
 
