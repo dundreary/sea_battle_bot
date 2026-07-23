@@ -256,12 +256,14 @@ function ariaCellLabel(r,c,piece,isSrc){
 function ckRenderBoard(st){
  const board=$('ckBoard');
  const grid=st.board;
+ console.log('ckRenderBoard: phase=', st.phase, 'my_turn=', st.my_turn, 'my_color=', st.my_color, 'highlighted=', st.highlighted_cells);
  // BLACK viewer sits on the opposite side: rotate the board 180° so their
  // pieces appear at the bottom. 63 - idx is the mirrored (7-r, 7-c) cell.
  const flip = st.my_color === 2;
  const toCan = (i)=> flip ? 63 - i : i;
  const toVis = (i)=> flip ? 63 - i : i;
  const highlighted=new Set((st.highlighted_cells||[]).map(([r,c])=>toVis(r*8+c)));
+ console.log('processed highlighted set:', Array.from(highlighted));
  const lastMove=st.last_move;
  const lastCells=new Set();
  const ckDests=ckComputeDests(st, ckSelected);
