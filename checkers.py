@@ -266,6 +266,9 @@ class CheckersGame(BaseGame):
         captures = move[2] if len(move) > 2 else []
         self.board = apply_move(self.board, move)
         self.last_move = move
+        # Invalidate cached moves since board changed
+        if hasattr(self, '_cached_moves'):
+            del self._cached_moves
         # No-progress draw rule (Russian draughts): a capture or a man's forward
         # advance resets the counter; otherwise it increments. 30 plies (~15
         # full moves) without progress ends the game as a draw.
@@ -305,7 +308,11 @@ class CheckersGame(BaseGame):
     def get_state(self, uid):
         color = self.player_color(uid)
         my_turn = self.turn == color
-        moves = self.get_moves_for_color(color) if my_turn and self.phase == "playing" else []
+        # Use cached moves if available and still valid
+        if not hasattr(self, '_cached_moves') or self._cached_turn != self.turn:
+            self._cached_moves = self.get_moves_for_color(self.turn) if self.phase == "playing" else []
+            self._cached_turn = self.turn
+        moves = self._cached_moves if my_turn and self.phase == "playing" else []
         highlighted = set()
         valid_dests = {}
         for m in moves:
