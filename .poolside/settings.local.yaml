@@ -1,0 +1,27 @@
+tools:
+    shell:
+        allow:
+            - ls *
+            - find *
+            - head *
+            - grep *
+            - node *
+            - cd *
+            - python *
+            - tail *
+            - .venv/bin/python *
+            - which python3
+            - which python
+            - /Users/home/Projects/sea_battle_bot/.venv/bin/python *
+            - /usr/bin/python3 *
+            - /Users/home/Projects/sea_battle_bot/.venv/bin/ruff check *
+            - echo *
+            - npx eslint *
+            - git status
+            - git diff *
+            - git add *
+            - git commit *
+            - git push origin *
+            - sed *
+            - cat *
+            - od *

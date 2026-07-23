@@ -172,7 +172,6 @@ async function ckShowGame(st){
  el.className='btn-col';
  el.innerHTML=`
  <button class="btn success" onclick="ckStartSolo()">${t('playAgain')}</button>
- <button class="btn outline" onclick="showCheckers()">${t('close')}</button>
  `;
  return;
  }
