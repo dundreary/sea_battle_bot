@@ -362,9 +362,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .ck-piece.black{background:radial-gradient(circle at 30% 30%, #666, #222 40%, #0a0a0a);border:2px solid #000;color:#fff}
 .ck-piece.white.king{color:#333}
 .ck-piece.black.king{color:#FFD700}
-/* Classic king crown: gold ring at top */
-.ck-piece.king::before{content:'';position:absolute;top:0;left:0;right:0;height:30%;border-radius:50% 50% 0 0;border-top:3px solid #FFD700;box-sizing:border-box;pointer-events:none}
-.ck-piece.king::after{content:'';position:absolute;top:30%;left:10%;right:10%;bottom:10%;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);pointer-events:none}
+/* King: gold rim highlight (override the highlight::before for kings) */
+.ck-piece.king::before{content:'';position:absolute;top:2px;left:2px;right:2px;height:25%;border-radius:50% 50% 0 0;border-top:2px solid #FFD700;box-sizing:border-box;pointer-events:none}
 .ck-piece.last-move{box-shadow:0 0 8px 2px rgba(255,215,0,.6)}
 
 .bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;max-width:640px;margin:8px auto;min-height:320px;background:linear-gradient(160deg,#6b4226,#4a2c17);border:1px solid #3f2414;border-radius:6px;padding:6px;overflow:visible}
