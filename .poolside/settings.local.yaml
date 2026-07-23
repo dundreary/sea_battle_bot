@@ -25,3 +25,4 @@ tools:
             - sed *
             - cat *
             - od *
+            - git log *
