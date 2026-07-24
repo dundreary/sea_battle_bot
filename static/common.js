@@ -630,7 +630,7 @@ function setThemeSelectorVisibility(visible){
 }
 
 function setTheme(themeName){
- const validThemes = ['ocean', 'forest'];
+ const validThemes = ['ocean', 'forest', 'classic'];
  if(!validThemes.includes(themeName)) return;
 
  document.documentElement.className = 'palette-'+ themeName;
@@ -657,7 +657,7 @@ function showSettings(){
  const existing=$('settingsOverlay');
  if(existing){existing.remove()}
  const o=document.createElement('div');o.className='overlay';o.id='settingsOverlay';
- const curTheme = document.documentElement.className.indexOf('forest')>=0 ? 'forest': 'ocean';
+ const curTheme = document.documentElement.className.indexOf('classic')>=0 ? 'classic' : document.documentElement.className.indexOf('forest')>=0 ? 'forest': 'ocean';
  const chk = on => on ? 'OK': '';
  const AR = `role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===''){event.preventDefault();this.click()}"`;
  o.innerHTML=`
@@ -668,6 +668,7 @@ function showSettings(){
  <div class="sett-chips">
  <button class="sett-chip ${curTheme==='ocean'?'on':''}" ${AR} onclick="setTheme('ocean');showSettings()"> Ocean</button>
  <button class="sett-chip ${curTheme==='forest'?'on':''}" ${AR} onclick="setTheme('forest');showSettings()"> Forest</button>
+	<button class="sett-chip ${curTheme==='classic'?'on':''}" ${AR} onclick="setTheme('classic');showSettings()"> Classic</button>
  </div>
 
  <div class="sett-sec">${t('sound')} / ${t('vibration')}</div>

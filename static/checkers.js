@@ -312,6 +312,9 @@ function ckRenderBoard(st){
  const color=piece===1||piece===3?'white':'black';
  const isKing=piece===3||piece===4;
  el.className='ck-piece '+color+(isKing?'king':'');
+  if(isKing){
+    el.innerHTML='<div class="ck-pulsar-ring"></div><div class="ck-pulsar-dot"></div>';
+  }
  if(lastCells.has(visIdx))el.classList.add('last-move');
  el.setAttribute('role','img');
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));
