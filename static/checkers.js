@@ -320,9 +320,16 @@ function ckRenderBoard(st){
   // Add reg-glow div for v7-pulsar variant
   if(isKing) {
     const regGlow = document.createElement('div');
-    // Use appropriate theme class based on color
-    const glowClass = color==='white'?'ocean':'forest';
-    regGlow.className='reg-glow '+glowClass;
+    
+    // Get the board theme from the cell's classes
+    let boardTheme = "ocean"; // default
+    if (cell.classList.contains('ocean-bg')) {
+      boardTheme = "ocean";
+    } else if (cell.classList.contains('forest-bg')) {
+      boardTheme = "forest";
+    }
+    
+    regGlow.className='reg-glow '+boardTheme;
     el.appendChild(regGlow);
   }
   if(lastCells.has(visIdx))el.classList.add('last-move');
