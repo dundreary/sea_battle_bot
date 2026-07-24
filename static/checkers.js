@@ -309,13 +309,23 @@ function ckRenderBoard(st){
  if(ckSelected&&toCan(ckSelected[0]*8+ckSelected[1])===canIdx)cell.classList.add('selected');
  if(isDark&&piece!==0){
  const el=document.createElement('div');
- const color=piece===1||piece===3?'white':'black';
- const isKing=piece===3||piece===4;
- el.className='ck-piece '+color+(isKing?' king':'');
-  if(isKing){
-    el.innerHTML='<div class="ck-pulsar-ring"></div><div class="ck-pulsar-dot"></div>';
+  const color=piece===1||piece===3?'white':'black';
+  const isKing=piece===3||piece===4;
+  let kingClasses = isKing?' king':'';
+  
+  // Add v7-pulsar class for preview #7 Pulsar (only for kings)
+  if(isKing) kingClasses += ' v7-pulsar';
+  el.className='ck-piece '+color+kingClasses;
+  
+  // Add reg-glow div for v7-pulsar variant
+  if(isKing) {
+    const regGlow = document.createElement('div');
+    // Use appropriate theme class based on color
+    const glowClass = color==='white'?'ocean':'forest';
+    regGlow.className='reg-glow '+glowClass;
+    el.appendChild(regGlow);
   }
- if(lastCells.has(visIdx))el.classList.add('last-move');
+  if(lastCells.has(visIdx))el.classList.add('last-move');
  el.setAttribute('role','img');
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));
  cell.appendChild(el);
