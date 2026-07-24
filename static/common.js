@@ -13,7 +13,7 @@ const LANG = {
  welcome: 'Добро пожаловать!',
  placing: 'Расстановка — крути, пока не устроит',
  reroll: 'Переставить',
- confirm: 'OK ОК, начинаем!',
+ confirm: 'OK, начинаем!',
  rollTitle: 'Бросьте кубик — кто больше, тот ходит первым',
  rollBtn: 'Бросить кубик',
  rollYou: 'Ваш бросок',
@@ -193,7 +193,7 @@ const LANG = {
  welcome: 'Ласкаво просимо!',
  placing: 'Розстановка — крути, поки не сподобається',
  reroll: 'Переставити',
- confirm: 'OK ОК, починаємо!',
+ confirm: 'OK, починаємо!',
  rollTitle: 'Киньте кубик — хто більше, той ходить першим',
  rollBtn: 'Кинути кубик',
  rollYou: 'Ваш кидок',
@@ -373,7 +373,7 @@ const LANG = {
  welcome: 'Welcome aboard!',
  placing: 'Place ships — reroll until you like it',
  reroll: 'Reroll',
- confirm: 'OK OK, start!',
+ confirm: 'OK, start!',
  rollTitle: 'Roll a die — higher goes first',
  rollBtn: 'Roll die',
  rollYou: 'Your roll',
@@ -684,9 +684,9 @@ function showSettings(){
 
  <div class="sett-sec">${t('language')}</div>
  <div class="sett-chips">
- <button class="sett-chip ${lang==='ru'?'on':''}" ${AR} onclick="setLang('ru');showSettings()">RU RU</button>
- <button class="sett-chip ${lang==='uk'?'on':''}" ${AR} onclick="setLang('uk');showSettings()">UA UA</button>
- <button class="sett-chip ${lang==='en'?'on':''}" ${AR} onclick="setLang('en');showSettings()">EN EN</button>
+ <button class="sett-chip ${lang==='ru'?'on':''}" ${AR} onclick="setLang('ru');showSettings()">RU</button>
+ <button class="sett-chip ${lang==='uk'?'on':''}" ${AR} onclick="setLang('uk');showSettings()">UA</button>
+ <button class="sett-chip ${lang==='en'?'on':''}" ${AR} onclick="setLang('en');showSettings()">EN</button>
  </div>
  <div class="sett-name-row">
  <span class="sett-sec" style="padding:0"> ${t('playerName')||'Ваше имя'}</span>
@@ -1354,7 +1354,7 @@ function updateUI(){
  $('status').title=t('copyCode');
  $('status').onclick=()=>navigator.clipboard.writeText(c).then(()=>setStatus('OK '+c+''+{ru:'скопирован',uk:'скопійовано',en:'copied'}[lang],''));
  $('actions').innerHTML=`
- <button class="btn success" disabled style="opacity:0.5;cursor:default">OK ${t('confirm')}</button>
+ <button class="btn success" disabled style="opacity:0.5;cursor:default">${t('confirm')}</button>
  ${s.pnum === 1 ? `<button class="btn primary" onclick="shareGame()"> ${t('inviteFriend')}</button>` : ''}
  <button class="btn outline" onclick="leaveGame(true)">${s.solo ? t('quit') : t('surrender')}</button>
  <button class="btn outline" onclick="leaveGame()" title="${minimizeTitle()}">${t('minimize')}</button>
