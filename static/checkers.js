@@ -311,7 +311,7 @@ function ckRenderBoard(st){
  const el=document.createElement('div');
  const color=piece===1||piece===3?'white':'black';
  const isKing=piece===3||piece===4;
- el.className='ck-piece '+color+(isKing?'king':'');
+ el.className='ck-piece '+color+(isKing?' king':'');
   if(isKing){
     el.innerHTML='<div class="ck-pulsar-ring"></div><div class="ck-pulsar-dot"></div>';
   }
