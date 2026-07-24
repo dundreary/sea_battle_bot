@@ -26,3 +26,12 @@ tools:
             - cat *
             - od *
             - git log *
+            - python3 *
+            - css-languageserver
+            - git show *
+            - git push *
+paths:
+    allow:
+        - path: /Users/home/Library/Application Support/poolside/plans/**
+        - path: /Users/home/.config/opencode/**
+        - path: /Users/home/.config/poolside/skills/skill-creator/**
