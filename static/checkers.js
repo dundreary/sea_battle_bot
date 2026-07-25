@@ -44,15 +44,16 @@ async function ckStartSolo(){
  currentScreen='checkers';
  try{ if(typeof window.Telegram!=='undefined'&& window.Telegram.WebApp && window.Telegram.WebApp.BackButton) window.Telegram.WebApp.BackButton.show(); }catch(e){}
  const res=await api('/api/checkers_new_solo',{uid:getUid(), difficulty: getDifficulty()});
- if(res===null){ showRetry(t('error'), ()=>ckStartSolo()); return; }
- if(!res||!res.ok){setStatus(t('error'));return}
- ckCode=res.code;
- _lastCKSig=null; _lastCKBoardSig=null;
- localStorage.setItem('ck_game',ckCode);
- const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
- ckShowGame(res.state);
- startGamePoll('checkers', ckCode, ckRefreshState);
-}
+if(res===null){ showRetry(t('error'), ()=>ckStartSolo()); return; }
+  if(!res||!res.ok){setStatus(t('error'));return}
+  ckCode=res.code;
+  _lastCKSig=null; _lastCKBoardSig=null;
+  _rollAckShown[ckCode] = false; // Ensure fresh roll popup shows
+  localStorage.setItem('ck_game',ckCode);
+  const _sb=$('sbOppHistory'); if(_sb) _sb.innerHTML='';
+  ckShowGame(res.state);
+  startGamePoll('checkers', ckCode, ckRefreshState);
+ }
 
 async function ckNewMulti(){
  currentGameType=null; setHelpVisible(false);

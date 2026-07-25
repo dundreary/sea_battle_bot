@@ -2299,12 +2299,14 @@ function resumeCk(code){
   if($('ckArea')) $('ckArea').style.display='';
   // Reset the bot opening flag so the game renders correctly
   _ckBotOpening=false;
+  // Note: _rollAckShown[code] is NOT reset here - the guard in ckShowGame
+  // (st.phase !== 'playing') prevents showing the dice popup on resume
+  // if the game is already in the playing phase
   ckRefreshState();
   setTimeout(()=>startGamePoll('checkers', ckCode, ckRefreshState),500);
- }
-
+}
 function tryReconnect(){
- showMenu();
+  showMenu();
  fetchBotInfo().then(() => checkStartParam());
 }
 
