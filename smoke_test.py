@@ -505,4 +505,62 @@ check(st_bb["phase"] == "playing", "backgammon bot-win -> playing phase")
 check(st_bb["turn"] == -1, "backgammon bot-win -> bot turn (BLACK)")
 check(st_bb["my_turn"] is False, "backgammon bot-win -> bot opens first")
 
+print("Checkers v7-pulsar king style (ocean theme):")
+print("  Checking CSS rules for v7-pulsar king styling...")
+import re
+with open("static/style.css", "r") as f:
+    css_content = f.read()
+
+with open("static/checkers.js", "r") as f:
+    js_content = f.read()
+
+# --- 1. White king v7-pulsar styling (ocean theme) ---
+check(".ck-piece.white.king.v7-pulsar::after" in css_content,
+      "white king v7-pulsar style exists in CSS")
+check(".ck-piece.black.king.v7-pulsar::after" in css_content,
+      "black king v7-pulsar style exists in CSS")
+
+# --- 2. No grid/crosshatch (key requirement: "king sun без сетки") ---
+# v7-pulsar should use simple dot + glow, NOT crosshatch like v9-sun
+v7_white_match = re.search(r'\.ck-piece\.white\.king\.v7-pulsar::after[^{]*\{([^}]+)\}', css_content)
+v7_black_match = re.search(r'\.ck-piece\.black\.king\.v7-pulsar::after[^{]*\{([^}]+)\}', css_content)
+check(v7_white_match is not None and v7_black_match is not None,
+      "v7-pulsar CSS rules found for both colors")
+
+# Check NO crosshatch/grid (repeating-linear-gradient)
+if v7_white_match:
+    check("repeating-linear-gradient" not in v7_white_match.group(1),
+          "v7-pulsar white king has NO crosshatch grid")
+    check("box-shadow" in v7_white_match.group(1),
+          "v7-pulsar white king has glow effect")
+
+# --- 3. Forest theme override ---
+check(".ck-piece.white.king.v7-pulsar.forest::after" in css_content,
+      "forest theme override for white v7-pulsar king exists")
+check(".ck-piece.black.king.v7-pulsar.forest::after" in css_content,
+      "forest theme override for black v7-pulsar king exists")
+
+# --- 4. Reg-glow for all pieces (including kings) ---
+check(".ck-piece .reg-glow.ocean" in css_content,
+      "reg-glow ocean applies to all pieces")
+check(".ck-piece .reg-glow.forest" in css_content,
+      "reg-glow forest applies to all pieces")
+
+# --- 5. JS rendering logic ---
+check('isKing' in js_content and 'v7-pulsar' in js_content,
+      "checkers.js detects kings and adds v7-pulsar class")
+check('reg-glow' in js_content and 'boardTheme' in js_content,
+      "checkers.js adds reg-glow div with theme class for all pieces")
+check('el.classList.add(\'forest\')' in js_content,
+      "checkers.js adds forest class to pieces for theme styling")
+
+# Verify reg-glow is inside piece rendering block (all pieces)
+piece_block = js_content[js_content.find('if(isDark&&piece!==0)'):js_content.find('if(lastCells.has(visIdx)')]
+check('reg-glow' in piece_block and 'v7-pulsar' in piece_block,
+      "reg-glow and v7-pulsar both in piece rendering block")
+
+print("  Checking v7-pulsar has simple dot (not grid)...")
+check("repeating-linear-gradient" not in css_content[css_content.find('.ck-piece.white.king.v7-pulsar'):css_content.find('.ck-piece.white.king.v7-pulsar.forest')],
+      "v7-pulsar has no crosshatch grid (simple dot with glow only)")
+
 print("\nALL SMOKE TESTS PASSED")

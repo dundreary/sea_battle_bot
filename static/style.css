@@ -396,28 +396,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* Reg-glow: inner glow for all pieces - matches preview */
 .reg-glow{position:absolute;top:10%;left:10%;right:10%;bottom:10%;border-radius:50%;pointer-events:none}
 
-/* NEW: king pulsar - matches preview #7 Pulsar */
-.ck-piece.white.king.v7-pulsar::after {
-  content:''; position:absolute; top:28%; left:28%; right:28%; bottom:28%; border-radius:50%;
-  background:#4a7fa0;
-  box-shadow:0 0 0 5px rgba(74,127,160,0.3),
-              0 0 0 10px rgba(74,127,160,0.12);
-  pointer-events:none; z-index:2;
-}
-
+/* v7-pulsar: king sun (just dot with glow, no grid) */
+.ck-piece.white.king.v7-pulsar::after,
 .ck-piece.black.king.v7-pulsar::after {
   content:''; position:absolute; top:28%; left:28%; right:28%; bottom:28%; border-radius:50%;
   background:#4a7fa0;
-  box-shadow:0 0 0 5px rgba(74,127,160,0.3),
-              0 0 0 10px rgba(74,127,160,0.12);
+  box-shadow:0 0 8px #4a7fa0;
   pointer-events:none; z-index:2;
 }
 
 .ck-piece.white.king.v7-pulsar.forest::after,
 .ck-piece.black.king.v7-pulsar.forest::after {
   background:#00d084;
-  box-shadow:0 0 0 5px rgba(0,208,132,0.3),
-              0 0 0 10px rgba(0,208,132,0.12);
+  box-shadow:0 0 8px #00d084;
 }
 
 /* Add reg-glow for all pieces - matches preview */
