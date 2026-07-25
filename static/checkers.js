@@ -183,10 +183,10 @@ async function ckShowGame(st){
  const el=$('ckActions');
  el.className='btn-col';
  let html='';
- const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
-// Show roll popup during roll phase, or when roll is decided but not yet acknowledged
-  // Don't show popup if game is already in playing phase (roll already resolved)
-  if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode] && st.phase !== 'playing')){
+const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
+ // Show roll popup during roll phase, or when roll is decided but not yet acknowledged
+   // Don't show popup if game is already in playing phase (roll already resolved)
+   if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode] && st.phase !== 'playing')){
  if(rollDecided && _rollAckShown[ckCode]){
  closeFirstRollPopup();
  } else {
@@ -314,25 +314,26 @@ function ckRenderBoard(st){
   const isKing=piece===3||piece===4;
   let kingClasses = isKing?' king':'';
   
-  // Add v7-pulsar class for preview #7 Pulsar (only for kings)
-  if(isKing) kingClasses += ' v7-pulsar';
-  el.className='ck-piece '+color+kingClasses;
-  
-  // Add reg-glow div for v7-pulsar variant
-  if(isKing) {
-    const regGlow = document.createElement('div');
+// Add v7-pulsar class for preview #7 Pulsar (only for kings)
+    if(isKing) kingClasses += ' v7-pulsar';
+    el.className='ck-piece '+color+kingClasses;
     
-    // Get the board theme from the cell's classes
+    // Add reg-glow div for all pieces (matches preview)
+    // Get the board theme from root element class
     let boardTheme = "ocean"; // default
-    if (cell.classList.contains('ocean-bg')) {
-      boardTheme = "ocean";
-    } else if (cell.classList.contains('forest-bg')) {
+    if (document.documentElement.classList.contains('palette-forest')) {
       boardTheme = "forest";
     }
     
+    const regGlow = document.createElement('div');
     regGlow.className='reg-glow '+boardTheme;
     el.appendChild(regGlow);
-  }
+    
+    // Add forest theme class to piece for v7-pulsar::after styling
+    // (needed for both regular pieces and kings)
+    if(boardTheme === "forest") {
+      el.classList.add('forest');
+    }
   if(lastCells.has(visIdx))el.classList.add('last-move');
  el.setAttribute('role','img');
  el.setAttribute('aria-label', piece===1||piece===3 ? t('ckWhitePiece')+(isKing?''+t('ckKing'):'') : t('ckBlackPiece')+(isKing?''+t('ckKing'):''));

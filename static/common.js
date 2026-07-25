@@ -2290,20 +2290,18 @@ function resumeSB(code){
 }
 
 function resumeCk(code){
- currentGameType=null; setHelpVisible(false); setStripLockVisible(false);
- ckCode=code;
- localStorage.setItem('ck_game',code);
- $('actions').innerHTML='';
- _lastCKSig=null; _lastCKBoardSig=null; currentScreen='checkers';
- // Reset ckArea visibility
- if($('ckArea')) $('ckArea').style.display='';
- // Reset the bot opening flag so the game renders correctly
- _ckBotOpening=false;
- // Do NOT delete _rollAckShown here - the first roll result should only show once
- // If the game is in 'playing' phase, we should see the board, not the popup
- ckRefreshState();
- setTimeout(()=>startGamePoll('checkers', ckCode, ckRefreshState),500);
-}
+  currentGameType=null; setHelpVisible(false); setStripLockVisible(false);
+  ckCode=code;
+  localStorage.setItem('ck_game',code);
+  $('actions').innerHTML='';
+  _lastCKSig=null; _lastCKBoardSig=null; currentScreen='checkers';
+  // Reset ckArea visibility
+  if($('ckArea')) $('ckArea').style.display='';
+  // Reset the bot opening flag so the game renders correctly
+  _ckBotOpening=false;
+  ckRefreshState();
+  setTimeout(()=>startGamePoll('checkers', ckCode, ckRefreshState),500);
+ }
 
 function tryReconnect(){
  showMenu();
