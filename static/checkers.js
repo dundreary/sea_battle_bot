@@ -183,13 +183,11 @@ async function ckShowGame(st){
  `;
  return;
  }
- const el=$('ckActions');
+const el=$('ckActions');
  el.className='btn-col';
  let html='';
 const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
- // Show roll popup during roll phase, or when roll is decided but not yet acknowledged
-   // Don't show popup if game is already in playing phase (roll already resolved)
-   if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode] && st.phase !== 'playing')){
+if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode])){
  if(rollDecided && _rollAckShown[ckCode]){
  closeFirstRollPopup();
  } else {
