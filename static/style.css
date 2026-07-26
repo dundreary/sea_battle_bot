@@ -134,7 +134,7 @@
 .game-card:active{transform:scale(.97);}
 .pd-scorecard tr.available:active{background:var(--bg-board-alt);}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-dark);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;transition:background 0.3s ease}
-.header{padding:8px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
+.header{padding:2px 12px;text-align:center;width:100%;background:linear-gradient(135deg,var(--color-header-grad-1),var(--color-header-grad-2))}
 .header.in-game{padding:2px 6px}
 .header.in-game .sub{height:14px;line-height:14px;font-size:10px}
 .header.in-game .header-controls{display:none}
@@ -147,7 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .lang-bar{display:flex;gap:4px;justify-content:center;padding:4px 0}
 .lang-btn{background:transparent;border:1px solid var(--border-color);color:var(--text-muted);padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer;transition:.15s;touch-action:manipulation}
 .lang-btn.active{background:var(--color-btn-primary-1);border-color:var(--accent-primary);color:#fff}
-.header-controls{position:relative;z-index:1;display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:nowrap;padding:2px 0}
+.header-controls{position:relative;z-index:1;display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:nowrap;padding:0}
 .top-btn{position:relative;background:transparent;border:1px solid var(--border-color);color:var(--text-secondary);padding:4px 10px;border-radius:6px;font-size:16px;cursor:pointer;transition:.15s;touch-action:manipulation}
 .top-btn.lock-btn{border:none;background:none;padding:4px;color:var(--text-secondary)}
 .top-btn svg{display:block;width:22px;height:22px;vertical-align:middle}
