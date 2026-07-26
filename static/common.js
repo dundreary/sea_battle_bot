@@ -1043,11 +1043,11 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
  titleSlot = `<div class="roll-title">${t('rollTitle')}</div>`;
  footSlot = `<button class="btn primary roll-cta" id="rollBtn" onclick="window['${rollFn}']()">${t('rollBtn')}</button>`;
  }
- else {
- // Decisive: both rolled, different -> winner line in the foot slot, no title.
- const won = st.my_roll > st.opp_roll;
- footSlot = `<div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>`;
- }
+else {
+  // Decisive: both rolled, different -> winner line in the foot slot, no title.
+  const won = st.my_roll > st.opp_roll;
+  footSlot = `<div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div><button class="btn primary roll-cta" id="continueRollBtn" onclick="__rollPopupContinue()">${t('continue')}</button>`;
+  }
 
  return `<div class="roll-stage">
  <div class="roll-title-slot">${titleSlot}</div>

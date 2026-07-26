@@ -62,22 +62,24 @@ async function ckNewMulti(){
  const res=await api('/api/checkers_new_multi',{uid:getUid()});
  if(res===null){ showRetry(t('error'), () => ckNewMulti()); return; }
  if(!res.ok){setStatus(t('error'));return}
- ckCode=res.code;
- _lastCKSig=null; _lastCKBoardSig=null;
- localStorage.setItem('ck_game',ckCode);
- ckShowGame(res.state);
- startGamePoll('checkers', ckCode, ckRefreshState);
+ckCode=res.code;
+  _lastCKSig=null; _lastCKBoardSig=null;
+  _rollAckShown[ckCode] = false; // Ensure fresh roll popup shows for new game
+  localStorage.setItem('ck_game',ckCode);
+  ckShowGame(res.state);
+  startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 async function ckJoin(code){
  const res=await api('/api/checkers_join',{uid:getUid(),code:code.toUpperCase()});
  if(res===null){ showRetry(t('error'), () => ckJoin(code)); return; }
  if(!res.ok){setStatus(t('joinError'));return}
- ckCode=code.toUpperCase();
- _lastCKSig=null; _lastCKBoardSig=null;
- localStorage.setItem('ck_game',ckCode);
- ckShowGame(res.state);
- startGamePoll('checkers', ckCode, ckRefreshState);
+ckCode=code.toUpperCase();
+  _lastCKSig=null; _lastCKBoardSig=null;
+  _rollAckShown[ckCode] = false; // Ensure fresh roll popup shows for new game
+  localStorage.setItem('ck_game',ckCode);
+  ckShowGame(res.state);
+  startGamePoll('checkers', ckCode, ckRefreshState);
 }
 
 async function ckRefreshState(){

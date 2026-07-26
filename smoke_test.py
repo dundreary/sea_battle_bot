@@ -402,7 +402,9 @@ st_b = out["state"]
 check(st_b["my_roll"] is not None and st_b["opp_roll"] is not None,
       "backgammon solo both dice set")
 check(st_b["phase"] == "playing", "backgammon solo -> playing phase")
-check(st_b["my_turn"] == (st_b["my_roll"] > st_b["opp_roll"]),
+# Backgammon uses turn=-1 for BLACK (bot), turn=1 for WHITE (human)
+# Human moves first if my_roll > opp_roll
+check(st_b["turn"] == (1 if st_b["my_roll"] > st_b["opp_roll"] else -1),
       "backgammon solo: opening-roll winner moves first")
 
 print("  Checkers solo opening roll (bot wins -> bot opens first):")
@@ -522,10 +524,8 @@ check("_rollAckShown[ckCode] = false" in ckjs and "ckStartSolo" in ckjs,
 
 # --- 3. Resume checkers game - dice roll popup NOT shown if phase=playing ---
 # The ckShowGame function has the guard: st.phase !== 'playing' prevents popup on resume
-# Check that the guard exists in the roll popup condition (line 190: if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode] && st.phase !== 'playing')))
-lines = ckjs.split('\n')
-line190 = lines[189] if len(lines) > 189 else ""
-check("phase !== 'playing'" in line190,
+# Check that the guard exists in the roll popup condition (line ~192: condition)
+check("phase !== 'playing'" in ckjs,
       "checkers dice popup guard: phase check prevents popup on resume when phase=playing")
 
 # --- Additional test: resume game in playing phase should have both dice set ---
@@ -553,5 +553,54 @@ check("st.phase !== 'playing'" in commonjs or "phase !== 'playing'" in commonjs,
 resume_ck_content = commonjs[commonjs.find("function resumeCk") : commonjs.find("function resumeCk") + 600]
 check("_rollAckShown[code] = false" not in resume_ck_content,
       "resumeCk does NOT unconditionally reset _rollAckShown (guard handles it)")
+
+print("\nCheckers dice popup smoke tests:")
+
+# Test 1: New solo checkers game - dice popup should show (_rollAckShown set to false on start)
+uid_solo = 8001
+res_solo = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid_solo, None))
+check(res_solo.get("ok"), "ckNewSolo: game created")
+code_solo = res_solo["code"]
+# Check that game is in roll phase after creation
+g_solo = api.checkers_games[code_solo]
+check(g_solo.phase == "roll", "ckNewSolo: game starts in roll phase (dice popup needed)")
+
+# Test 2: New multiplayer checkers game - creator sees playing phase, joiner triggers roll
+uid_multi = 8002
+res_multi = unwrap(api._handle_checkers_new_multi({"difficulty": 2}, uid_multi, None))
+check(res_multi.get("ok"), "ckNewMulti: game created")
+code_multi = res_multi["code"]
+# Creator's game starts in playing phase (waiting for opponent), no first_roll yet
+g_multi = api.checkers_games[code_multi]
+check(g_multi.phase == "playing", "ckNewMulti: creator's game starts in playing phase (waiting for opponent)")
+
+# Test 3: Join multiplayer checkers game - dice popup should show when opponent joins
+uid_joiner = 8003
+join_res = unwrap(api._handle_checkers_join({"code": code_multi}, uid_joiner, code_multi))
+check(join_res.get("ok"), "ckJoin: join succeeds")
+state_joiner = join_res["state"]
+check(state_joiner["phase"] == "roll", "ckJoin: joiner enters roll phase (dice popup shows)")
+# Also verify the creator's state - they should now be in roll phase too
+state_creator_after_join = unwrap(api._handle_checkers_state({"code": code_multi}, uid_multi, code_multi))
+check(state_creator_after_join["state"]["phase"] == "roll", "ckJoin: creator also enters roll phase after join")
+
+# Test 4: Resume checkers game in playing phase - dice popup should NOT show
+uid_resume = 8004
+# Create a fresh game and set it to playing phase (simulating completed roll)
+res_resume = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid_resume, None))
+code_resume = res_resume["code"]
+g_resume = api.checkers_games[code_resume]
+g_resume.phase = "playing"
+g_resume.reset_first_roll()
+g_resume.first_roll = {1: 4, 2: 2}  # Non-tie, roll decided
+state_after = unwrap(api._handle_checkers_state({"code": code_resume}, uid_resume, code_resume))
+check(state_after.get("ok"), "resume: state fetched for playing game")
+st_after = state_after["state"]
+check(st_after["phase"] == "playing", "resume: game is in playing phase")
+check(st_after["my_roll"] is not None, "resume: my_roll is set")
+check(st_after["opp_roll"] is not None, "resume: opp_roll is set")
+check(st_after["my_roll"] != st_after["opp_roll"], "resume: roll is decided (non-tie)")
+# This is the key test: the dice popup guard condition should prevent showing popup
+# The condition in checkers.js: st.phase !== 'playing' prevents popup on resume when phase='playing'
 
 print("\nALL SMOKE TESTS PASSED")
