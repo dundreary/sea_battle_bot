@@ -1,5 +1,11 @@
 // ---- Checkers ----
 let ckState=null, ckCode=null, ckSelected=null, ckSeenMove='', ckHint=null;
+// Tracks which game code the opening-roll ack logic last saw. Used to detect
+// "just switched to/resumed this code" (see ckShowGame) without relying on
+// the server's roll_resolved flag, which is also true on a brand-new
+// decisive roll and so can't distinguish "just rolled" from "resumed a game
+// that already rolled".
+let _ckFreshCode=null;
 
 const CK_PIECE_NAMES={0:'.',1:'w',2:'b',3:'W',4:'B'};
 let _lastCKSig=null, _ckRefreshing=false, _lastCKBoardSig=null;
@@ -187,10 +193,17 @@ const el=$('ckActions');
   el.className='btn-col';
   let html='';
 const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
-  // If roll was already resolved on the server, mark it acknowledged to prevent popup on resume
-  if(st.roll_resolved) {
+  // Resuming a game that is already past the opening roll (e.g. reopened
+  // from the active-games list, or the app was minimized/restored) should
+  // never re-show the "who goes first" popup. Detect that case by phase
+  // alone -- st.phase is only 'roll' while the toss is still in progress --
+  // rather than st.roll_resolved, which is ALSO true on the very first
+  // decisive roll and previously marked it acknowledged before the popup
+  // had a chance to render at all (see the checkers first-roll-popup bug).
+  if(st.phase!=='roll' && _ckFreshCode!==ckCode){
     _rollAckShown[ckCode] = true;
   }
+  _ckFreshCode = ckCode;
   if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode])){
   if(rollDecided && _rollAckShown[ckCode]){
   closeFirstRollPopup();
