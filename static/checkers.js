@@ -184,20 +184,24 @@ async function ckShowGame(st){
  return;
  }
 const el=$('ckActions');
- el.className='btn-col';
- let html='';
+  el.className='btn-col';
+  let html='';
 const rollDecided = st.my_roll != null && st.opp_roll != null && st.my_roll !== st.opp_roll;
-if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode])){
- if(rollDecided && _rollAckShown[ckCode]){
- closeFirstRollPopup();
- } else {
- setStatus(''+t('rollTitle'),'');
- // Opening toss now renders in the modal popup; surrender stays reachable
- // outside it. The popup re-renders idempotently on each poll.
- showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => { _rollAckShown[ckCode] = true; _lastCKSig = null; ckRefreshState(); } });
- el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
- }
- return;
+  // If roll was already resolved on the server, mark it acknowledged to prevent popup on resume
+  if(st.roll_resolved) {
+    _rollAckShown[ckCode] = true;
+  }
+  if(st.phase==='roll'|| (rollDecided && !_rollAckShown[ckCode])){
+  if(rollDecided && _rollAckShown[ckCode]){
+  closeFirstRollPopup();
+  } else {
+  setStatus(''+t('rollTitle'),'');
+  // Opening toss now renders in the modal popup; surrender stays reachable
+  // outside it. The popup re-renders idempotently on each poll.
+  showFirstRollPopup(st, 'ckRollFirst', 'ckRerollFirst', { solo: st.solo, code: ckCode, proceedFn: () => { _rollAckShown[ckCode] = true; _lastCKSig = null; ckRefreshState(); } });
+  el.innerHTML = `<button class="btn outline" onclick="ckSurrender()">${st.solo ? t('quit') : t('surrender')}</button>`;
+  }
+  return;
  }
  closeFirstRollPopup();
  // Bot opening turn in solo mode: show the full UI first, then run the bot.

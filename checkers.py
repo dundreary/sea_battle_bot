@@ -331,6 +331,12 @@ class CheckersGame(BaseGame):
             dest_key = m[1][-1][0] * BOARD_SIZE + m[1][-1][1]
             valid_dests.setdefault(src_key, set()).add(dest_key)
 
+        # roll_resolved is true when both dice are set and different (roll decided),
+        # used by frontend to skip the dice popup on resume for playing games.
+        roll_resolved = (self.first_roll.get(1) is not None and
+                         self.first_roll.get(2) is not None and
+                         self.first_roll[1] != self.first_roll[2])
+
         return {
             "code": self.code,
             "difficulty": self.difficulty,
@@ -346,6 +352,7 @@ class CheckersGame(BaseGame):
             "opp_roll": (self.first_roll.get(3 - self.player_num(uid))
                          if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
                          else None),
+            "roll_resolved": roll_resolved,
             "winner": self.winner,
             "draw": self.draw,
             "last_move": self.last_move,
@@ -374,6 +381,12 @@ class CheckersGame(BaseGame):
             dest_key = m[1][-1][0] * BOARD_SIZE + m[1][-1][1]
             valid_dests.setdefault(src_key, set()).add(dest_key)
 
+        # roll_resolved is true when both dice are set and different (roll decided),
+        # used by frontend to skip the dice popup on resume for playing games.
+        roll_resolved = (self.first_roll.get(1) is not None and
+                         self.first_roll.get(2) is not None and
+                         self.first_roll[1] != self.first_roll[2])
+
         return {
             "code": self.code,
             "difficulty": self.difficulty,
@@ -389,6 +402,7 @@ class CheckersGame(BaseGame):
             "opp_roll": (self.first_roll.get(3 - self.player_num(uid))
                          if (self.first_roll.get(1) is not None and self.first_roll.get(2) is not None)
                          else None),
+            "roll_resolved": roll_resolved,
             "winner": self.winner,
             "draw": self.draw,
             "last_move": self.last_move,

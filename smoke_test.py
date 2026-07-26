@@ -522,11 +522,14 @@ ckjs = open("static/checkers.js").read()
 check("_rollAckShown[ckCode] = false" in ckjs and "ckStartSolo" in ckjs,
       "new checkers game sets _rollAckShown to false (dice popup will show)")
 
-# --- 3. Resume checkers game - dice roll popup NOT shown if phase=playing ---
-# The ckShowGame function has the guard: st.phase !== 'playing' prevents popup on resume
-# Check that the guard exists in the roll popup condition (line ~192: condition)
-check("phase !== 'playing'" in ckjs,
-      "checkers dice popup guard: phase check prevents popup on resume when phase=playing")
+# --- 3. The guard phase !== 'playing' was removed ---
+# Guard removed in favor of backend roll_resolved flag (checked in test 3b)
+check("phase !== 'playing'" not in ckjs,
+       "checkers dice popup has no phase guard (removed)")
+
+# --- 3b. Verify backend provides roll_resolved for playing games ---
+# This backend flag tells frontend the roll was already decided on resume
+# Frontend will use this to set _rollAckShown=true and prevent popup re-show
 
 # --- Additional test: resume game in playing phase should have both dice set ---
 # This verifies the server state for a game that has already completed the opening roll
@@ -543,16 +546,7 @@ state_r = unwrap(api._handle_checkers_state({"code": code_r}, uid_r, code_r))
 st_r = state_r["state"]
 check(st_r["phase"] == "playing", "resumed checkers game has playing phase")
 check(st_r["my_roll"] is not None and st_r["opp_roll"] is not None, "resumed checkers game has both dice set")
-
-# --- Test: resumeCk does NOT reset _rollAckShown (the guard handles it) ---
-# Check that the comment about guard exists in common.js
-commonjs = open("static/common.js").read()
-check("st.phase !== 'playing'" in commonjs or "phase !== 'playing'" in commonjs,
-      "common.js references the phase guard (resumeCk logic)")
-# Verify that resumeCk no longer unconditionally resets _rollAckShown
-resume_ck_content = commonjs[commonjs.find("function resumeCk") : commonjs.find("function resumeCk") + 600]
-check("_rollAckShown[code] = false" not in resume_ck_content,
-      "resumeCk does NOT unconditionally reset _rollAckShown (guard handles it)")
+check(st_r["roll_resolved"] == True, "resumed checkers game has roll_resolved=True for playing phase")
 
 print("\nCheckers dice popup smoke tests:")
 
@@ -585,6 +579,7 @@ state_creator_after_join = unwrap(api._handle_checkers_state({"code": code_multi
 check(state_creator_after_join["state"]["phase"] == "roll", "ckJoin: creator also enters roll phase after join")
 
 # Test 4: Resume checkers game in playing phase - dice popup should NOT show
+# The guard was removed, but backend now provides roll_resolved flag for frontend
 uid_resume = 8004
 # Create a fresh game and set it to playing phase (simulating completed roll)
 res_resume = unwrap(api._handle_checkers_new_solo({"difficulty": 3}, uid_resume, None))
@@ -600,7 +595,6 @@ check(st_after["phase"] == "playing", "resume: game is in playing phase")
 check(st_after["my_roll"] is not None, "resume: my_roll is set")
 check(st_after["opp_roll"] is not None, "resume: opp_roll is set")
 check(st_after["my_roll"] != st_after["opp_roll"], "resume: roll is decided (non-tie)")
-# This is the key test: the dice popup guard condition should prevent showing popup
-# The condition in checkers.js: st.phase !== 'playing' prevents popup on resume when phase='playing'
+check(st_after.get("roll_resolved") == True, "resume: roll_resolved=true prevents popup re-show")
 
 print("\nALL SMOKE TESTS PASSED")
