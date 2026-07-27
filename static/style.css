@@ -428,7 +428,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* Remove old pulse elements that made kings look identical */
 
-.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;aspect-ratio:1;margin:0;background:linear-gradient(160deg,#6b4226,#4a2c17);border:1px solid #3f2414;border-radius:6px;padding:3px;overflow:visible}
+.bg-board-h{display:flex;flex-direction:row;align-items:stretch;gap:0;width:100%;background:linear-gradient(160deg,#6b4226,#4a2c17);border:1px solid #3f2414;border-radius:6px;padding:1px;overflow:visible;margin:0}
 .bg-half{display:flex;flex-direction:column;flex:1;min-width:0;background:#e8cfa0;border-radius:2px}
 .bg-row{display:flex;gap:0;flex:1;min-height:0}
 .bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0;padding:1px 0;overflow:visible}
@@ -480,31 +480,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 @media (max-width:480px){
   /* Add horizontal scroll specifically for backgammon */
-  html,body,.*{overflow-x:auto}  /* Enable horizontal scroll on all elements */
+  html,body,.*{overflow-x:hidden}  /* Enable horizontal scroll on all elements */
   
-  #bgBoard{width:100%;overflow-x:auto;overflow-y:hidden;min-width:100%;scrollbar-width:thin}
+  #bgBoard{width:100%;margin:0;padding:0;height:auto}
   
-  .bg-board-h{min-width:100%;width:max-content;height:var(--bg-board-height,320px);margin:0 auto;padding:1px}
+  /* Let board size itself naturally */
+  .bg-board-h{width:auto;height:auto;min-width:100%;aspect-ratio:unset;margin:0 auto;padding:0}
   
-  /* Custom scrollbar styling */
-  #bgBoard::-webkit-scrollbar{height:6px}
-  #bgBoard::-webkit-scrollbar-thumb{background:var(--accent-primary);border-radius:3px}
-  #bgBoard::-webkit-scrollbar-track{background:transparent}
+  /* Simplified child layouts for scroll */
+  .bg-half{display:flex;flex-direction:column;flex:1;min-width:0;background:#e8cfa0;border-radius:2px}
+  .bg-row{display:flex;gap:0;flex:1;min-height:0}
+  .bg-point{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative;min-width:0;padding:1px 0;overflow:visible}
   
-  /* Improved point visibility for scroll */
-  .bg-point{padding:1px 0;opacity:0.95;transition:opacity:0.2s}
-  .bg-point:hover{opacity:1}
-  
-  /* Simplified mobile styles for scroll content */
+  /* Optimized elements */
   .bg-checker{width:clamp(26px,7.5vw,38px);height:clamp(26px,7.5vw,38px);margin:0}
   .bg-bar-v{min-width:16px;margin:0 1px;padding:2px}
   .bg-off-col{min-width:16px;margin-left:1px;padding:2px;font-size:10px}
   .bg-die{width:38px;height:38px;font-size:20px;border-radius:9px}
-  .main{padding:4px 0 80px;padding-top:40px}
+  .main{padding:0}
 }
 
 @media (orientation:landscape){
-  .bg-board-h{width:max-content;height:320px;aspect-ratio:unset;margin:0 auto;padding:1px}
+  .bg-board-h{width:auto;height:auto;aspect-ratio:unset;margin:0 auto;padding:0}
   .bg-checker{width:clamp(26px,5.5vh,38px);height:clamp(26px,5.5vh,38px)}
   .bg-bar-v{min-width:16px;margin:0 1px;padding:2px}
   .bg-off-col{min-width:16px;margin-left:1px;padding:2px}
