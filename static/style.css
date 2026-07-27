@@ -475,27 +475,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .bg-variant-btn.active{background:var(--accent-primary,#3a86ff);color:#fff;border-color:transparent}
 .bg-home-label{font-size:9px;color:var(--text-hint);text-align:center;padding:1px 0;width:100%}
 /* Phone portrait: let the BACKGAMMON BOARD use the full screen width (the
- board's own wrapper goes 100%), while keeping menus/buttons centered.
- Checkers are made LARGER (not smaller) so the board stays playable. */
+  board's own wrapper goes 100%), while keeping menus/buttons centered.
+  Checkers are made LARGER (not smaller) so the board stays playable. */
+
 @media (max-width:480px){
-  .bg-board-h{width:100%;aspect-ratio:1;padding:1px;margin:0;gap:0}
+  /* Add horizontal scroll specifically for backgammon */
+  html,body,.*{overflow-x:auto}  /* Enable horizontal scroll on all elements */
+  
+  #bgBoard{width:100%;overflow-x:auto;overflow-y:hidden;min-width:100%;scrollbar-width:thin}
+  
+  .bg-board-h{min-width:100%;width:max-content;height:var(--bg-board-height,320px);margin:0 auto;padding:1px}
+  
+  /* Custom scrollbar styling */
+  #bgBoard::-webkit-scrollbar{height:6px}
+  #bgBoard::-webkit-scrollbar-thumb{background:var(--accent-primary);border-radius:3px}
+  #bgBoard::-webkit-scrollbar-track{background:transparent}
+  
+  /* Improved point visibility for scroll */
+  .bg-point{padding:1px 0;opacity:0.95;transition:opacity:0.2s}
+  .bg-point:hover{opacity:1}
+  
+  /* Simplified mobile styles for scroll content */
   .bg-checker{width:clamp(26px,7.5vw,38px);height:clamp(26px,7.5vw,38px);margin:0}
   .bg-bar-v{min-width:16px;margin:0 1px;padding:2px}
   .bg-off-col{min-width:16px;margin-left:1px;padding:2px;font-size:10px}
   .bg-die{width:38px;height:38px;font-size:20px;border-radius:9px}
-  .bg-point{padding:1px 0}
   .main{padding:4px 0 80px;padding-top:40px}
 }
+
 @media (orientation:landscape){
-  .bg-board-h{aspect-ratio:1}
+  .bg-board-h{width:max-content;height:320px;aspect-ratio:unset;margin:0 auto;padding:1px}
   .bg-checker{width:clamp(26px,5.5vh,38px);height:clamp(26px,5.5vh,38px)}
   .bg-bar-v{min-width:16px;margin:0 1px;padding:2px}
   .bg-off-col{min-width:16px;margin-left:1px;padding:2px}
 }
-
-
-
-/* ---- AI reveal banner ---- */
 .bg-checker.ai-move{animation:bgAiflash 1.1s ease 2;box-shadow:0 0 10px 3px rgba(255,215,0,.8)!important}
 
 /* ---- Board theme styles for ocean-bg and forest-bg ---- */
@@ -507,11 +520,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* ---- Opening dice-roll screen (multiplayer): two big dice side by side ---- */
 /* Backgammon's opening toss uses a calm fade-in (no spin/flight) so rerolls
- don't look "strange" — overrides the shared dieThrow animation. */
+don't look "strange" — overrides the shared dieThrow animation. */
 .bg-roll-popup .roll-die3d.roll-die-spinning{animation:bgRollAppear 0.5s ease-out forwards}
 @keyframes bgRollAppear{
- 0%{transform:translateY(14px) scale(.92);opacity:0}
- 100%{transform:translateY(0) scale(1);opacity:1}
+  0%{transform:translateY(14px) scale(.92);opacity:0}
+  100%{transform:translateY(0) scale(1);opacity:1}
 }
 .roll-stage{display:grid;grid-template-rows:34px 1fr 66px;height:260px;width:100%;padding:0 8px;overflow:hidden;text-align:center;align-items:center;justify-items:center;perspective:600px}
 .roll-title-slot{min-height:34px;display:flex;align-items:center;justify-content:center}
@@ -521,7 +534,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .roll-die-col{display:flex;flex-direction:column;align-items:center;gap:8px}
 .roll-die-label{font-size:12px;color:var(--text-hint);text-align:center}
 /* Professional-looking die: rounded, glossy 3D face with a soft drop shadow
- and an inner top highlight so it reads as a physical cube, not a flat tile. */
+  and an inner top highlight so it reads as a physical cube, not a flat tile. */
 .roll-die3d{width:76px;height:76px;background:linear-gradient(150deg,#ffffff 0%,#f3ede0 45%,#d9cfb8 100%);border-radius:18px;box-shadow:0 10px 22px rgba(0,0,0,.45),inset 0 2px 3px rgba(255,255,255,.9),inset 0 -4px 8px rgba(120,105,70,.35);position:relative}
 .roll-die3d svg{width:100%;height:100%;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 .roll-die3d svg circle{fill:#2b2b2b}
