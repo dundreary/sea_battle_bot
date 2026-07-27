@@ -1045,8 +1045,12 @@ function _rollPopupInner(st, rollFn, rerollFn, o){
  }
 else {
   // Decisive: both rolled, different -> winner line in the foot slot, no title.
+  // No manual "Continue" button here -- the popup auto-advances on its own
+  // (see the decisive/proceedFn timer in showFirstRollPopup below), so a
+  // button that's redundant with the ~1.5s auto-close only invites a
+  // pointless tap.
   const won = st.my_roll > st.opp_roll;
-  footSlot = `<div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div><button class="btn primary roll-cta" id="continueRollBtn" onclick="__rollPopupContinue()">${t('continue')}</button>`;
+  footSlot = `<div class="roll-result ${won?'roll-win':'roll-lose'}">${won ? t('rollYouFirst') : t('rollOppFirst')}</div>`;
   }
 
  return `<div class="roll-stage">
