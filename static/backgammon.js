@@ -138,6 +138,10 @@ async function bgShowGame(st, keepSelection=false){
  }
  hideAllGameAreas();
  $('bgArea').style.display='';
+ // Backgammon's board is 24 thin points wide, not a single square -- give
+ // it the full phone width instead of being squeezed by .main's normal
+ // side gutters (see .main.bg-mode in style.css).
+ const _app=$('app'); if(_app) _app.classList.add('bg-mode');
  setThemeSelectorVisibility(false);
  $('header').classList.add('in-game');
  document.title=t('backgammon');

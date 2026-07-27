@@ -554,6 +554,10 @@ function hideAllGameAreas(){
  $('ckArea').style.display='none';
  $('bgArea').style.display='none';
  const _sh=$('shipHint'); if(_sh) _sh.innerHTML='';
+ // The backgammon board bleeds .main's side padding to use the full phone
+ // width (see .main.bg-mode in style.css). Any other screen taking over
+ // must drop that class, or its own content would inherit the wider layout.
+ const _app=$('app'); if(_app) _app.classList.remove('bg-mode');
 }
 
 let _snd=localStorage.getItem('sb_snd')!=='0',_vibe=localStorage.getItem('sb_vibe')!=='0';
