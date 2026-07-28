@@ -737,8 +737,12 @@ async function pdRunBotTurn(){
  for(const el of diceEls) el.classList.add('rolling');
 
  // Start server thinking IN PARALLEL with roll animation
+ // 10s is generous for the Expert-difficulty Monte-Carlo keep search on a
+ // normal server response; a much longer timeout here just means a slow
+ // or stalled server leaves the player staring at spinning dice for far
+ // longer than necessary before the retry/error path below ever kicks in.
  let keepPromise = _fetchWithTimeout('/api/pd_bot_keep',
-    {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 2}, 60000);
+    {uid:getUid(), code:pdCode, dice: currentDice, rolls_left: 2}, 10000);
 
  await _aiDelay(1600);
  for(const el of diceEls) el.classList.remove('rolling');
@@ -895,8 +899,20 @@ async function pdRunBotTurn(){
 
 // Called by doFirstRoll/doRerollFirst when the opening-roll response says the
 // bot won the toss and owes its first move. A short delay lets the popup show
-// the winner before the bot's opening animation starts. Also sets _pdBotOpening
-// so the auto-proceed path (pdShowGame -> line 218) skips the redundant trigger.
+// the winner before the bot's opening animation starts.
+//
+// IMPORTANT: this used to be a second, independent trigger racing against the
+// one already inside pdShowGame (reached via the SAME refreshFn() call that
+// doFirstRoll awaits right before calling this). Both paths only guarded on
+// _pdBotOpening, which pdShowGame's own call clears in its `finally` block
+// the moment the bot's turn (roll+keep+score) actually finishes -- often well
+// under 700ms after it started. So by the time this timeout fired, the bot's
+// opening turn was frequently already fully played, _pdBotOpening was back to
+// false, and this callback would happily kick off a SECOND bot turn from
+// scratch (a fresh client-side dice roll, unrelated to the server's actual
+// state) -- which looked like "the bot's first move resets and replays".
+// Fix: re-check the CURRENT server state before ever starting a bot turn
+// here, instead of trusting a flag that can go stale during the 700ms wait.
 function pdAfterOpeningRoll(){
  if(pdOpeningPending) return;
  pdOpeningPending = true;
@@ -904,16 +920,31 @@ function pdAfterOpeningRoll(){
  pdOpeningTimer = setTimeout(async () => {
  pdOpeningPending = false;
   if(pdCode !== myCode) return;
-  if(_pdBotOpening) return;   // already handled by pdShowGame -> pdRunBotTurn
-  
+  if(_pdBotOpening || pdAnimating) return;   // already running (or just finished) via pdShowGame -> pdRunBotTurn
+
+  // Re-fetch the authoritative state instead of trusting the stale pdState
+  // captured before this delay: if the bot's turn already completed while
+  // we were waiting, my_turn is true again and there is nothing to do here.
+  const res = await api('/api/pd_state', {uid:getUid(), code:myCode});
+  if(pdCode !== myCode) return;
+  if(!res || !res.ok) return;
+  const st = res.state;
+  if(!(st.solo && st.phase==='playing' && !st.my_turn)) {
+    // Bot's opening turn is already done (or the game moved on) -- just
+    // make sure the popup is closed and the board reflects the real state.
+    _rollAckShown[pdCode] = true;
+    closeFirstRollPopup();
+    if(!_pdBotOpening && !pdAnimating) pdShowGame(st);
+    return;
+  }
+
   _rollAckShown[pdCode] = true;
  closeFirstRollPopup();
- if (pdState) {
- pdRenderScorecard(pdState);
- pdRenderDice(pdState);
- pdRenderActions(pdState);
- pdRenderInfo(pdState);
- }
+ pdState = st;
+ pdRenderScorecard(st);
+ pdRenderDice(st);
+ pdRenderActions(st);
+ pdRenderInfo(st);
 
  _pdBotOpening = true;
  try { await pdRunBotTurn(); } finally { _pdBotOpening = false; }
