@@ -504,7 +504,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   .bg-bar-v{min-width:16px;margin:0 1px;padding:2px}
   .bg-off-col{min-width:16px;margin-left:1px;padding:2px;font-size:10px}
   .bg-die{width:38px;height:38px;font-size:20px;border-radius:9px}
-  .main{padding:0}
+  /* Only Backgammon needs .main's side gutters flattened on small phones
+     (handled by .main.bg-mode instead, see the base .main rules above).
+     A blanket `.main{padding:0}` here also zeroed padding-top, which is
+     load-bearing for every OTHER game: .status is position:absolute;top:0
+     inside .main and relies on .main's padding-top:40px to reserve space
+     above the board so the status text doesn't sit on top of it. That
+     made "Твой ход"/"Ход соперника" overlap the Sea Battle and Checkers
+     boards on any phone <=480px wide. Removed; .bg-mode already covers
+     Backgammon's actual need (side padding), so nothing here should touch
+     .main anymore.
+  */
 }
 
 @media (orientation:landscape){
