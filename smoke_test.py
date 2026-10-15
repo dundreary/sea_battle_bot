@@ -383,8 +383,23 @@ st_c = out["state"]
 check(st_c["my_roll"] is not None and st_c["opp_roll"] is not None,
       "checkers solo both dice set")
 check(st_c["phase"] == "playing", "checkers solo -> playing phase")
-check(st_c["my_turn"] == (st_c["my_color"] == st_c["turn"]),
-      "checkers solo: opening-roll winner moves first")
+# Real assertion (replaces a tautological check: get_state() itself sets
+# my_turn = (turn == my_color) and my_color = color, so the old expression was
+# always true even for a corrupted state). Re-enter _handle_checkers_roll_first
+# on purpose: the roll already resolved (phase "playing", dice differ), so a
+# repeat click deterministically hits the `game.phase != "roll"` ("not rolling")
+# branch. That is exactly where api.py used to pass a player NUMBER
+# (game.player_num(uid)) into checkers.get_state, which expects a telegram uid
+# -- yielding my_color=None and swapped my_roll/opp_roll. A re-fetch must not
+# change what the state means.
+out_c2 = unwrap(api._handle_checkers_roll_first({"code": code_c}, uid_c, code_c))
+st_c2 = out_c2["state"]
+check(out_c2["ok"] is True, "checkers re-fetch: handler reports ok")
+check(st_c2["my_color"] is not None,
+      "checkers re-fetch: my_color resolved (not None) -- catches uid/player_num bug")
+check((st_c2["my_color"], st_c2["my_roll"], st_c2["opp_roll"], st_c2["turn"], st_c2["phase"])
+      == (st_c["my_color"], st_c["my_roll"], st_c["opp_roll"], st_c["turn"], st_c["phase"]),
+      "checkers re-fetch: state contract stable (identity fields unchanged)")
 
 print("  Poker Dice solo opening roll (random):")
 print("  (skipped - poker dice tests disabled)")
@@ -514,8 +529,8 @@ check("repeating-linear-gradient" not in css_content[css_content.find('.ck-piece
 
 print("Checkers header height and dice popup logic:")
 # --- 1. Header height for .header.in-game ---
-check(".header.in-game{padding:2px 6px}" in css_content,
-      "header.in-game has reduced padding 2px 6px (not fully hidden)")
+check(".header.in-game{padding:0 6px;padding-top:env(safe-area-inset-top)}" in css_content,
+      "header.in-game has reduced padding (not fully hidden, safe-area inset for notch)")
 
 # --- 2. New game checkers - dice roll popup shows (_rollAckShown = false on start) ---
 ckjs = open("static/checkers.js").read()

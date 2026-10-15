@@ -1166,7 +1166,7 @@ def _handle_checkers_roll_first(data, uid, code):
         r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
         if r1 is not None and r2 is not None and r1 != r2:
             res = game.roll_for_first(game.player_num(uid))
-            return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+            return ({"ok": True, "state": game.get_state(uid), "roll": res,
                      "roll_resolved": bool(res.get("winner"))}, [])
         return {"ok": False, "error": "not_rolling"}
     # In solo the bot can't click the roll button, so make sure its die is
@@ -1480,7 +1480,7 @@ def _handle_bg_roll_first(data, uid, code):
         r1, r2 = game.first_roll.get(1), game.first_roll.get(2)
         if r1 is not None and r2 is not None and r1 != r2:
             res = game.roll_for_first(game.player_num(uid))
-            return ({"ok": True, "state": game.get_state(game.player_num(uid)), "roll": res,
+            return ({"ok": True, "state": game.get_state(uid), "roll": res,
                      "roll_resolved": bool(res.get("winner"))}, [])
         return {"ok": False, "error": "not_rolling"}
     # In solo the bot can't click the roll button, so make sure its die is
