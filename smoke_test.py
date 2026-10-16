@@ -13,6 +13,7 @@ from game import Game as _G, MINE, MINE_HIT
 api.save = lambda: None
 persist.save = lambda: None
 persist.flush = lambda: None
+_real_send_telegram_message = notifications.send_telegram_message
 notifications.send_telegram_message = lambda *a, **k: True
 
 
@@ -812,6 +813,149 @@ _out = unwrap(api._handle_upload_stake({"photo": _big}, _p3_uid, _p3_code))
 check(_out.get("error") == "photo_too_large", "stake: oversized (decoded>2MB) rejected -> photo_too_large")
 check(_p3_game.strip_stakes.get(1) == _STAKE_JPEG_URL,
       "stake: oversized payload NOT stored (original JPEG preserved)")
+
+
+print("\n# p3-tg-retry: 429 then OK recovers the delivery path (RED before fix):")
+# Monkeypatches urllib.request.urlopen GLOBALLY (both callers share the module
+# object). The fake raises HTTPError(429, readable body) on the first call and
+# returns a valid {"ok": true} response on the second. The fake is reset
+# between the two invocations below so each caller's first call is the 429.
+import io  # noqa: E402
+import json  # noqa: E402
+import urllib.error  # noqa: E402
+import urllib.request  # noqa: E402
+import strip  # noqa: E402
+
+
+class _FakeOkResp:
+    """Mimics urllib's response object: context manager + .read()."""
+    def __init__(self, payload):
+        self._buf = json.dumps(payload).encode()
+    def read(self):
+        return self._buf
+    def __enter__(self):
+        return self
+    def __exit__(self, *exc):
+        return False
+
+
+def _make_http_error(code, payload):
+    body = json.dumps(payload).encode()
+    return urllib.error.HTTPError(
+        "https://api.telegram.org/", code, "Too Many Requests", {}, io.BytesIO(body)
+    )
+
+
+class _Urlopen429ThenOk:
+    """First call raises HTTPError(429); second returns ok."""
+    def __init__(self):
+        self.calls = 0
+    def __call__(self, req, timeout=None, **_kw):
+        self.calls += 1
+        if self.calls == 1:
+            raise _make_http_error(
+                429, {"ok": False, "parameters": {"retry_after": 0}})
+        return _FakeOkResp({"ok": True})
+
+
+_429_fake = _Urlopen429ThenOk()
+_orig_urlopen = urllib.request.urlopen
+urllib.request.urlopen = _429_fake
+try:
+    _429_fake.calls = 0
+    _r1 = strip.send_strip_photo_to_winner(99999, _STAKE_JPEG_URL, "lost")
+    _429_fake.calls = 0
+    _r2 = _real_send_telegram_message(99999, "it is your turn")
+    check(_r1 is True, "p3-retry: strip photo recovers from 429 -> True")
+    check(_r2 is True, "p3-retry: telegram message recovers from 429 -> True")
+finally:
+    urllib.request.urlopen = _orig_urlopen
+
+
+print("\n# p3-tg-retry helper: tg_http.telegram_post retry behaviour:")
+import tg_http  # noqa: E402
+
+_req = urllib.request.Request(
+    "https://api.telegram.org/botsmoke-dummy/_tg_http_test", method="POST")
+_CAP = tg_http.TELEGRAM_RETRY_AFTER_CAP
+_MAX = tg_http.TELEGRAM_MAX_ATTEMPTS
+_BACKOFF = tg_http.TELEGRAM_BACKOFF
+
+
+def _e429(retry_after):
+    return _make_http_error(
+        429, {"ok": False, "parameters": {"retry_after": retry_after}})
+
+
+def _e400():
+    return _make_http_error(400, {"ok": False, "description": "Bad Request"})
+
+
+class _Rec:
+    """Stateful fake urlopen + sleep recorder for the tg_http policy cases."""
+    def __init__(self, plan):
+        self.plan = list(plan)
+        self.i = 0
+        self.calls = 0
+        self.sleeps = []
+
+    def __call__(self, req, timeout=None, **_kw):
+        self.calls += 1
+        item = self.plan[self.i]
+        self.i += 1
+        if isinstance(item, BaseException):
+            raise item
+        return _FakeOkResp(item)
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+
+
+_orig_urlopen2 = urllib.request.urlopen
+try:
+    # (a) 429 then ok -> True; exactly 2 calls; sleep = min(retry_after, CAP)
+    _rc = _Rec([_e429(2), {"ok": True}])
+    urllib.request.urlopen = _rc
+    check(tg_http.telegram_post(_req, sleep=_rc.sleep) is True,
+          "tg_http: 429 then ok -> True")
+    check(_rc.calls == 2, "tg_http: 429-then-ok makes exactly 2 urlopen calls")
+    check(len(_rc.sleeps) == 1 and _rc.sleeps[0] == min(2, _CAP),
+          "tg_http: sleep honours min(retry_after, CAP)")
+
+    # (b) retry_after: 999 -> sleep capped to CAP
+    _rc = _Rec([_e429(999), {"ok": True}])
+    urllib.request.urlopen = _rc
+    check(tg_http.telegram_post(_req, sleep=_rc.sleep) is True,
+          "tg_http: 429 (retry_after=999) then ok -> True")
+    check(_rc.sleeps[0] <= _CAP,
+          "tg_http: retry_after=999 capped to TELEGRAM_RETRY_AFTER_CAP")
+
+    # (c) persistent 429 -> False after exactly MAX_ATTEMPTS calls
+    _rc = _Rec([_e429(0) for _ in range(_MAX)])
+    urllib.request.urlopen = _rc
+    check(tg_http.telegram_post(_req, sleep=_rc.sleep) is False,
+          "tg_http: persistent 429 -> False")
+    check(_rc.calls == _MAX,
+          "tg_http: persistent 429 bounded to MAX_ATTEMPTS calls")
+
+    # (d) transient URLError then ok -> True
+    _rc = _Rec([urllib.error.URLError("connection reset"), {"ok": True}])
+    urllib.request.urlopen = _rc
+    check(tg_http.telegram_post(_req, sleep=_rc.sleep) is True,
+          "tg_http: transient URLError then ok -> True")
+    check(_rc.calls == 2, "tg_http: URLError retry makes 2 calls")
+    check(len(_rc.sleeps) == 1 and _rc.sleeps[0] == _BACKOFF,
+          "tg_http: URLError waits TELEGRAM_BACKOFF")
+
+    # (e) HTTP 400 -> False with exactly 1 call (permanent, never retried)
+    _rc = _Rec([_e400()])
+    urllib.request.urlopen = _rc
+    check(tg_http.telegram_post(_req, sleep=_rc.sleep) is False,
+          "tg_http: HTTP 400 -> False")
+    check(_rc.calls == 1, "tg_http: HTTP 400 not retried (exactly 1 call)")
+    check(len(_rc.sleeps) == 0, "tg_http: HTTP 400 never sleeps")
+finally:
+    urllib.request.urlopen = _orig_urlopen2
 
 
 print("\nALL SMOKE TESTS PASSED")

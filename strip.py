@@ -5,12 +5,13 @@ delivered to the winner over Telegram. The photo arrives as a browser
 data-URL, so we decode it and POST it as multipart/form-data.
 """
 import base64
-import json
 import logging
 import secrets
+import urllib.error
 import urllib.request
 
 import config
+import tg_http
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +68,7 @@ def send_strip_photo_to_winner(winner_id: int, photo_data: str, caption: str) ->
             headers={'Content-Type': f'multipart/form-data; boundary={boundary}'},
             method='POST'
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            if result.get('ok'):
-                return True
-            logger.error("Telegram API error: %s", result)
-            return False
-    except Exception as e:
+        return tg_http.telegram_post(req)
+    except (urllib.error.URLError, OSError, ValueError) as e:
         logger.error("Failed to send strip photo: %s", e)
         return False

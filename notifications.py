@@ -10,9 +10,11 @@ import logging
 import queue
 import threading
 import time
+import urllib.error
 import urllib.request
 
 import config
+import tg_http
 
 logger = logging.getLogger(__name__)
 
@@ -32,13 +34,8 @@ def send_telegram_message(chat_id, text: str) -> bool:
             headers={'Content-Type': 'application/json'},
             method='POST',
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read())
-            if result.get('ok'):
-                return True
-            logger.error("Telegram API error: %s", result)
-            return False
-    except Exception as exc:
+        return tg_http.telegram_post(req)
+    except (urllib.error.URLError, OSError, ValueError) as exc:
         logger.error("Failed to send Telegram notification: %s", exc)
         return False
 
