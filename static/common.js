@@ -746,6 +746,7 @@ function initTG(){
  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
  if(!tg) return;
  tg.ready(); tg.expand();
+ if(tg._sbBackRegistered) return; tg._sbBackRegistered=true;
  if(typeof tg.BackButton !== 'undefined'&& tg.BackButton){
  try{ tg.BackButton.onClick(()=>{ if(typeof window.__sbBack === 'function') window.__sbBack(); }); }catch(e){}
  }
@@ -859,6 +860,8 @@ function showRetry(msg, fn){
 // is only minimized, not ended, so progress is saved.
 function minimizeTitle(){ return {ru:'Игра сохранится',uk:'Гру збережено',en:'Game will be saved'}[lang]||'Game will be saved'; }
 
+let _sbAuthFired=false; let _sbRateLimitedAt=0;
+
 async function api(method,data,_isRetry){
  try{
  data = data || {};
@@ -870,7 +873,16 @@ async function api(method,data,_isRetry){
  try{
  r = await fetch(API+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:ctrl.signal});
  } finally { clearTimeout(to); }
- return await r.json();
+ const res = await r.json();
+ if(res && res.error === 'auth_failed' && !_sbAuthFired){
+  _sbAuthFired = true;
+  handleAuthFailed();
+ }
+ if(res && res.error === 'rate_limited' && (Date.now() - _sbRateLimitedAt > 10000)){
+  _sbRateLimitedAt = Date.now();
+  setStatus({ru:'Слишком часто, подождите',uk:'Надто часто, зачекайте',en:'Too many requests, please wait'}[lang]||'Too many requests, please wait', '');
+ }
+ return res;
  }catch(e){
  if(!_isRetry){ await new Promise(res=>setTimeout(res,800)); return api(method,data,true); }
  return null;
@@ -1488,7 +1500,6 @@ async function startSolo(){
  setStripLockVisible(false);
  currentGameType=null; setHelpVisible(false);
  const res=await api('/api/new_solo',{uid:getUid(), difficulty: gameDifficulty});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>startSolo()); return; }
  if(!res||!res.ok){setStatus(t('error'));return}
  gameCode=res.code;
@@ -1628,7 +1639,6 @@ async function newMulti(strip=false){
  setStripLockVisible(false);
  currentGameType=null; setHelpVisible(false);
  const res=await api('/api/new_multi',{uid:getUid(),strip:strip});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>newMulti()); return; }
  if(!res||!res.ok){setStatus(t('error'));return}
  gameCode=res.code;
@@ -1641,7 +1651,7 @@ async function newMulti(strip=false){
 function shareGame(){
  if(!gameCode) return;
  copyToClipboard(gameCode, {ru:'Код скопирован OK',uk:'Код скопійовано OK',en:'Code copied OK'}[lang]);
- try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
+ try{window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(gameCode)}`)}catch(e){}
 }
 
 function copyToClipboard(text, msg){
@@ -1656,7 +1666,6 @@ function copyToClipboard(text, msg){
 
 async function joinByCode(code){
  const resolveRes = await api('/api/resolve_code', {code});
- if(resolveRes && resolveRes.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(resolveRes===null){
  showRetry(t('error'), ()=>joinByCode(code));
  return;
@@ -1668,7 +1677,6 @@ async function joinByCode(code){
  const gameType = resolveRes.game;
  if(gameType === 'sea_battle'){
  const res = await api('/api/join', {uid: getUid(), code});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  gameCode = code;
@@ -1679,7 +1687,6 @@ async function joinByCode(code){
  startGamePoll('sea_battle', code, refreshState);
  } else if(gameType === 'poker_dice'){
  const res = await api('/api/pd_join', {uid: getUid(), code});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  pdCode = code;
@@ -1689,7 +1696,6 @@ async function joinByCode(code){
  startGamePoll('poker_dice', code, pdRefreshState);
  } else if(gameType === 'checkers'){
  const res = await api('/api/checkers_join', {uid: getUid(), code});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  ckCode = code;
@@ -1699,7 +1705,6 @@ async function joinByCode(code){
  startGamePoll('checkers', code, ckRefreshState);
  } else if(gameType === 'backgammon'){
  const res = await api('/api/bg_join', {uid: getUid(), code});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  bgCode = code;
@@ -1924,7 +1929,6 @@ async function showStats(){
  $('actions').className='btn-col';
  $('actions').innerHTML = `<div class="stats-loading"></div>`;
  const res = await api('/api/stats', {uid:getUid()});
- if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){
  showRetry(t('error'), ()=>showStats());
  return;

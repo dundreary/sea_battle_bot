@@ -1066,7 +1066,7 @@ async function pdSurrender(){
 function sharePdGame(){
  if(!pdCode)return;
  copyToClipboard(pdCode,{ru:'Код скопирован OK',uk:'Код скопійовано OK',en:'Code copied OK'}[lang]);
- try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(pdCode)}`)}catch(e){}
+ try{window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(pdCode)}`)}catch(e){}
 }
 
 function resumePd(code){

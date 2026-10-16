@@ -486,7 +486,7 @@ function leaveCkGame(){
 function shareCkGame(){
  if(!ckCode)return;
  copyToClipboard(ckCode,{ru:'Код скопирован OK',uk:'Код скопійовано OK',en:'Code copied OK'}[lang]);
- try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(ckCode)}`)}catch(e){}
+ try{window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(ckCode)}`)}catch(e){}
 }
 
 function ckSurrender(){

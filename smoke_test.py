@@ -1058,13 +1058,68 @@ check("'Session expired'" in _common_src and "Сессия истекла" in _c
 check("handleAuthFailed" in _common_src and "WebApp.close" in _common_src,
       "source: a handler shows the message; recovery invokes tg.WebApp.close()")
 
-# (4) Not swallowed: in startSolo the auth_failed check returns before the
-#     generic setStatus(t('error')) fallback that currently masks it.
-_entry = _common_src.find("/api/new_solo")
-_i_af = _common_src.find("'auth_failed'", _entry)
-_i_generic = _common_src.find("setStatus(t('error')", _entry)
-check(_i_af != -1 and _i_generic != -1 and _i_af < _i_generic,
-      "source: auth_failed interception precedes setStatus(t('error')) in startSolo")
+# (4) REWRITTEN for p4-frontend-nits. Commit 7023ab8 intercepted auth_failed at
+# eight user-triggered call sites (startSolo/newMulti/joinByCode family /
+# showStats) so a dead session showed "session expired" instead of a generic
+# connection error. p4 moves that single responsibility into the api() wrapper
+# (fired once via a latch) and REMOVES those eight per-call-site checks, so the
+# old assertion (which assumed the per-call-site layout) is obsolete. Assert the
+# centralized shape instead.
+_api_slice = _common_src[_common_src.find("async function api("):_common_src.find("async function fetchBotInfo")]
+check("res.error === 'auth_failed'" in _api_slice and "_sbAuthFired" in _api_slice,
+      "source: auth_failed centralised in api() with a once-per-session latch")
+check(_common_src.count("handleAuthFailed();") == 1,
+      "source: handleAuthFailed() called exactly once (inside api()); 8 old call-site checks removed")
+
+
+# ---------------------------------------------------------------------------
+# p4-frontend-nits: close the 4 frontend nit findings. Source-level only:
+# there is no JS runtime / DOM harness in this repo (same mode as p3). Each
+# assertion below is wired to fail on the pre-fix tree (RED) and pass after the
+# fix (GREEN).
+_ck = open("static/checkers.js").read()
+_bg = open("static/backgammon.js").read()
+_pd = open("static/poker_dice.js").read()
+_css = open("static/style.css").read()
+
+# (1) openTelegramLink: bare global access replaced by the optional-call form in
+# all four files. (The audit's "Bot API 7.0" claim is a nit -- the skill
+# version table lists openTelegramLink under Bot API 6.0; the fix is the
+# optional-call guard, which also covers an absent SDK / method.)
+for _path, _src in [("common.js", _common_src), ("checkers.js", _ck),
+                    ("backgammon.js", _bg), ("poker_dice.js", _pd)]:
+    check("Telegram.WebApp.openTelegramLink(" not in _src,
+          "source: no bare Telegram.WebApp.openTelegramLink( in %s" % _path)
+    check("window.Telegram?.WebApp?.openTelegramLink?.(" in _src,
+          "source: guarded ?. call form present in %s" % _path)
+
+# (2) BackButton single registration: a one-line idempotence guard so a second
+# initTG() call cannot stack onClick handlers.
+check("_sbBackRegistered" in _common_src,
+      "source: BackButton registration guard token present in common.js")
+
+# (3) Tap-target text size: raise the bare .btn rule from 13px to 16px. Matched
+# by the rule's selector only -- 15 other font-size:13px rules in the file are
+# untouched, so a loose substring would be a false positive.
+_btn_rule = re.search(r'^\.btn\{([^}]*)\}', _css, re.MULTILINE)
+check(_btn_rule is not None, "source: style.css has a rule whose selector is exactly '.btn{'")
+check("font-size:16px" in _btn_rule.group(1), "source: .btn{ rule now uses font-size:16px")
+check("font-size:13px" not in _btn_rule.group(1), "source: .btn{ rule no longer uses font-size:13px")
+
+# (4) api() error handling finished: rate_limited branch (throttled 10s, status
+# line only -- never a modal), 3-language localized message, handleAuthFailed
+# still called exactly once (centralized); no new showResult code path added.
+check("res.error === 'rate_limited'" in _api_slice,
+      "source: api() recognises rate_limited")
+check("_sbRateLimitedAt" in _api_slice and "10000" in _api_slice,
+      "source: rate_limited throttled to one message per 10s")
+check("setStatus" in _api_slice,
+      "source: rate_limited uses setStatus (status line, not a modal)")
+for _msg in ["Слишком", "Надто", "Too many requests"]:
+    check(_msg in _common_src,
+          "source: rate_limited message localised in all 3 languages (%s)" % _msg)
+check("showResult" not in _api_slice,
+      "source: no new showResult code path added to error handling")
 
 
 print("\nALL SMOKE TESTS PASSED")

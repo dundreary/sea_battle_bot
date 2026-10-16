@@ -555,7 +555,7 @@ function leaveBgGame(){
 function shareBgGame(){
  if(!bgCode)return;
  copyToClipboard(bgCode,{ru:'Код скопирован OK',uk:'Код скопійовано OK',en:'Code copied OK'}[lang]);
- try{Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(bgCode)}`)}catch(e){}
+ try{window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/share/url?url=${encodeURIComponent(bgCode)}`)}catch(e){}
 }
 
 async function bgSurrender(){
