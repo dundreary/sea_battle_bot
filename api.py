@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import threading
 import os
 import base64
 import binascii
@@ -1731,6 +1732,62 @@ ALLOWED_STAKE_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"
 _NO_AUTH_PATHS = {"/api/bot_info", "/api/resolve_code"}
 
 
+# --- Rate limiting: tiny in-process sliding-window limiter (p3-rate-limit) ---
+# Two scopes throttle abuse-prone endpoints:
+#   "resolve_code"  -- repeated game-code lookups (brute-force / enumeration)
+#   "auth_failed"   -- repeated unauthenticated attempts on player endpoints
+# In-process only by design: state resets on deploy and is per-instance in a
+# multi-instance deploy (no shared external store). The clock is monkeypatch-
+# able via _rate_limit_clock for deterministic tests, and a plain
+# threading.Lock guards the state (ThreadingHTTPServer -> concurrent requests).
+# See "Runtime risk" in .agent_artifacts/orchestration-scenario.md.
+RATE_LIMIT_WINDOW_SECONDS = 60.0
+RESOLVE_CODE_MAX_PER_WINDOW = 30
+AUTH_FAILURE_MAX_PER_WINDOW = 30
+RATE_LIMIT_MAX_TRACKED_KEYS = 10000
+
+# (scope, client_ip) -> list[float] hit timestamps within the sliding window.
+_rate_limit_state = {}
+_rate_limit_lock = threading.Lock()
+_rate_limit_clock = time.monotonic
+
+
+def _rate_limit_exceeded(scope, key, limit):
+    """Return True when ``key`` has exceeded ``limit`` hits in the current
+    sliding window for ``scope``; otherwise record a hit and return False.
+
+    A falsy ``key`` (e.g. ``client_ip=None``) is never blocked and never
+    counted: unattributable requests fail open. Memory is bounded by
+    ``RATE_LIMIT_MAX_TRACKED_KEYS`` -- stale keys (no hits in-window) are
+    pruned first, and if the dict is still over the cap it is cleared entirely
+    (fail-open) with a warning logged.
+    """
+    if not key:
+        return False
+    now = _rate_limit_clock()
+    cutoff = now - RATE_LIMIT_WINDOW_SECONDS
+    with _rate_limit_lock:
+        hits = _rate_limit_state.get((scope, key))
+        if hits is None:
+            hits = []
+        else:
+            hits = [t for t in hits if t > cutoff]
+        hits.append(now)
+        _rate_limit_state[(scope, key)] = hits
+        # Bound memory: prune fully-stale keys, then fail-open if still over.
+        if len(_rate_limit_state) > RATE_LIMIT_MAX_TRACKED_KEYS:
+            stale = [k for k, h in _rate_limit_state.items() if not any(t > cutoff for t in h)]
+            for k in stale:
+                del _rate_limit_state[k]
+            if len(_rate_limit_state) > RATE_LIMIT_MAX_TRACKED_KEYS:
+                _rate_limit_state.clear()
+                logger.warning(
+                    "rate limit tracked keys exceeded %d; cleared state (fail-open)",
+                    RATE_LIMIT_MAX_TRACKED_KEYS,
+                )
+        return len(hits) > limit
+
+
 def _split_notification_result(out):
     """Handlers with notifications return ``(response, pending_messages)``."""
     if isinstance(out, tuple) and len(out) == 2 and isinstance(out[1], list):
@@ -1738,7 +1795,7 @@ def _split_notification_result(out):
     return out, []
 
 
-def handle_api(path, body):
+def handle_api(path, body, client_ip=None):
     try:
         data = json.loads(body) if body else {}
     except json.JSONDecodeError:
@@ -1754,7 +1811,20 @@ def handle_api(path, body):
     else:
         uid = _authenticate(data)
         if uid is None:
+            # Throttle repeated failed-auth attempts per client_ip. A
+            # successful auth (uid is not None) NEVER enters this branch, so
+            # legitimate players are never rate-limited.
+            if _rate_limit_exceeded("auth_failed", client_ip, AUTH_FAILURE_MAX_PER_WINDOW):
+                return {"error": "rate_limited"}
             return {"error": "auth_failed"}
+
+    # Throttle repeated game-code lookups per client_ip (brute-force /
+    # enumeration of invite codes). Checked after auth so authenticated
+    # players aren't penalised, but resolve_code is a _NO_AUTH_PATH so uid
+    # here is just the body value -- the limiter is the real gate.
+    if path == "/api/resolve_code":
+        if _rate_limit_exceeded("resolve_code", client_ip, RESOLVE_CODE_MAX_PER_WINDOW):
+            return {"error": "rate_limited"}
 
     if path in UNLOCKED_NOTIFY_PATHS:
         try:

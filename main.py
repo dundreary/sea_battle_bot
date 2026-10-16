@@ -54,7 +54,16 @@ class MainHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length).decode("utf-8") if length else "{}"
-        result = handle_api(self.path, body)
+        # Best-effort client key for the rate limiter. Behind a reverse proxy
+        # (e.g. Render) self.client_address[0] is the proxy's own address and
+        # collapses every real user into one shared bucket, so prefer the
+        # first X-Forwarded-For hop when present. This header is client-
+        # supplied and therefore throttle-oriented, NOT a hard quota: an
+        # attacker can rotate it freely, and the alternative (proxy address
+        # only) would lump all legitimate players into one shared limit.
+        fwd = self.headers.get("X-Forwarded-For")
+        client_ip = fwd.split(",")[0].strip() if fwd else self.client_address[0]
+        result = handle_api(self.path, body, client_ip=client_ip)
         self._json(result)
 
     def do_HEAD(self):

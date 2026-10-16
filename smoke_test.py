@@ -958,4 +958,82 @@ finally:
     urllib.request.urlopen = _orig_urlopen2
 
 
+print("\n# p3-rate-limit: in-process sliding-window limiter (RED before fix):")
+# Rate-limit infrastructure must exist as module-level names so the test can
+# inject a fake clock and clear state between scenarios. These references
+# fail (AttributeError) before the limiter is implemented -- that IS the RED.
+_RL_WINDOW = api.RATE_LIMIT_WINDOW_SECONDS
+_RL_RC_MAX = api.RESOLVE_CODE_MAX_PER_WINDOW
+_RL_AF_MAX = api.AUTH_FAILURE_MAX_PER_WINDOW
+_real_rl_clock = api._rate_limit_clock
+
+try:
+    # --- resolve_code scope: MAX calls OK, MAX+1 is rate_limited ---
+    with api._rate_limit_lock:
+        api._rate_limit_state.clear()
+    _rc_key = "rl-rc-1"
+    for _ in range(_RL_RC_MAX):
+        _rl_r = api.handle_api("/api/resolve_code", '{"code":"ZZZZZZ"}', client_ip=_rc_key)
+        check(_rl_r.get("error") != "rate_limited",
+              "resolve_code: rapid call not yet rate_limited (below MAX)")
+    _rl_r = api.handle_api("/api/resolve_code", '{"code":"ZZZZZZ"}', client_ip=_rc_key)
+    check(_rl_r.get("error") == "rate_limited",
+          "resolve_code: MAX+1 call is rate_limited")
+
+    # --- per-key isolation: a different key is unaffected ---
+    _rl_r = api.handle_api("/api/resolve_code", '{"code":"ZZZZZZ"}', client_ip="rl-rc-2")
+    check(_rl_r.get("error") != "rate_limited",
+          "per-key: different client_ip unaffected by exhausted key")
+
+    # --- sliding window: after clock advances past the window, same key is served ---
+    api._rate_limit_clock = lambda: _real_rl_clock() + _RL_WINDOW + 1
+    _rl_r = api.handle_api("/api/resolve_code", '{"code":"ZZZZZZ"}', client_ip=_rc_key)
+    check(_rl_r.get("error") != "rate_limited",
+          "sliding: same key served again after window passes (not wedged)")
+    api._rate_limit_clock = _real_rl_clock
+
+    # --- auth_failed scope: MAX auth_failed, MAX+1 is rate_limited ---
+    with api._rate_limit_lock:
+        api._rate_limit_state.clear()
+    _af_key = "rl-af-1"
+    for _ in range(_RL_AF_MAX):
+        _rl_r = api.handle_api("/api/new_solo", "{}", client_ip=_af_key)
+        check(_rl_r.get("error") == "auth_failed",
+              "auth_failed: rapid call is auth_failed (below MAX)")
+    _rl_r = api.handle_api("/api/new_solo", "{}", client_ip=_af_key)
+    check(_rl_r.get("error") == "rate_limited",
+          "auth_failed: MAX+1 call is rate_limited")
+
+    # --- safety property: successful auth never throttled, even if key exhausted ---
+    # Same _af_key just exhausted its auth_failure budget above. With
+    # SKIP_TELEGRAM_AUTH=True the body uid authenticates successfully, so the
+    # auth_failed limiter is never consulted and the handler runs normally.
+    _orig_skip = config.SKIP_TELEGRAM_AUTH
+    config.SKIP_TELEGRAM_AUTH = True
+    try:
+        _rl_r = api.handle_api("/api/new_solo", '{"uid": 123}', client_ip=_af_key)
+        check(_rl_r.get("error") != "rate_limited",
+              "safety: successful auth from exhausted key is NOT rate_limited")
+        check(_rl_r.get("ok"), "safety: successful auth proceeds to handler -> ok")
+    finally:
+        config.SKIP_TELEGRAM_AUTH = _orig_skip
+
+    # --- fail-open: client_ip=None is never refused ---
+    with api._rate_limit_lock:
+        api._rate_limit_state.clear()
+    for _ in range(_RL_RC_MAX + 5):
+        _rl_r = api.handle_api("/api/resolve_code", '{"code":"ZZZZZZ"}', client_ip=None)
+        check(_rl_r.get("error") != "rate_limited",
+              "unattributable: client_ip=None never rate_limited (resolve_code)")
+    for _ in range(_RL_AF_MAX + 5):
+        _rl_r = api.handle_api("/api/new_solo", "{}", client_ip=None)
+        check(_rl_r.get("error") != "rate_limited",
+              "unattributable: client_ip=None never rate_limited (auth_failed)")
+
+finally:
+    api._rate_limit_clock = _real_rl_clock
+    with api._rate_limit_lock:
+        api._rate_limit_state.clear()
+
+
 print("\nALL SMOKE TESTS PASSED")
