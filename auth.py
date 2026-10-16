@@ -15,14 +15,15 @@ import time
 from urllib.parse import parse_qsl
 
 
-def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int = 86400):
+def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int = 3600):
     """Return the verified numeric Telegram user id, or None if ``init_data``
     is missing, malformed, unsigned, too old, or doesn't match ``bot_token``.
 
     ``max_age_seconds`` guards against a leaked/replayed init_data string
-    being reused long after the session that generated it; it's generous
-    (24h) because a webapp tab can legitimately stay open and polling for a
-    while without the user re-launching it.
+    being reused after the session that generated it. It defaults to 1 hour
+    (3600s), per the Telegram Mini Apps validation contract: a stolen
+    initData is only viable within a short auth_date window (<= 1h). A tab
+    kept open longer is expected to re-fetch a fresh initData string.
     """
     if not init_data or not bot_token:
         return None

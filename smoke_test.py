@@ -714,4 +714,55 @@ check("var(--pd-accent)" in _common_src and "var(--ck-accent)" in _common_src an
 check(css_content.count("--pd-accent:") == 4 and css_content.count("--ck-accent:") == 4 and css_content.count("--bg-accent:") == 4,
       "accent vars --pd-accent/--ck-accent/--bg-accent declared in all 4 palette blocks")
 
+print("\n# p01 Item 1: ALLOW_BROWSER_AUTH defaults OFF (spoofing closed); opt-in still works:")
+import config  # noqa: E402
+
+# Default state (env unset in this process): a body-only uid must NOT authenticate --
+# this is the P0 finding: today it returns 123 (spoofing), after the fix it returns None.
+check(api._authenticate({"uid": 123}) is None,
+      "default: _authenticate({'uid':123}) with no init_data returns None (spoofing closed)")
+check(not config.ALLOW_BROWSER_AUTH, "default: ALLOW_BROWSER_AUTH is falsy (browser mode off)")
+check(not config.SKIP_TELEGRAM_AUTH, "default: SKIP_TELEGRAM_AUTH is still falsy (unchanged)")
+
+# Source-level: the shipped default literal must be "0" (secure-by-default).
+_cfg_src = open("config.py").read()
+check('ALLOW_BROWSER_AUTH = os.getenv("ALLOW_BROWSER_AUTH", "0")' in _cfg_src,
+      "source: config.py default literal for ALLOW_BROWSER_AUTH is \"0\"")
+
+# Opt-in: an explicit value (env/monkeypatch) of True must still accept the body uid,
+# so the browser-share feature keeps working when the operator deliberately enables it.
+_orig_aba = config.ALLOW_BROWSER_AUTH
+config.ALLOW_BROWSER_AUTH = True
+try:
+    check(api._authenticate({"uid": 123}) == 123,
+          "opt-in: ALLOW_BROWSER_AUTH=True still returns 123 from body uid")
+finally:
+    config.ALLOW_BROWSER_AUTH = _orig_aba
+
+print("\n# p01 Item 2: init_data replay window tightened to <= 1h (auth.py max_age 3600):")
+# Reuse the existing signed-init_data forger (stdlib hmac/hashlib, real signatures)
+# and the smoke-dummy token already used by the p2 auth section above.
+_now = int(_time.time())
+
+# Fresh payload (auth_date = now) must be accepted -> verified uid.
+_fresh = _forge_init_data(_tok, {"auth_date": str(_now), "user": _user_json})
+check(auth.validate_init_data(_fresh, _tok) == 999999,
+      "fresh init_data (auth_date = now) accepted -> 999999")
+
+# 30-minute-old payload must be accepted (still within the 1h window).
+_thirty = _forge_init_data(_tok, {"auth_date": str(_now - 1800), "user": _user_json})
+check(auth.validate_init_data(_thirty, _tok) == 999999,
+      "30-minute-old init_data accepted (within 1h window)")
+
+# 2-hour-old payload must be REJECTED -- this is the RED: today it is accepted
+# under the 24h window (7200 < 86400), so this assertion fails before the fix.
+_twoh = _forge_init_data(_tok, {"auth_date": str(_now - 7200), "user": _user_json})
+check(auth.validate_init_data(_twoh, _tok) is None,
+      "2-hour-old init_data rejected (outside 1h window) -> None")
+
+# 25-hour-old payload must be rejected (already true under both 24h and 1h).
+_twh = _forge_init_data(_tok, {"auth_date": str(_now - 90000), "user": _user_json})
+check(auth.validate_init_data(_twh, _tok) is None,
+      "25-hour-old init_data rejected -> None")
+
 print("\nALL SMOKE TESTS PASSED")
