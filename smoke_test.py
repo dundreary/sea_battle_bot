@@ -1036,4 +1036,35 @@ finally:
         api._rate_limit_state.clear()
 
 
+# ---------------------------------------------------------------------------
+# p3-api-error-ux: a stale/forged Telegram initData makes the bot answer HTTP
+# 200 with {"error": "auth_failed"}. The frontend must surface that to the user
+# as "session expired" (NOT the generic "connection error" the !res.ok
+# fallback shows, and NOT swallowed), and the recovery path for that message
+# must invoke tg.close() so reopening from the chat yields fresh initData (a
+# reload can't refresh a stale auth_date). Asserted at the source level on
+# static/common.js. RED before the fix is wired in below.
+_common_src = open("static/common.js").read()
+
+# (1) The auth_failed error body is recognised at all (today it is not).
+check("'auth_failed'" in _common_src,
+      "source: common.js recognises the 'auth_failed' error body (absent -> swallowed)")
+
+# (2) It is surfaced as a localised 'session expired' message, not 'connection error'.
+check("'Session expired'" in _common_src and "Сессия истекла" in _common_src,
+      "source: auth_failed surfaces a localised 'session expired' message (not 'connection failed')")
+
+# (3) A handler renders that message and the recovery path calls tg.WebApp.close().
+check("handleAuthFailed" in _common_src and "WebApp.close" in _common_src,
+      "source: a handler shows the message; recovery invokes tg.WebApp.close()")
+
+# (4) Not swallowed: in startSolo the auth_failed check returns before the
+#     generic setStatus(t('error')) fallback that currently masks it.
+_entry = _common_src.find("/api/new_solo")
+_i_af = _common_src.find("'auth_failed'", _entry)
+_i_generic = _common_src.find("setStatus(t('error')", _entry)
+check(_i_af != -1 and _i_generic != -1 and _i_af < _i_generic,
+      "source: auth_failed interception precedes setStatus(t('error')) in startSolo")
+
+
 print("\nALL SMOKE TESTS PASSED")

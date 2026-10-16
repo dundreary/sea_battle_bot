@@ -804,6 +804,22 @@ function confirmDialog(title, message, onYes, yesLabel, noLabel){
  });
 }
 
+// auth_failed => the signed Telegram initData is missing/expired/forged (the
+// auth_date freshness check failed -- see references/security.md). A reload
+// can't refresh it: initData keeps its original auth_date, so reopening the
+// Mini App from the Telegram chat is the only way to get a fresh initData.
+// Surface a precise "session expired" message (instead of the generic
+// "connection error" the !res.ok fallback below shows) and, on confirm, close
+// the Mini App via the Telegram SDK (the recovery/reopen path -> tg.close()).
+function handleAuthFailed(){
+ confirmDialog(
+  {ru:'Сессия истекла',uk:'Сесія закінчила',en:'Session expired'}[lang]||'Session expired',
+  {ru:'Ваша сессия истекла. Перезайдите в Mini App, чтобы продолжить.',uk:'Ваша сесія закінчила. Відкрийте Mini App заново, щоб продовжити.',en:'Your session has expired. Please reopen the Mini App to continue.'}[lang]||'Your session has expired. Please reopen the Mini App to continue.',
+  function(){ try{ if(window.Telegram && window.Telegram.WebApp){ window.Telegram.WebApp.close(); } }catch(e){} },
+  {ru:'Перезайти',uk:'Відкрити заново',en:'Reopen'}[lang]||'Reopen',
+  {ru:'Выйти',uk:'Вийти',en:'Quit'}[lang]||'Quit');
+}
+
 function promptDialog(title, placeholder, onDone){
  const o=document.createElement('div'); o.className='overlay';
  o.innerHTML=`<div class="modal"><h2>${title}</h2>
@@ -1472,6 +1488,7 @@ async function startSolo(){
  setStripLockVisible(false);
  currentGameType=null; setHelpVisible(false);
  const res=await api('/api/new_solo',{uid:getUid(), difficulty: gameDifficulty});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>startSolo()); return; }
  if(!res||!res.ok){setStatus(t('error'));return}
  gameCode=res.code;
@@ -1611,6 +1628,7 @@ async function newMulti(strip=false){
  setStripLockVisible(false);
  currentGameType=null; setHelpVisible(false);
  const res=await api('/api/new_multi',{uid:getUid(),strip:strip});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>newMulti()); return; }
  if(!res||!res.ok){setStatus(t('error'));return}
  gameCode=res.code;
@@ -1638,6 +1656,7 @@ function copyToClipboard(text, msg){
 
 async function joinByCode(code){
  const resolveRes = await api('/api/resolve_code', {code});
+ if(resolveRes && resolveRes.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(resolveRes===null){
  showRetry(t('error'), ()=>joinByCode(code));
  return;
@@ -1649,6 +1668,7 @@ async function joinByCode(code){
  const gameType = resolveRes.game;
  if(gameType === 'sea_battle'){
  const res = await api('/api/join', {uid: getUid(), code});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  gameCode = code;
@@ -1659,6 +1679,7 @@ async function joinByCode(code){
  startGamePoll('sea_battle', code, refreshState);
  } else if(gameType === 'poker_dice'){
  const res = await api('/api/pd_join', {uid: getUid(), code});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  pdCode = code;
@@ -1668,6 +1689,7 @@ async function joinByCode(code){
  startGamePoll('poker_dice', code, pdRefreshState);
  } else if(gameType === 'checkers'){
  const res = await api('/api/checkers_join', {uid: getUid(), code});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  ckCode = code;
@@ -1677,6 +1699,7 @@ async function joinByCode(code){
  startGamePoll('checkers', code, ckRefreshState);
  } else if(gameType === 'backgammon'){
  const res = await api('/api/bg_join', {uid: getUid(), code});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){ showRetry(t('error'), ()=>joinByCode(code)); return; }
  if(!res || !res.ok){ setStatus(t('joinError')); return; }
  bgCode = code;
@@ -1901,6 +1924,7 @@ async function showStats(){
  $('actions').className='btn-col';
  $('actions').innerHTML = `<div class="stats-loading"></div>`;
  const res = await api('/api/stats', {uid:getUid()});
+ if(res && res.error === 'auth_failed'){ handleAuthFailed(); return; }
  if(res===null){
  showRetry(t('error'), ()=>showStats());
  return;
