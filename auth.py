@@ -42,12 +42,13 @@ def validate_init_data(init_data: str, bot_token: str, max_age_seconds: int = 86
         return None
 
     auth_date = parsed.get("auth_date")
-    if auth_date:
-        try:
-            if time.time() - int(auth_date) > max_age_seconds:
-                return None
-        except ValueError:
-            pass
+    if not auth_date:
+        return None
+    try:
+        if time.time() - int(auth_date) > max_age_seconds:
+            return None
+    except ValueError:
+        return None
 
     user_raw = parsed.get("user")
     if not user_raw:

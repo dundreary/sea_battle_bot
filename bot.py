@@ -25,12 +25,17 @@ def _(user, key):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     base = config.WEBAPP_URL or os.getenv("RENDER_EXTERNAL_URL", "")
-    url = base or "https://sea-battle-bot.onrender.com"
+    user = update.effective_user
+    if not base:
+        logger.error("start: WEBAPP_URL/RENDER_EXTERNAL_URL is not configured; "
+                     "sending /start without a WebApp button")
+        await update.message.reply_text(_(user, 'text'), parse_mode="HTML")
+        return
+    url = base
     if "?" in url:
         url += "&v=2"
     else:
         url += "?v=2"
-    user = update.effective_user
     kb = InlineKeyboardMarkup([[
         InlineKeyboardButton(_(user, 'btn'), web_app=WebAppInfo(url=url))
     ]])

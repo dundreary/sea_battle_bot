@@ -612,4 +612,106 @@ check(st_after["opp_roll"] is not None, "resume: opp_roll is set")
 check(st_after["my_roll"] != st_after["opp_roll"], "resume: roll is decided (non-tie)")
 check(st_after.get("roll_resolved") == True, "resume: roll_resolved=true prevents popup re-show")
 
+print("\n# p2 auth: malformed/absent auth_date must be rejected (replay hardening):")
+import time as _time  # noqa: E402
+import json as _json  # noqa: E402
+import hmac as _hmac  # noqa: E402
+import hashlib as _hl  # noqa: E402
+from urllib.parse import urlencode as _urlencode  # noqa: E402
+import auth  # noqa: E402
+
+def _forge_init_data(token, pairs):
+    """Sign an init_data string using Telegram's documented algorithm.
+    Built with stdlib hmac/hashlib only -- does NOT import repo auth internals."""
+    params = dict(pairs)
+    check_string = "\n".join(f"{k}={v}" for k, v in sorted(params.items()))
+    secret_key = _hmac.new(b"WebAppData", token.encode(), _hl.sha256).digest()
+    digest = _hmac.new(secret_key, check_string.encode(), _hl.sha256).hexdigest()
+    params["hash"] = digest
+    return _urlencode(params)
+
+_tok = "smoke-dummy"
+_user = {"id": 999999, "first_name": "RedTester"}
+_user_json = _json.dumps(_user, separators=(",", ":"))
+
+# Positive control: a validly-signed init_data with a current auth_date verifies.
+_good = _forge_init_data(_tok, {
+    "auth_date": str(int(_time.time())),
+    "user": _user_json,
+})
+check(auth.validate_init_data(_good, _tok) == 999999,
+      "valid signed init_data (current auth_date) yields uid 999999")
+
+# Finding p2-1: auth_date="abc" (malformed) currently returns a uid because the
+# freshness check is silenced by `except ValueError: pass`. After the fix it
+# must return None.
+_bad = _forge_init_data(_tok, {"auth_date": "abc", "user": _user_json})
+check(auth.validate_init_data(_bad, _tok) is None,
+      "malformed auth_date=abc rejected (None), not a uid")
+
+# Required behaviour also covers absent auth_date -> None.
+_no_ad = _forge_init_data(_tok, {"user": _user_json})
+check(auth.validate_init_data(_no_ad, _tok) is None,
+      "absent auth_date rejected (None)")
+
+print("\n# p2 utils: game codes use a CSPRNG (secrets), not random.choices:")
+import utils  # noqa: E402
+_utils_src = open("utils.py").read()
+check("random.choices" not in _utils_src, "make_game_code uses secrets (no random.choices)")
+check("secrets" in _utils_src, "utils imports secrets (CSPRNG)")
+_code = utils.make_game_code()
+check(len(_code) == 6 and _code.isascii() and _code.isalpha() and _code.isupper(),
+      "make_game_code() default contract: 6 uppercase A-Z chars")
+
+print("\n# p2 bot: stale WebApp URL literal gone; button only when URL configured:")
+_bot_src = open("bot.py").read()
+check("sea-battle-bot.onrender.com" not in _bot_src,
+      "stale production literal removed from bot.py (no 404 button)")
+check("logger.error" in _bot_src,
+      "start() logs an explicit error when URL is not configured")
+_guard = _bot_src.find("if not base:")
+_btn = _bot_src.find("web_app=WebAppInfo(url=url)")
+check(_guard != -1 and _btn > _guard,
+      "WebApp button is only built after the configured-URL guard (no unconditional fallback)")
+
+print("\n# p2 static: dead preview page removed; missing static files 404 cleanly:")
+import os as _os  # noqa: E402
+check(not _os.path.isfile("static/star-preview.html"),
+      "static/star-preview.html dead preview page deleted from tree")
+_main_src = open("main.py").read()
+_serv = _main_src[_main_src.find("def _serve_file"):]
+check("if not os.path.isfile(path)" in _serv and "404" in _serv,
+      "main.py _serve_file returns 404 for a missing file (no allow/deny list added)")
+
+print("\n# p2-frontend-hardening — static/common.js, static/poker_dice.js, static/style.css:")
+# Files read once here; subsequent item sections reuse these locals.
+_common_src = open("static/common.js").read()
+# --- Item 1: native alert() replaced by the app modal in the reset-stats path ---
+check("alert(" not in _common_src,
+      "no native alert() in common.js (Telegram WebView modal contract)")
+check("showResult('', t('resetStats'), t('resetStatsFailed'), false)" in _common_src,
+      "resetStats failure path calls the app modal showResult")
+check(_common_src.count("resetStatsFailed:") == 3,
+      "resetStatsFailed defined in ru/uk/en language dicts")
+# --- Item 2: no [PD_DEBUG] state dumps; bot-turn error logs type only, no raw `e` ---
+_pd_src = open("static/poker_dice.js").read()
+check(_pd_src.count("[PD_DEBUG]") == 0,
+      "no [PD_DEBUG] state dumps in poker_dice.js")
+check("bot turn failed', e)" not in _pd_src,
+      "bot-turn error log does not dump raw game state (no bare ', e)' form)")
+check("bot turn failed:', e?.constructor?.name" in _pd_src,
+      "bot-turn failure still logged (message + error type only, not swallowed)")
+# --- Item 3: dynamic viewport height on <body>; deliberate .bg-checker landscape clamp ---
+check("min-height:100vh;min-height:100dvh" in css_content,
+      "body min-height escalates 100vh -> 100dvh (dynamic viewport units, not 100vh-only)")
+check("clamp(30px,6vh,44px)" in css_content,
+      ".bg-checker landscape keeps 6vh clamp (deliberate: stable checker piece on board grid)")
+# --- Item 4: game-card accent hexes -> theme-scoped CSS vars; declared in all 4 palettes ---
+check("#ff9800" not in _common_src and "#D4A96A" not in _common_src and "#8B5C2A" not in _common_src,
+      "inline game-card hexes (#ff9800/#D4A96A/#8B5C2A) replaced by CSS vars in common.js")
+check("var(--pd-accent)" in _common_src and "var(--ck-accent)" in _common_src and "var(--bg-accent)" in _common_src,
+      "each game-card accent (poker/checkers/backgammon) references a CSS accent variable")
+check(css_content.count("--pd-accent:") == 4 and css_content.count("--ck-accent:") == 4 and css_content.count("--bg-accent:") == 4,
+      "accent vars --pd-accent/--ck-accent/--bg-accent declared in all 4 palette blocks")
+
 print("\nALL SMOKE TESTS PASSED")

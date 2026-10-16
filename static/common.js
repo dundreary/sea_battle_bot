@@ -149,6 +149,7 @@ const LANG = {
  statsWinrate: 'Процент побед',
  resetStats: 'Сбросить статистику',
  resetStatsConfirm: 'Сбросить всю статистику? Это действие нельзя отменить.',
+ resetStatsFailed: 'Не удалось сбросить статистику.',
  statsTotal: 'Всего игр',
  statsHistory: 'Последние игры',
  statsNoGames: 'Пока нет сыгранных игр',
@@ -329,6 +330,7 @@ const LANG = {
  statsWinrate: 'Відсоток перемог',
  resetStats: 'Скинути статистику',
  resetStatsConfirm: 'Скинути всю статистику? Цю дію не можна скасувати.',
+ resetStatsFailed: 'Не вдалося скинути статистику.',
  statsTotal: 'Усього ігор',
  statsHistory: 'Останні ігри',
  statsNoGames: 'Поки що немає зіграних ігор',
@@ -509,6 +511,7 @@ const LANG = {
  statsWinrate: 'Win rate',
  resetStats: 'Reset statistics',
  resetStatsConfirm: 'Reset all statistics? This cannot be undone.',
+ resetStatsFailed: 'Failed to reset statistics.',
  statsTotal: 'Total games',
  statsHistory: 'Recent games',
  statsNoGames: 'No games played yet',
@@ -1823,15 +1826,15 @@ function showMainMenu(){
  </div>
  <div class="game-card" ${AR} aria-label="${t('pdTitle')}" onclick="showPokerDice()" style="margin-bottom:8px">
  <img src="/static/pd-green.svg" class="card-icon" alt="">
- <div class="name" style="color:#ff9800">${t('pdTitle')}</div>
+ <div class="name" style="color:var(--pd-accent)">${t('pdTitle')}</div>
  </div>
  <div class="game-card" ${AR} aria-label="${t('checkers')}" onclick="showCheckers()" style="margin-bottom:8px">
  <img src="/static/checkers-icon.svg" class="card-icon" alt="">
- <div class="name" style="color:#D4A96A">${t('checkers')}</div>
+ <div class="name" style="color:var(--ck-accent)">${t('checkers')}</div>
  </div>
  <div class="game-card" ${AR} aria-label="${t('backgammon')}" onclick="showBackgammon()" style="margin-bottom:8px">
  <img src="/static/backgammon-icon.svg" class="card-icon" alt="">
- <div class="name" style="color:#8B5C2A">${t('backgammon')}</div>
+ <div class="name" style="color:var(--bg-accent)">${t('backgammon')}</div>
  </div>
  <div class="game-card game-card-wide" ${AR} aria-label="${t('joinTitle')}" onclick="universalJoinGame()" style="margin-bottom:8px">
  <img src="/static/mode-join.svg" class="card-icon" alt="">
@@ -1945,8 +1948,8 @@ function resetStats(){
  confirmDialog(t('resetStats'), t('resetStatsConfirm'), ()=>{
  api('/api/reset_stats', {uid:getUid()}).then(res=>{
  if(res && res.ok){ renderStats(res.stats); }
- else { alert('Failed to reset statistics.'); }
- }).catch(()=>alert('Failed to reset statistics.'));
+ else { showResult('', t('resetStats'), t('resetStatsFailed'), false); }
+ }).catch(()=>showResult('', t('resetStats'), t('resetStatsFailed'), false));
  }, t('resetStats'), t('cancel'));
  return;
 }

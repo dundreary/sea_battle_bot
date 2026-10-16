@@ -804,11 +804,7 @@ async function pdRunBotTurn(){
         diceEls[i].classList.remove('kept');
         setDie(diceEls[i], currentDice[i], true);
       }
-       // [DEBUG] log final dice after roll 3 animation
-       console.log('[PD_DEBUG] roll3 display dice:', JSON.stringify(currentDice));
       rollHistory.push({dice: [...currentDice], kept: keepRes2.kept, rerolled: keepRes2.rerolled});
-      console.log('[PD_DEBUG] rollHistory[last] dice:', JSON.stringify(rollHistory[rollHistory.length-1].dice));
-      console.log('[PD_DEBUG] rollHistory full:', JSON.stringify(rollHistory));
    } else {
      // Bot keeps all after roll 2
      await _aiDelay(600);
@@ -827,7 +823,6 @@ async function pdRunBotTurn(){
    const scoreRes = await _fetchWithTimeout('/api/pd_bot_score',
      {uid:getUid(), code:pdCode, roll_history: rollHistory}, 5000);
    if(!scoreRes || !scoreRes.ok || pdCode !== myCode) return;
-   console.log('[PD_DEBUG] score response state:', JSON.stringify(scoreRes.state));
 
   const st = scoreRes.state;
  const cat = st.opponent_scored_category;
@@ -882,7 +877,7 @@ async function pdRunBotTurn(){
    // Record state signature so the next poll skips pdShowGame (keeps dice intact)
    _lastPDSig = JSON.stringify([st.phase, st.dice, st.my_turn, st.rolls_left, st.scored, st.scorecard_all, st.opponent_scorecard_all, st.categories_left, st.turn, st.solo, st.opponent_joined]);
    } catch (e) {
-  console.error('[pd] bot turn failed', e);
+  console.error('[pd] bot turn failed:', e?.constructor?.name || 'Error');
   _pdBotRetries++;
   } finally {
   pdAnimating = false;
