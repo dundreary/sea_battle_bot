@@ -2,6 +2,8 @@ import json
 import logging
 import time
 import os
+import base64
+import binascii
 from typing import Dict, Any, Callable
 
 from game import (
@@ -652,6 +654,30 @@ def _handle_upload_stake(data, uid, code):
     photo = data.get("photo")
     if not photo:
         return {"error": "no photo"}
+    # Validate the untrusted client payload before persisting it (errors never
+    # echo the payload back). Order: cheapest checks first, decode only if the
+    # cheap guards pass. The stored value stays the validated data-URL string so
+    # the existing strip.py send path is unchanged.
+    if not isinstance(photo, str):
+        return {"error": "invalid_photo"}
+    # Cheap fail-fast: a base64 blob can't decode to more than
+    # MAX_STAKE_PHOTO_BYTES without the raw string being at least this long, so
+    # reject it before decoding a multi-megabyte string.
+    if len(photo) > MAX_STAKE_PHOTO_BYTES * 4 // 3 + 1024:
+        return {"error": "photo_too_large"}
+    # Must look like: data:<mime>;base64,<payload>, with an allow-listed image MIME.
+    if not photo.startswith("data:") or ";base64," not in photo:
+        return {"error": "invalid_photo"}
+    _without_prefix = photo[len("data:"):]
+    _mime, _, payload = _without_prefix.partition(";base64,")
+    if _mime.lower() not in ALLOWED_STAKE_MIME_TYPES:
+        return {"error": "invalid_photo"}
+    try:
+        decoded = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        return {"error": "invalid_photo"}
+    if len(decoded) > MAX_STAKE_PHOTO_BYTES:
+        return {"error": "photo_too_large"}
     pnum = game.player_num(uid)
     game.strip_stakes[pnum] = photo
     save()
@@ -1692,6 +1718,13 @@ UNLOCKED_PATHS = {"/api/checkers_hint", "/api/pd_bot_turn", "/api/pd_bot_keep"}
 # pre-committed stake photo to the winner before the game is evicted. They
 # return a 3-tuple: (response, pending_stake_or_None, pending_notifications).
 STAKE_PATHS = {"/api/shoot", "/api/surrender"}
+
+# Server-side validation bounds for a strip stake photo before it is persisted
+# to game.strip_stakes[pnum] and forwarded to Telegram (strip.py). The frontend
+# compresses stakes to an 800px JPEG, so legit photos sit well under this cap;
+# the cap only bounds abuse (memory/disk exhaustion and junk in the send path).
+MAX_STAKE_PHOTO_BYTES = 2 * 1024 * 1024
+ALLOWED_STAKE_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
 
 # Endpoints that don't act on behalf of a specific authenticated player and
 # so don't need init_data verification.

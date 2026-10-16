@@ -765,4 +765,53 @@ _twh = _forge_init_data(_tok, {"auth_date": str(_now - 90000), "user": _user_jso
 check(auth.validate_init_data(_twh, _tok) is None,
       "25-hour-old init_data rejected -> None")
 
+print("\n# p3 Stake photo server-side validation (_handle_upload_stake):")
+import base64 as _b64  # noqa: E402
+
+# Genuine 631-byte JPEG (2x2), well under the 2MB cap; accepted on the happy path.
+_STAKE_JPEG_B64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAFA3PEY8MlBGQUZaVVBfeMiCeG5uePWvuZHI////////////////////////////////////////////////////2wBDAVVaWnhpeOuCguv/////////////////////////////////////////////////////////////////////////wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwCKiiiszsP/2Q=="
+_STAKE_JPEG_URL = "data:image/jpeg;base64," + _STAKE_JPEG_B64
+
+# A fresh strip game lets player 1 (the creator) commit a stake.
+_p3_uid = 9001
+_p3_code = unwrap(api._handle_new_multi({"strip": True}, _p3_uid, None))["code"]
+_p3_game = api.games[_p3_code]
+
+# --- positive control: small genuine JPEG accepted and stored verbatim ---
+_out = unwrap(api._handle_upload_stake({"photo": _STAKE_JPEG_URL}, _p3_uid, _p3_code))
+check(_out.get("ok") is True, "stake: small genuine JPEG accepted -> ok")
+check(_p3_game.strip_stakes.get(1) == _STAKE_JPEG_URL,
+      "stake: positive control JPEG stored verbatim in strip_stakes[1]")
+
+# --- non-string photo -> invalid_photo (truthy int slips past the `not photo` guard) ---
+_out = unwrap(api._handle_upload_stake({"photo": 123}, _p3_uid, _p3_code))
+check(_out.get("error") == "invalid_photo", "stake: non-string photo rejected -> invalid_photo")
+check(not _out.get("ok"), "stake: non-string photo not accepted")
+
+# --- not a data URL -> invalid_photo ---
+_out = unwrap(api._handle_upload_stake({"photo": "hello, not a data url"}, _p3_uid, _p3_code))
+check(_out.get("error") == "invalid_photo", "stake: non-data-URL photo rejected -> invalid_photo")
+
+# --- wrong MIME (text/html) -> invalid_photo ---
+_out = unwrap(api._handle_upload_stake(
+    {"photo": "data:text/html;base64," + _b64.b64encode(b"<x>").decode()}, _p3_uid, _p3_code))
+check(_out.get("error") == "invalid_photo", "stake: text/html MIME rejected -> invalid_photo")
+
+# --- malformed base64 / bad padding -> invalid_photo ---
+_out = unwrap(api._handle_upload_stake(
+    {"photo": "data:image/jpeg;base64,!!!not*base64!!!"}, _p3_uid, _p3_code))
+check(_out.get("error") == "invalid_photo", "stake: malformed base64 rejected -> invalid_photo")
+
+# --- oversized: decoded just over 2MB, kept UNDER the cheap length guard so the
+#     decoded-size check (not the length guard) is the path exercised. ---
+_stake_max = 2 * 1024 * 1024
+_big = "data:image/jpeg;base64," + _b64.b64encode(b"x" * (_stake_max + 100)).decode()
+check(len(_big) <= _stake_max * 4 // 3 + 1024,
+      "stake: oversized payload under length-guard threshold (exercises decode path)")
+_out = unwrap(api._handle_upload_stake({"photo": _big}, _p3_uid, _p3_code))
+check(_out.get("error") == "photo_too_large", "stake: oversized (decoded>2MB) rejected -> photo_too_large")
+check(_p3_game.strip_stakes.get(1) == _STAKE_JPEG_URL,
+      "stake: oversized payload NOT stored (original JPEG preserved)")
+
+
 print("\nALL SMOKE TESTS PASSED")
