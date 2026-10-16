@@ -1122,4 +1122,234 @@ check("showResult" not in _api_slice,
       "source: no new showResult code path added to error handling")
 
 
+# ---------------------------------------------------------------------------
+# p4-backend-nits: regression coverage for the four backend findings (#9-#12)
+# plus the tg_http final-attempt no-sleep follow-up. These sections use a
+# non-raising `check`-style helper (_p4_check) so every section runs and
+# reports in a single pass -- the test is RED until ALL fixes land, then GREEN.
+# The existing checks above keep the raising `check`; _p4_check mirrors its
+# (cond, label) signature but records failures instead of aborting.
+_p4_failures = []
+
+
+def _p4_check(cond, label):
+    if cond:
+        print("  ok: %s" % label)
+    else:
+        _p4_failures.append(label)
+        print("  FAIL: %s" % label)
+
+
+class _HeaderRecorder:
+    def __init__(self):
+        self.headers = []
+    def send_header(self, name, value):
+        self.headers.append((name, value))
+
+
+print("\n# p4-backend-nits: Sea Battle finished-game runtime eviction (audit #9):")
+_has_sweeper = hasattr(api, "_sweep_finished_games") and hasattr(api, "_maybe_sweep_finished_games")
+_p4_check(_has_sweeper, "api exposes _sweep_finished_games + _maybe_sweep_finished_games")
+if _has_sweeper:
+    now = _time.time()
+    ttl = persist.MAX_AGE
+    # (a) finished + older than TTL -> evicted from games and player_games.
+    g_old = _G("EVICT_OLD", 3001, 3002)
+    g_old.phase = "finished"
+    g_old.created_at = now - (ttl + 1)
+    api.games["EVICT_OLD"] = g_old
+    api.player_games[3001] = "EVICT_OLD"
+    api.player_games[3002] = "EVICT_OLD"
+    # (b) finished + within TTL -> kept (positive control).
+    g_keep = _G("EVICT_NEW", 3003, 3004)
+    g_keep.phase = "finished"
+    g_keep.created_at = now - (ttl - 1)
+    api.games["EVICT_NEW"] = g_keep
+    api.player_games[3003] = "EVICT_NEW"
+    # (c) playing + older than TTL -> kept (positive control: not finished).
+    g_live = _G("EVICT_LIVE", 3005, 3006)
+    g_live.phase = "playing"
+    g_live.created_at = now - (ttl + 1)
+    api.games["EVICT_LIVE"] = g_live
+    api.player_games[3005] = "EVICT_LIVE"
+    # api.save is stubbed to a no-op at module top; pin flush too so the
+    # sweeper (which persists the eviction) never touches disk here.
+    _orig_save = api.save
+    _orig_flush = api.flush
+    api.save = lambda: None
+    api.flush = lambda: None
+    try:
+        api._sweep_finished_games(now=now)
+        _p4_check("EVICT_OLD" not in api.games, "old finished game evicted from games")
+        _p4_check("EVICT_OLD" not in api.player_games.values(),
+                  "old finished game evicted from player_games")
+        _p4_check("EVICT_NEW" in api.games, "finished-within-TTL game retained")
+        _p4_check("EVICT_LIVE" in api.games, "playing game (even if old) retained")
+        _p4_check("EVICT_NEW" in api.player_games.values(),
+                  "finished-within-TTL game retained in player_games")
+    finally:
+        api.save = _orig_save
+        api.flush = _orig_flush
+        for _c in ("EVICT_OLD", "EVICT_NEW", "EVICT_LIVE"):
+            api.games.pop(_c, None)
+        for _u in (3001, 3002, 3003, 3004, 3005, 3006):
+            api.player_games.pop(_u, None)
+    # Throttle: a second consecutive _maybe_sweep must be a no-op even for a
+    # still-stale finished game (no double sweep within the interval).
+    _orig_last = getattr(api, "_last_game_sweep", 0.0)
+    _orig_clock = getattr(api, "_game_sweep_clock", _time.time)
+    api._last_game_sweep = 0.0
+    api._game_sweep_clock = lambda: now
+    try:
+        g1 = _G("SWEEP1", 3101, 3102)
+        g1.phase = "finished"
+        g1.created_at = now - (ttl + 1)
+        api.games["SWEEP1"] = g1
+        api.player_games[3101] = "SWEEP1"
+        api._maybe_sweep_finished_games()
+        _p4_check("SWEEP1" not in api.games, "first throttled sweep evicts a stale finished game")
+        g2 = _G("SWEEP2", 3103, 3104)
+        g2.phase = "finished"
+        g2.created_at = now - (ttl + 1)
+        api.games["SWEEP2"] = g2
+        api.player_games[3103] = "SWEEP2"
+        api._maybe_sweep_finished_games()
+        _p4_check("SWEEP2" in api.games, "second consecutive sweep is throttled (no double sweep)")
+    finally:
+        api._last_game_sweep = _orig_last
+        api._game_sweep_clock = _orig_clock
+        for _c in ("SWEEP1", "SWEEP2"):
+            api.games.pop(_c, None)
+        for _u in (3101, 3102, 3103, 3104):
+            api.player_games.pop(_u, None)
+
+
+print("\n# p4-backend-nits: _handle_message_opponent persists with save() (audit #10):")
+save_calls = {"n": 0}
+_orig_save_msg = api.save
+api.save = lambda: save_calls.__setitem__("n", save_calls["n"] + 1)
+try:
+    g_msg = _G("MSGTEST", 3201, 3202)
+    g_msg.phase = "playing"
+    api.games["MSGTEST"] = g_msg
+    api.player_games[3201] = "MSGTEST"
+    api.player_games[3202] = "MSGTEST"
+    _out = api._handle_message_opponent({"code": "MSGTEST", "message": "hello"}, 3201, "MSGTEST")
+    _res = unwrap(_out)
+    _p4_check(_res.get("ok"), "message_opponent ok on a live playing multiplayer game")
+    _p4_check(save_calls["n"] == 1, "_handle_message_opponent calls save() exactly once")
+finally:
+    api.save = _orig_save_msg
+    api.games.pop("MSGTEST", None)
+    for _u in (3201, 3202):
+        api.player_games.pop(_u, None)
+
+
+print("\n# p4-backend-nits: security headers via sec_headers (audit #11):")
+try:
+    import sec_headers as _sec_headers  # noqa: E402
+    _sec_ok = True
+except ImportError:
+    _sec_ok = False
+    _sec_headers = None
+_p4_check(_sec_ok, "import sec_headers without telegram")
+if _sec_ok:
+    _rec = _HeaderRecorder()
+    _sec_headers.send_security_headers(_rec.send_header)
+    _names = [n for (n, _v) in _rec.headers]
+    _p4_check(_names == ["Content-Security-Policy", "X-Content-Type-Options",
+                         "Strict-Transport-Security", "Referrer-Policy"],
+              "4 security headers emitted, exact names & order")
+    _p4_check(_rec.headers == list(_sec_headers.SECURITY_HEADERS),
+              "send_security_headers emits the exact SECURITY_HEADERS list in order")
+    _p4_check("X-Frame-Options" not in _names,
+              "no X-Frame-Options: DENY (would break Telegram Web/Desktop iframe)")
+    _csp = dict(_rec.headers)["Content-Security-Policy"]
+    _p4_check("web.telegram.org" in _csp, "CSP frame-ancestors allows web.telegram.org")
+    _p4_check("webk.telegram.org" in _csp and "webz.telegram.org" in _csp,
+              "CSP frame-ancestors allows webk.telegram.org and webz.telegram.org")
+    _p4_check("default-src" not in _csp,
+              "CSP ships no default-src (would lock down telegram.org script + inline handlers)")
+    _p4_check("script-src" not in _csp, "CSP ships no script-src")
+    _p4_check("frame-ancestors" in _csp and "object-src" in _csp,
+              "CSP ships frame-ancestors + object-src only")
+    # Source-level: main.py imports telegram and is NOT importable here, so we
+    # read the source text and confirm every response emitter attaches the
+    # headers via send_security_headers(self.send_header).
+    _main_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "main.py")
+    with open(_main_path, "r", encoding="utf-8") as _f:
+        _main_src = _f.read()
+    _call = "send_security_headers(self.send_header)"
+    _p4_check("import sec_headers" in _main_src, "main.py imports sec_headers")
+    _p4_check(_main_src.count(_call) == 4, "main.py: exactly 4 emitters call send_security_headers")
+    for _em in ("do_HEAD", "_serve_index", "_serve_file", "_json"):
+        _di = _main_src.find("def %s" % _em)
+        _p4_check(_di != -1, "main.py defines %s" % _em)
+        if _di != -1:
+            # Anchor on the emitter's OWN send_response(...) call (each
+            # emitter has exactly one) and require the security-headers call to
+            # land on the immediately-following line -- a +400 window from the
+            # `def` was too tight for do_HEAD/_serve_index/_serve_file, whose
+            # bodies have long comment/guard text before send_response.
+            _sresp = _main_src.find("self.send_response(", _di)
+            _seg = _main_src[_sresp:_sresp + 200]
+            _p4_check(_call in _seg, "main.py: %s emits security headers" % _em)
+
+
+print("\n# p4-backend-nits: _NO_AUTH_PATHS must not trust body uid for auth (audit #12):")
+_probe_path = "/api/__probe_uid"
+_probe_got = {}
+
+
+def _probe_handler(data, uid, code):
+    _probe_got["uid"] = uid
+    return {"ok": True}
+
+
+_orig_handlers = api._HANDLERS
+api._HANDLERS = dict(_orig_handlers)
+api._HANDLERS[_probe_path] = _probe_handler
+_orig_noauth = api._NO_AUTH_PATHS
+api._NO_AUTH_PATHS = _orig_noauth | {_probe_path}
+try:
+    # probe path is NOT in STAKE/NOTIFY/UNLOCKED sets, so it falls to the
+    # default 'with _state_lock:' branch -- but the _NO_AUTH_PATHS branch
+    # runs first and must leave uid=None (body uid is never an auth credential).
+    _res = api.handle_api(_probe_path, '{"uid": 12345}', client_ip=None)
+    _p4_check(_probe_got.get("uid") is None,
+              "_NO_AUTH_PATHS handler receives uid=None (body uid not trusted for auth)")
+    _p4_check(_res.get("ok"), "probe handler still runs and returns ok")
+finally:
+    api._HANDLERS = _orig_handlers
+    api._NO_AUTH_PATHS = _orig_noauth
+
+
+print("\n# p4-backend-nits: tg_http final-attempt no-sleep on 429 exhaustion:")
+_tg_body = b'{"parameters":{"retry_after":0.0}}'
+_tg_calls = {"n": 0}
+
+
+def _fake_429(req, timeout=None):
+    _tg_calls["n"] += 1
+    raise urllib.error.HTTPError("http://x", 429, "Rate limited", None, io.BytesIO(_tg_body))
+
+
+_orig_urlopen = urllib.request.urlopen
+urllib.request.urlopen = _fake_429
+try:
+    _sleeps = []
+    _rc = tg_http.telegram_post(object(), attempts=3, sleep=lambda w: _sleeps.append(w))
+    _p4_check(_tg_calls["n"] == 3, "429 exhausts all 3 urlopen attempts")
+    _p4_check(len(_sleeps) == 2, "sleep called exactly attempts-1=2 times (no sleep on final attempt)")
+    _p4_check(_rc is False, "429 exhaustion returns False (never raises)")
+finally:
+    urllib.request.urlopen = _orig_urlopen
+
+
+if _p4_failures:
+    raise AssertionError(
+        "p4-backend-nits: %d smoke check(s) failed:\n  %s"
+        % (len(_p4_failures), "\n  ".join(_p4_failures))
+    )
+
 print("\nALL SMOKE TESTS PASSED")

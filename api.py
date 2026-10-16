@@ -17,7 +17,7 @@ from poker_dice import PokerDiceGame as PDGame
 from checkers import CheckersGame, BLACK, opponent, get_legal_moves, has_pieces
 from backgammon import BackgammonGame as BGGame
 from checkers_ai import get_ai_move
-from persist import save, flush
+from persist import save, flush, MAX_AGE
 from auth import validate_init_data
 import config
 
@@ -55,6 +55,68 @@ bg_player_games = bg.player_games
 # the bot's asyncio thread both access these, so mutations must be serialized to
 # avoid race conditions. Provided by the registry as a re-entrant lock so a
 # handler that already holds it can trigger a synchronous flush() safely.
+
+
+# --- Finished-game runtime eviction (audit #9) ---------------------------
+# Mirrors persist's load-time prune (persist.py:59-60): a finished game older
+# than MAX_AGE is reaped so long-idle games don't pin memory forever. Reaping
+# also bounds persist.json: the load-time prune only helps across restarts, the
+# runtime sweep cleans games that finished since the last save() in this
+# process. MAX_AGE is 24h; the interval is intentionally coarse (5 min) to keep
+# the scan off any latency budget.
+FINISHED_GAME_TTL_SECONDS = MAX_AGE
+GAME_SWEEP_INTERVAL_SECONDS = 300.0
+
+# Last sweep wall-clock timestamp (0.0 => sweep on first request) and an
+# injectable clock so tests can fix "now" deterministically. The sweep clock
+# intentionally tracks wall-clock seconds (same unit as Game.created_at, which
+# is set via time.time()).
+_last_game_sweep = 0.0
+_game_sweep_clock = time.time
+
+
+def _sweep_finished_games(now=None):
+    """Evict finished games older than ``FINISHED_GAME_TTL_SECONDS``.
+
+    The (cheap, pure-Python) scan runs under ``_state_lock`` so the live game
+    dicts stay consistent across the HTTP and bot asyncio threads; the persisted
+    re-write is scheduled by the package-level ``save()`` -- a no-op stub in the
+    smoke harness, a queued write in production -- called *outside* the lock so
+    we never persist (or block) while holding it.
+
+    Re-entrancy note: STATE_LOCK is a re-entrant ``threading.RLock`` (see
+    registry.py). ``save()``/``flush()`` are persist's own helpers and use a
+    separate ``_dirty_lock``, never touching STATE_LOCK, so calling save() here
+    -- even though we just exited the `with _state_lock:` block -- is free of
+    re-entrancy risk under either an RLock or a plain Lock.
+    """
+    if now is None:
+        now = _game_sweep_clock()
+    cut = now - FINISHED_GAME_TTL_SECONDS
+    with _state_lock:
+        stale = [
+            code for code, game in games.items()
+            if getattr(game, "phase", None) == "finished"
+            and getattr(game, "created_at", 0) <= cut
+        ]
+        for code in stale:
+            _evict_game(code, games, player_games)
+    if stale:
+        save()
+
+
+def _maybe_sweep_finished_games():
+    """Throttle ``_sweep_finished_games`` to at most one sweep per
+    ``GAME_SWEEP_INTERVAL_SECONDS`` on the hot request path. Returns True when
+    a sweep actually ran.
+    """
+    global _last_game_sweep
+    now = _game_sweep_clock()
+    if now - _last_game_sweep < GAME_SWEEP_INTERVAL_SECONDS:
+        return False
+    _sweep_finished_games(now=now)
+    _last_game_sweep = now
+    return True
 
 
 def generate_unique_code(gen_fn: Callable[[], str], existing: Dict[str, Any]) -> str:
@@ -796,6 +858,7 @@ def _handle_message_opponent(data, uid, code):
         "recipient": recipient,
         "text": message,
     })
+    save()
     return {"ok": True}, []
 
 
@@ -1796,6 +1859,11 @@ def _split_notification_result(out):
 
 
 def handle_api(path, body, client_ip=None):
+    # Opportunistic garbage-collection of finished games: runs on the hot
+    # request path, throttled to once per GAME_SWEEP_INTERVAL_SECONDS, and
+    # placed here -- before any lock is acquired and before body parsing -- so
+    # it can't deadlock and never makes a request wait on persistence.
+    _maybe_sweep_finished_games()
     try:
         data = json.loads(body) if body else {}
     except json.JSONDecodeError:
@@ -1807,7 +1875,11 @@ def handle_api(path, body, client_ip=None):
         return {"error": "unknown path"}
 
     if path in _NO_AUTH_PATHS:
-        uid = data.get("uid")
+        # _NO_AUTH_PATHS handlers (bot_info, resolve_code, and the uid probe)
+        # never authenticate on behalf of a player, so the body's "uid" is NOT
+        # an auth credential and must not be trusted: leave it None so no
+        # handler can accidentally gate on it.
+        uid = None
     else:
         uid = _authenticate(data)
         if uid is None:

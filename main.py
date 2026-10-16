@@ -11,6 +11,7 @@ import config
 from bot import start, web_app_data
 from api import handle_api
 from persist import load as load_state
+import sec_headers
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -82,6 +83,7 @@ class MainHandler(BaseHTTPRequestHandler):
         else:
             code, mime = 404, "application/json; charset=utf-8"
         self.send_response(code)
+        sec_headers.send_security_headers(self.send_header)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", "0")
         self.end_headers()
@@ -99,6 +101,7 @@ class MainHandler(BaseHTTPRequestHandler):
         html = html.replace("__ASSET_VERSION__", ASSET_VERSION)
         data = html.encode("utf-8")
         self.send_response(200)
+        sec_headers.send_security_headers(self.send_header)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -117,6 +120,7 @@ class MainHandler(BaseHTTPRequestHandler):
         if mime is None:
             mime = self._guess_mime(path)
         self.send_response(200)
+        sec_headers.send_security_headers(self.send_header)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(data)))
         base_name = os.path.basename(name)
@@ -154,6 +158,7 @@ class MainHandler(BaseHTTPRequestHandler):
     def _json(self, data, code=200):
         text = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
+        sec_headers.send_security_headers(self.send_header)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(text)))
         self.end_headers()

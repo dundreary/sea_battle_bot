@@ -81,7 +81,10 @@ def telegram_post(req, attempts=TELEGRAM_MAX_ATTEMPTS, timeout=30, sleep=time.sl
                     "Telegram 429 rate-limited (attempt %d/%d); retrying after %.1fs",
                     attempt + 1, attempts, wait,
                 )
-                sleep(wait)
+                # Don't sleep on the final attempt -- there is no next attempt
+                # to make, so the sleep only delays giving up.
+                if attempt < attempts - 1:
+                    sleep(wait)
                 continue
             # Permanent HTTP failure (400/401/403/404, and 5xx). 5xx is NOT
             # retried: a retried sendPhoto/sendMessage after a server error
@@ -95,7 +98,10 @@ def telegram_post(req, attempts=TELEGRAM_MAX_ATTEMPTS, timeout=30, sleep=time.sl
                 "Transient Telegram network error (attempt %d/%d): %s",
                 attempt + 1, attempts, e,
             )
-            sleep(TELEGRAM_BACKOFF)
+            # Same as the 429 branch: no point sleeping if this was the last
+            # attempt -- there is nothing left to retry.
+            if attempt < attempts - 1:
+                sleep(TELEGRAM_BACKOFF)
             continue
         except ValueError as e:
             # Malformed JSON body: not a transport condition worth retrying.
